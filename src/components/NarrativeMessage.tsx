@@ -2,7 +2,7 @@ import { Volume2, VolumeX, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface NarrativeMessageProps {
   role: "user" | "assistant";
@@ -17,7 +17,7 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
   const [lastRequestTime, setLastRequestTime] = useState<number>(0);
   const { toast } = useToast();
   
-  const COOLDOWN_MS = 3000; // 3 second cooldown between requests
+  const COOLDOWN_MS = 5000; // 5 second cooldown between requests
 
   const handleSpeak = async () => {
     if (isSpeaking || isLoadingAudio) {
