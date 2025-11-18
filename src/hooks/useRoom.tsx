@@ -42,6 +42,12 @@ export interface RoomPlayer {
     spell_slots: any;
     current_spell_slots: any;
     saving_throws: any;
+    carrying_capacity: number;
+    copper_pieces: number;
+    silver_pieces: number;
+    electrum_pieces: number;
+    gold_pieces: number;
+    platinum_pieces: number;
   };
 }
 
@@ -194,7 +200,13 @@ export const useRoom = () => {
             equipped_weapon,
             spell_slots,
             current_spell_slots,
-            saving_throws
+            saving_throws,
+            carrying_capacity,
+            copper_pieces,
+            silver_pieces,
+            electrum_pieces,
+            gold_pieces,
+            platinum_pieces
           )
         `)
         .eq('room_id', roomId);

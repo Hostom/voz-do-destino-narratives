@@ -7,6 +7,7 @@ import { Room, RoomPlayer } from "@/hooks/useRoom";
 import { RestPanel } from "@/components/RestPanel";
 import { WeaponSelector } from "@/components/WeaponSelector";
 import { SpellSelector } from "@/components/SpellSelector";
+import { InventoryPanel } from "@/components/InventoryPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -135,7 +136,7 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiat
           {/* Weapon, Spell and Rest Management */}
           {currentUserId && currentPlayer && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <WeaponSelector 
                   characterId={currentPlayer.character_id}
                   currentWeapon={currentPlayer.characters?.equipped_weapon}
@@ -147,6 +148,10 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiat
                   roomId={room.id}
                   players={players}
                   currentUserId={currentUserId}
+                />
+                <InventoryPanel 
+                  characterId={currentPlayer.character_id}
+                  carryingCapacity={currentPlayer.characters?.carrying_capacity || 150}
                 />
               </div>
               <SpellSelector 
