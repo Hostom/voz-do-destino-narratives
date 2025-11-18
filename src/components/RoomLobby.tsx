@@ -8,6 +8,9 @@ import { RestPanel } from "@/components/RestPanel";
 import { WeaponSelector } from "@/components/WeaponSelector";
 import { SpellSelector } from "@/components/SpellSelector";
 import { InventoryPanel } from "@/components/InventoryPanel";
+import { AbilityCheckPanel } from "@/components/AbilityCheckPanel";
+import { CheckHistoryPanel } from "@/components/CheckHistoryPanel";
+import { GMCheckRequestPanel } from "@/components/GMCheckRequestPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -159,6 +162,26 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiat
                 spellSlots={currentPlayer.characters?.spell_slots}
                 currentSpellSlots={currentPlayer.characters?.current_spell_slots}
               />
+              
+              {/* Ability Checks Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {currentPlayer.characters && (
+                  <AbilityCheckPanel 
+                    roomId={room.id}
+                    character={currentPlayer.characters}
+                  />
+                )}
+                <CheckHistoryPanel roomId={room.id} />
+              </div>
+              
+              {/* GM Check Request */}
+              {isGM && (
+                <GMCheckRequestPanel 
+                  roomId={room.id}
+                  players={players}
+                  gmId={room.gm_id}
+                />
+              )}
             </div>
           )}
 
