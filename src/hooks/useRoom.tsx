@@ -244,6 +244,14 @@ export const useRoom = () => {
         return;
       }
 
+      // Get NPCs
+      const { data: npcs, error: npcsError } = await supabase
+        .from('npcs')
+        .select('*')
+        .eq('room_id', room.id);
+
+      if (npcsError) throw npcsError;
+
       // Roll initiative for each player
       const initiativeRolls = players.map(player => {
         const dexModifier = Math.floor(((player.characters?.dexterity || 10) - 10) / 2);
@@ -252,6 +260,7 @@ export const useRoom = () => {
 
         return {
           id: player.id,
+          type: 'player' as const,
           character_id: player.character_id,
           name: player.characters?.name || "Unknown",
           roll,
@@ -261,8 +270,26 @@ export const useRoom = () => {
         };
       });
 
-      // Sort by initiative (highest first), then by dexterity for ties
-      const sorted = initiativeRolls.sort((a, b) => {
+      // Roll initiative for NPCs
+      const npcRolls = (npcs || []).map(npc => {
+        const roll = Math.floor(Math.random() * 20) + 1;
+        const initiative = roll + npc.initiative_bonus;
+
+        return {
+          id: npc.id,
+          type: 'npc' as const,
+          character_id: npc.id,
+          name: npc.name,
+          roll,
+          modifier: npc.initiative_bonus,
+          initiative,
+          dexterity: npc.dexterity
+        };
+      });
+
+      // Combine and sort by initiative (highest first), then by dexterity for ties
+      const allInitiatives = [...initiativeRolls, ...npcRolls];
+      const sorted = allInitiatives.sort((a, b) => {
         if (b.initiative !== a.initiative) {
           return b.initiative - a.initiative;
         }
@@ -270,18 +297,27 @@ export const useRoom = () => {
       });
 
       // Update each player's initiative
-      for (const player of sorted) {
+      for (const entity of sorted.filter(e => e.type === 'player')) {
         await supabase
           .from('room_players')
-          .update({ initiative: player.initiative })
-          .eq('id', player.id);
+          .update({ initiative: entity.initiative })
+          .eq('id', entity.id);
       }
 
-      // Update room with initiative order and set combat active
+      // Update each NPC's initiative
+      for (const entity of sorted.filter(e => e.type === 'npc')) {
+        await supabase
+          .from('npcs')
+          .update({ initiative: entity.initiative })
+          .eq('id', entity.id);
+      }
+
+      // Update room with initiative order (include type prefix)
+      const initiativeOrder = sorted.map(e => `${e.type}:${e.character_id}`);
       const { error } = await supabase
         .from('rooms')
         .update({
-          initiative_order: sorted.map(p => p.character_id),
+          initiative_order: initiativeOrder,
           combat_active: true,
           current_turn: 0
         })

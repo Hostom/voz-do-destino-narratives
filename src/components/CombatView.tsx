@@ -6,6 +6,7 @@ import { Room, RoomPlayer } from "@/hooks/useRoom";
 import { CombatActions } from "@/components/CombatActions";
 import { CombatLog } from "@/components/CombatLog";
 import { ConditionsPanel } from "@/components/ConditionsPanel";
+import { GMPanel } from "@/components/GMPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -19,6 +20,7 @@ interface CombatViewProps {
 export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: CombatViewProps) => {
   const [isGM, setIsGM] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [npcs, setNpcs] = useState<any[]>([]);
 
   useEffect(() => {
     const checkGMStatus = async () => {
@@ -31,17 +33,60 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
     checkGMStatus();
   }, [room.gm_id]);
 
-  // Sort players by initiative
-  const sortedPlayers = [...players].sort((a, b) => b.initiative - a.initiative);
+  // Load and subscribe to NPCs
+  useEffect(() => {
+    const loadNPCs = async () => {
+      const { data } = await supabase
+        .from('npcs')
+        .select('*')
+        .eq('room_id', room.id);
+      
+      if (data) setNpcs(data);
+    };
 
-  // Get current turn character
+    loadNPCs();
+
+    const channel = supabase
+      .channel(`npcs-combat-${room.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'npcs',
+          filter: `room_id=eq.${room.id}`
+        },
+        () => loadNPCs()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [room.id]);
+
+  // Combine players and NPCs into initiative order
   const initiativeOrder = Array.isArray(room.initiative_order) ? room.initiative_order : [];
-  const currentTurnCharacterId = initiativeOrder[room.current_turn];
-  const currentTurnPlayer = players.find(p => p.character_id === currentTurnCharacterId);
-  const isCurrentUserTurn = currentTurnPlayer?.user_id === currentUserId;
+  const currentTurnEntry = initiativeOrder[room.current_turn];
+  
+  // Parse current turn (format: "type:id")
+  const [currentType, currentId] = currentTurnEntry?.split(':') || ['', ''];
+  const isCurrentUserTurn = currentType === 'player' && players.some(p => p.character_id === currentId && p.user_id === currentUserId);
+
+  // Build combined initiative list
+  const combatants = initiativeOrder.map((entry: string) => {
+    const [type, id] = entry.split(':');
+    if (type === 'player') {
+      const player = players.find(p => p.character_id === id);
+      return player ? { ...player, type: 'player', displayName: player.characters?.name } : null;
+    } else {
+      const npc = npcs.find(n => n.id === id);
+      return npc ? { ...npc, type: 'npc', displayName: npc.name } : null;
+    }
+  }).filter(Boolean);
 
   // Calculate round number
-  const roundNumber = Math.floor(room.current_turn / players.length) + 1;
+  const roundNumber = Math.floor(room.current_turn / combatants.length) + 1;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 p-6">
@@ -70,7 +115,7 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
         </Card>
 
         {/* Current Turn Indicator */}
-        {currentTurnPlayer && (
+        {combatants.length > 0 && combatants[room.current_turn] && (
           <Card className="bg-gradient-to-r from-primary/20 to-primary/10 backdrop-blur border-primary animate-pulse">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -78,7 +123,10 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
                   <div className="w-3 h-3 rounded-full bg-primary animate-ping" />
                   <div>
                     <p className="text-sm text-muted-foreground">Turno atual</p>
-                    <p className="text-2xl font-bold">{currentTurnPlayer.characters?.name}</p>
+                    <p className="text-2xl font-bold">{combatants[room.current_turn].displayName}</p>
+                    {combatants[room.current_turn].type === 'npc' && (
+                      <Badge variant="outline" className="mt-1">NPC</Badge>
+                    )}
                   </div>
                 </div>
                 {isGM && (
@@ -101,14 +149,13 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {sortedPlayers.map((player, index) => {
-              const isCurrentTurn = player.character_id === currentTurnCharacterId;
-              const dexModifier = Math.floor(((player.characters?.dexterity || 10) - 10) / 2);
-              const roll = player.initiative - dexModifier;
-
+            {combatants.map((combatant: any, index) => {
+              const isCurrentTurn = index === room.current_turn;
+              const isPlayer = combatant.type === 'player';
+              
               return (
                 <div
-                  key={player.id}
+                  key={`${combatant.type}-${combatant.id}`}
                   className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
                     isCurrentTurn
                       ? 'bg-primary/20 border-primary shadow-lg scale-105'
@@ -118,16 +165,28 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
                   <div className="flex items-center gap-4">
                     <div className="flex flex-col items-center justify-center w-12 h-12 rounded-full bg-primary/10 border-2 border-primary">
                       <span className="text-xs text-muted-foreground">#{index + 1}</span>
-                      <span className="text-lg font-bold">{player.initiative}</span>
+                      <span className="text-lg font-bold">{combatant.initiative}</span>
                     </div>
                     <div>
-                      <p className="font-semibold text-lg">{player.characters?.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Rolou {roll} + {dexModifier} (DES) = {player.initiative}
+                      <p className="font-semibold text-lg flex items-center gap-2">
+                        {combatant.displayName}
+                        {!isPlayer && (
+                          <Badge variant="outline" className="text-xs">NPC</Badge>
+                        )}
                       </p>
-                      {((player.conditions as any[]) || []).length > 0 && (
+                      {isPlayer && combatant.characters && (
+                        <p className="text-sm text-muted-foreground">
+                          {combatant.characters.class} • {combatant.characters.race}
+                        </p>
+                      )}
+                      {!isPlayer && (
+                        <p className="text-sm text-muted-foreground">
+                          {combatant.creature_type}
+                        </p>
+                      )}
+                      {((isPlayer ? combatant.conditions : combatant.conditions) as any[])?.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {((player.conditions as any[]) || []).map((condition: any) => (
+                          {((isPlayer ? combatant.conditions : combatant.conditions) as any[]).map((condition: any) => (
                             <Badge key={condition.id} variant="destructive" className="text-xs">
                               {condition.name}
                             </Badge>
@@ -141,21 +200,19 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
                     <div className="flex items-center gap-2">
                       <Heart className="w-4 h-4 text-destructive" />
                       <span className="font-bold">
-                        {player.characters?.current_hp}/{player.characters?.max_hp}
+                        {isPlayer ? combatant.characters?.current_hp : combatant.current_hp}/
+                        {isPlayer ? combatant.characters?.max_hp : combatant.max_hp}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4 text-primary" />
-                      <span className="font-bold">{player.characters?.armor_class}</span>
+                      <span className="font-bold">
+                        {isPlayer ? combatant.characters?.armor_class : combatant.armor_class}
+                      </span>
                     </div>
                     {isCurrentTurn && (
                       <Badge className="bg-primary animate-pulse">
                         Turno Atual
-                      </Badge>
-                    )}
-                    {player.user_id === room.gm_id && (
-                      <Badge variant="outline" className="border-primary text-primary">
-                        GM
                       </Badge>
                     )}
                   </div>
@@ -165,28 +222,48 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
           </CardContent>
         </Card>
 
-        {/* Combat Actions and Logs */}
+        {/* Combat Actions, GM Panel, Conditions and Logs */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
-            {currentUserId && (
-              <CombatActions
-                roomId={room.id}
-                currentPlayerId={players.find(p => p.user_id === currentUserId)?.id || ""}
-                availablePlayers={players}
-                isYourTurn={isCurrentUserTurn}
-              />
-            )}
-          </div>
-          <div className="lg:col-span-1">
-            <ConditionsPanel 
-              roomId={room.id}
-              players={players}
-              isGM={isGM}
-            />
-          </div>
-          <div className="lg:col-span-1">
-            <CombatLog roomId={room.id} />
-          </div>
+          {isGM ? (
+            <>
+              <div className="lg:col-span-1">
+                <GMPanel roomId={room.id} />
+              </div>
+              <div className="lg:col-span-1">
+                <ConditionsPanel 
+                  roomId={room.id}
+                  players={players}
+                  isGM={isGM}
+                />
+              </div>
+              <div className="lg:col-span-1">
+                <CombatLog roomId={room.id} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="lg:col-span-1">
+                {currentUserId && (
+                  <CombatActions
+                    roomId={room.id}
+                    currentPlayerId={players.find(p => p.user_id === currentUserId)?.id || ""}
+                    availablePlayers={players}
+                    isYourTurn={isCurrentUserTurn}
+                  />
+                )}
+              </div>
+              <div className="lg:col-span-1">
+                <ConditionsPanel 
+                  roomId={room.id}
+                  players={players}
+                  isGM={isGM}
+                />
+              </div>
+              <div className="lg:col-span-1">
+                <CombatLog roomId={room.id} />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
