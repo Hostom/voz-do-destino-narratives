@@ -1,16 +1,20 @@
-import { useState, useRef, useEffect } from "react";
-import { GameHeader } from "@/components/GameHeader";
-import { NarrativeMessage } from "@/components/NarrativeMessage";
-import { ChatInput } from "@/components/ChatInput";
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Auth } from "@/components/Auth";
 import { CharacterCreation } from "@/components/CharacterCreation";
 import { CharacterSelect } from "@/components/CharacterSelect";
+import { GameHeader } from "@/components/GameHeader";
+import { ChatInput } from "@/components/ChatInput";
 import { DicePanel } from "@/components/DicePanel";
-import { Auth } from "@/components/Auth";
-import { useCharacter } from "@/hooks/useCharacter";
-import { useToast } from "@/hooks/use-toast";
+import { NarrativeMessage } from "@/components/NarrativeMessage";
+import { CreateRoom } from "@/components/CreateRoom";
+import { JoinRoom } from "@/components/JoinRoom";
+import { RoomLobby } from "@/components/RoomLobby";
+import { useCharacter, Character } from "@/hooks/useCharacter";
+import { useRoom } from "@/hooks/useRoom";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Scroll } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -22,13 +26,15 @@ const Index = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const { character, loading: characterLoading, createCharacter, getCharacterSummary, loadAllCharacters, selectCharacter } = useCharacter();
   const [showCharacterSheet, setShowCharacterSheet] = useState(false);
-  const [showCharacterSelect, setShowCharacterSelect] = useState(false);
-  const [showCharacterCreation, setShowCharacterCreation] = useState(false);
-  const [allCharacters, setAllCharacters] = useState<any[]>([]);
+  const [showCharacterSelection, setShowCharacterSelection] = useState(false);
+  const [showCreation, setShowCreation] = useState(false);
+  const [allCharacters, setAllCharacters] = useState<Character[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [speakingMessageContent, setSpeakingMessageContent] = useState<string>("");
+  const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
+  const [view, setView] = useState<'menu' | 'create' | 'join' | 'lobby' | 'game'>('menu');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady } = useRoom();
   const { toast } = useToast();
 
   // Check auth status
@@ -45,7 +51,7 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load all characters when user is authenticated and no character is selected
+  // Load all characters when user is authenticated
   useEffect(() => {
     if (user && !character && !characterLoading) {
       loadCharactersData();
@@ -56,15 +62,15 @@ const Index = () => {
     const chars = await loadAllCharacters();
     setAllCharacters(chars);
     if (chars.length > 0) {
-      setShowCharacterSelect(true);
+      setShowCharacterSelection(true);
     } else {
-      setShowCharacterCreation(true);
+      setShowCreation(true);
     }
   };
 
   // Initialize welcome message when character is ready
   useEffect(() => {
-    if (character && messages.length === 0) {
+    if (character && messages.length === 0 && view === 'game') {
       setMessages([{
         role: "assistant",
         content: `Bem-vindo, ${character.name}!
@@ -81,7 +87,7 @@ Sua jornada começa agora. Que tipo de aventura deseja viver?
 Diga-me, e deixe o destino se desenrolar...`,
       }]);
     }
-  }, [character]);
+  }, [character, view]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -99,12 +105,11 @@ Diga-me, e deixe o destino se desenrolar...`,
     try {
       const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/game-master`;
       
-      // Include character info in the context
       const systemContext = character ? `\n\nFICHA DO PERSONAGEM:\n${getCharacterSummary()}` : "";
       const contextualMessages = messages.length === 0 && character
         ? [{ role: "system" as const, content: `Você é o mestre de jogo. ${systemContext}` }, userMessage]
         : [...messages, userMessage];
-      
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
@@ -115,8 +120,8 @@ Diga-me, e deixe o destino se desenrolar...`,
       });
 
       if (!resp.ok) {
-        const errorData = await resp.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to connect to Game Master");
+        const errorData = await resp.json();
+        throw new Error(errorData.error || "Failed to start stream");
       }
 
       if (!resp.body) throw new Error("No response body");
@@ -127,7 +132,6 @@ Diga-me, e deixe o destino se desenrolar...`,
       let streamDone = false;
       let assistantContent = "";
 
-      // Add empty assistant message that will be updated
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       while (!streamDone) {
@@ -156,12 +160,9 @@ Diga-me, e deixe o destino se desenrolar...`,
             if (content) {
               assistantContent += content;
               setMessages((prev) => {
-                const newMessages = [...prev];
-                const lastMsg = newMessages[newMessages.length - 1];
-                if (lastMsg?.role === "assistant") {
-                  newMessages[newMessages.length - 1] = { role: "assistant", content: assistantContent };
-                }
-                return newMessages;
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: "assistant", content: assistantContent };
+                return updated;
               });
             }
           } catch {
@@ -170,74 +171,91 @@ Diga-me, e deixe o destino se desenrolar...`,
           }
         }
       }
+
+      setIsLoading(false);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Não foi possível conectar com o Mestre. Tente novamente.",
+        description: error instanceof Error ? error.message : "Erro ao enviar mensagem",
         variant: "destructive",
       });
-      // Remove the empty assistant message on error
-      setMessages((prev) => prev.filter((msg) => msg.content !== ""));
-    } finally {
       setIsLoading(false);
+      setMessages((prev) => prev.slice(0, -1));
     }
   };
 
-  const handleCharacterComplete = async (characterData: any) => {
-    await createCharacter(characterData);
-    setShowCharacterCreation(false);
-    setShowCharacterSelect(false);
+  const handleCharacterComplete = () => {
+    setShowCreation(false);
+    loadCharactersData();
   };
 
-  const handleCharacterSelect = (selectedCharacter: any) => {
+  const handleCharacterSelect = (selectedCharacter: Character) => {
     selectCharacter(selectedCharacter);
-    setShowCharacterSelect(false);
-    setShowCharacterCreation(false);
+    setShowCharacterSelection(false);
   };
 
   const handleCreateNew = () => {
-    setShowCharacterSelect(false);
-    setShowCharacterCreation(true);
+    setShowCharacterSelection(false);
+    setShowCreation(true);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    setMessages([]);
-    toast({
-      title: "Desconectado",
-      description: "Você saiu com sucesso.",
-    });
   };
 
   const handleBackToCharacterSelect = () => {
-    setMessages([]);
-    setShowCharacterSelect(true);
-    selectCharacter(null as any);
-    loadCharactersData();
+    setShowCharacterSelection(true);
+  };
+
+  const handleCreateRoom = async () => {
+    const newRoom = await createRoom();
+    if (newRoom && character) {
+      await joinRoom(newRoom.room_code, character.id);
+      setView('lobby');
+    }
+  };
+
+  const handleJoinRoomWithCode = async (roomCode: string, characterId: string) => {
+    const joinedRoom = await joinRoom(roomCode, characterId);
+    if (joinedRoom) {
+      setView('lobby');
+    }
+  };
+
+  const handleLeaveRoom = () => {
+    leaveRoom();
+    setView('menu');
   };
 
   if (authLoading || characterLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center">
+        <div className="text-center">Loading...</div>
       </div>
     );
   }
 
-  // Show auth if not authenticated
   if (!user) {
     return <Auth />;
   }
 
-  // Show character selection screen
-  if (showCharacterSelect && allCharacters.length > 0) {
+  if (showCreation) {
     return (
-      <CharacterSelect
+      <CharacterCreation 
+        onComplete={async (characterData) => {
+          await createCharacter(characterData);
+          setShowCreation(false);
+          loadCharactersData();
+        }}
+      />
+    );
+  }
+
+  if (showCharacterSelection) {
+    return (
+      <CharacterSelect 
         characters={allCharacters}
         onSelect={handleCharacterSelect}
         onCreateNew={handleCreateNew}
@@ -246,71 +264,174 @@ Diga-me, e deixe o destino se desenrolar...`,
     );
   }
 
-  // Show character creation if no character exists or creating new
-  if (!character || showCharacterCreation) {
-    return <CharacterCreation onComplete={handleCharacterComplete} />;
+  if (!character) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center">
+        <div className="text-center">Loading...</div>
+      </div>
+    );
   }
 
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Background effects */}
-      <div className="fixed inset-0 bg-gradient-glow opacity-20 pointer-events-none"></div>
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none"></div>
-
-      <GameHeader 
-        onLogout={handleLogout}
-        onBackToCharacterSelect={handleBackToCharacterSelect}
-      />
-
-      <main className="flex-1 container mx-auto px-4 py-6 max-w-4xl flex flex-col">
-        {/* Character Sheet Button */}
-        <div className="mb-4 flex justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCharacterSheet(!showCharacterSheet)}
-            className="gap-2"
-          >
-            <Scroll className="h-4 w-4" />
-            {showCharacterSheet ? "Ocultar" : "Ver"} Ficha
+  // Room menu
+  if (view === 'menu') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-6">
+        <div className="w-full max-w-md space-y-4">
+          <h1 className="text-4xl font-bold text-center mb-8">Voz do Destino</h1>
+          <Button onClick={() => setView('create')} size="lg" className="w-full">
+            Criar Sala
+          </Button>
+          <Button onClick={() => setView('join')} size="lg" variant="secondary" className="w-full">
+            Entrar em Sala
+          </Button>
+          <Button onClick={() => setShowCharacterSelection(true)} size="lg" variant="outline" className="w-full">
+            Trocar Personagem
+          </Button>
+          <Button onClick={handleLogout} size="lg" variant="ghost" className="w-full">
+            Sair
           </Button>
         </div>
+      </div>
+    );
+  }
 
-        {/* Character Sheet Display */}
-        {showCharacterSheet && (
-          <div className="mb-4 p-4 bg-card border border-primary/20 rounded-lg animate-in slide-in-from-top">
-            <pre className="text-xs whitespace-pre-wrap text-foreground">{getCharacterSummary()}</pre>
+  if (view === 'create') {
+    return <CreateRoom onCreateRoom={handleCreateRoom} loading={roomLoading} />;
+  }
+
+  if (view === 'join') {
+    return <JoinRoom onJoinRoom={handleJoinRoomWithCode} loading={roomLoading} character={character} />;
+  }
+
+  if (view === 'lobby' && room) {
+    return <RoomLobby room={room} players={players} onLeave={handleLeaveRoom} onToggleReady={toggleReady} />;
+  }
+
+  // Game view (original RPG interface)
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 relative overflow-hidden">
+      {/* Background effects */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent"></div>
+      <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+
+      <div className="relative z-10 flex flex-col h-screen">
+        <GameHeader 
+          onLogout={handleLogout}
+          onBackToCharacterSelect={handleBackToCharacterSelect}
+        />
+
+        {showCharacterSheet && character && (
+          <div className="mx-4 mb-4 p-6 bg-card/95 backdrop-blur rounded-lg border border-primary/20 shadow-2xl animate-in slide-in-from-top duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <BookOpen className="w-6 h-6" />
+                Ficha do Personagem
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Nome</p>
+                  <p className="text-lg font-semibold">{character.name}</p>
+                </div>
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Raça</p>
+                    <p className="font-semibold">{character.race}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Classe</p>
+                    <p className="font-semibold">{character.class}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Nível</p>
+                    <p className="font-semibold">{character.level}</p>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">HP</p>
+                    <p className="font-semibold">{character.current_hp}/{character.max_hp}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">AC</p>
+                    <p className="font-semibold">{character.armor_class}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground font-semibold mb-2">Atributos</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex justify-between p-2 rounded bg-background/50">
+                    <span className="text-sm">FOR</span>
+                    <span className="font-bold">{character.strength}</span>
+                  </div>
+                  <div className="flex justify-between p-2 rounded bg-background/50">
+                    <span className="text-sm">DES</span>
+                    <span className="font-bold">{character.dexterity}</span>
+                  </div>
+                  <div className="flex justify-between p-2 rounded bg-background/50">
+                    <span className="text-sm">CON</span>
+                    <span className="font-bold">{character.constitution}</span>
+                  </div>
+                  <div className="flex justify-between p-2 rounded bg-background/50">
+                    <span className="text-sm">INT</span>
+                    <span className="font-bold">{character.intelligence}</span>
+                  </div>
+                  <div className="flex justify-between p-2 rounded bg-background/50">
+                    <span className="text-sm">SAB</span>
+                    <span className="font-bold">{character.wisdom}</span>
+                  </div>
+                  <div className="flex justify-between p-2 rounded bg-background/50">
+                    <span className="text-sm">CAR</span>
+                    <span className="font-bold">{character.charisma}</span>
+                  </div>
+                </div>
+              </div>
+
+              {character.backstory && (
+                <div className="md:col-span-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Scroll className="w-4 h-4" />
+                    <p className="text-sm text-muted-foreground font-semibold">História</p>
+                  </div>
+                  <p className="text-sm leading-relaxed">{character.backstory}</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        <div className="flex-1 space-y-6 mb-6 overflow-y-auto">
-          {messages.map((message, index) => (
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
+          {messages.map((msg, idx) => (
             <NarrativeMessage
-              key={index}
-              role={message.role}
-              content={message.content}
-              onSpeak={(text) => setSpeakingMessageContent(text)}
-              isSpeaking={speakingMessageContent === message.content}
+              key={idx}
+              role={msg.role}
+              content={msg.content}
+              onSpeak={(content) => {
+                setCurrentSpeakingIndex(idx);
+              }}
+              isSpeaking={currentSpeakingIndex === idx}
             />
           ))}
+          {isLoading && (
+            <div className="flex justify-center">
+              <div className="animate-pulse text-muted-foreground">
+                A Voz do Destino está narrando...
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="space-y-3">
-          <ChatInput
-            onSend={handleSend}
-            onRoll={(result) => {
-              toast({
-                title: "Dado rolado!",
-                description: `Você rolou ${result} no d20`,
-              });
-            }}
-            disabled={isLoading || !!speakingMessageContent}
-          />
-          
-          <DicePanel />
+        <div className="px-4 pb-4">
+          <ChatInput onSend={handleSend} onRoll={(result) => console.log('Rolled:', result)} disabled={isLoading} />
         </div>
-      </main>
+
+        <DicePanel />
+      </div>
     </div>
   );
 };
