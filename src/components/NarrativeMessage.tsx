@@ -17,7 +17,7 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
   const [lastRequestTime, setLastRequestTime] = useState<number>(0);
   const { toast } = useToast();
   
-  const COOLDOWN_MS = 5000; // 5 second cooldown between requests
+  const COOLDOWN_MS = 60000; // 60 second cooldown between requests (OpenAI rate limit)
 
   const handleSpeak = async () => {
     if (isSpeaking || isLoadingAudio) {
@@ -32,7 +32,7 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
       const remainingSeconds = Math.ceil((COOLDOWN_MS - timeSinceLastRequest) / 1000);
       toast({
         title: "Aguarde",
-        description: `Aguarde ${remainingSeconds} segundos antes de solicitar outra narração.`,
+        description: `Por favor, aguarde ${remainingSeconds} segundos antes de solicitar outra narração.`,
       });
       return;
     }
@@ -46,22 +46,27 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
       });
 
       if (error) {
-        const errorMessage = error.message || "Unknown error";
+        console.error("TTS Error:", error);
+        const errorMessage = typeof error === 'string' ? error : error.message || "Unknown error";
         
-        if (errorMessage.includes("Rate limit")) {
+        if (errorMessage.includes("rate limit") || errorMessage.includes("Rate limit")) {
           toast({
-            title: "Aguarde um momento",
-            description: "Muitas solicitações de narração. Tente novamente em alguns segundos.",
+            title: "Limite de solicitações atingido",
+            description: "O serviço de narração está temporariamente limitado. Por favor, aguarde 60 segundos e tente novamente.",
             variant: "destructive",
           });
         } else {
           toast({
             title: "Erro na narração",
-            description: "Não foi possível gerar o áudio. Tente novamente.",
+            description: "Não foi possível gerar o áudio. Tente novamente mais tarde.",
             variant: "destructive",
           });
         }
         throw error;
+      }
+
+      if (!data?.audioContent) {
+        throw new Error("No audio content received");
       }
 
       const audio = new Audio(`data:audio/mpeg;base64,${data.audioContent}`);
