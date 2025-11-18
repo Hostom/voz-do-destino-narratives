@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      characters: {
+        Row: {
+          armor_class: number
+          background: string | null
+          backstory: string | null
+          charisma: number
+          class: string
+          constitution: number
+          created_at: string
+          current_hp: number
+          dexterity: number
+          id: string
+          intelligence: number
+          level: number
+          max_hp: number
+          name: string
+          race: string
+          strength: number
+          updated_at: string
+          user_id: string
+          wisdom: number
+        }
+        Insert: {
+          armor_class?: number
+          background?: string | null
+          backstory?: string | null
+          charisma: number
+          class: string
+          constitution: number
+          created_at?: string
+          current_hp: number
+          dexterity: number
+          id?: string
+          intelligence: number
+          level?: number
+          max_hp: number
+          name: string
+          race: string
+          strength: number
+          updated_at?: string
+          user_id: string
+          wisdom: number
+        }
+        Update: {
+          armor_class?: number
+          background?: string | null
+          backstory?: string | null
+          charisma?: number
+          class?: string
+          constitution?: number
+          created_at?: string
+          current_hp?: number
+          dexterity?: number
+          id?: string
+          intelligence?: number
+          level?: number
+          max_hp?: number
+          name?: string
+          race?: string
+          strength?: number
+          updated_at?: string
+          user_id?: string
+          wisdom?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
