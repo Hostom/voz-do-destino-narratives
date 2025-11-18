@@ -1,6 +1,7 @@
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NarrativeMessageProps {
   role: "user" | "assistant";
@@ -11,6 +12,44 @@ interface NarrativeMessageProps {
 
 export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: NarrativeMessageProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+
+  const handleSpeak = async () => {
+    if (isSpeaking || isLoadingAudio) {
+      onSpeak?.(content);
+      return;
+    }
+
+    setIsLoadingAudio(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("text-to-speech", {
+        body: { text: content },
+      });
+
+      if (error) throw error;
+
+      const audio = new Audio(`data:audio/mpeg;base64,${data.audioContent}`);
+      
+      audio.onplay = () => {
+        onSpeak?.(content);
+      };
+      
+      audio.onended = () => {
+        onSpeak?.("");
+      };
+      
+      audio.onerror = () => {
+        console.error("Error playing audio");
+        onSpeak?.("");
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.error("Error generating speech:", error);
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  };
 
   return (
     <div
@@ -39,14 +78,17 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
           </p>
         </div>
 
-        {role === "assistant" && onSpeak && isHovered && (
+        {role === "assistant" && onSpeak && isHovered && content && (
           <Button
-            onClick={() => onSpeak(content)}
+            onClick={handleSpeak}
             variant="ghost"
             size="icon"
             className="absolute top-2 right-2 opacity-70 hover:opacity-100 transition-opacity"
+            disabled={isLoadingAudio}
           >
-            {isSpeaking ? (
+            {isLoadingAudio ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isSpeaking ? (
               <VolumeX className="h-4 w-4" />
             ) : (
               <Volume2 className="h-4 w-4" />

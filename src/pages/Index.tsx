@@ -30,7 +30,7 @@ Diga-me, e deixe o destino se desenrolar...`,
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingMessageContent, setSpeakingMessageContent] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -143,11 +143,7 @@ Diga-me, e deixe o destino se desenrolar...`,
   };
 
   const handleSpeak = (text: string) => {
-    // TODO: Integrate with ElevenLabs TTS
-    toast({
-      title: "TTS em desenvolvimento",
-      description: "A narração por voz será implementada em breve",
-    });
+    setSpeakingMessageContent(text);
   };
 
   const startNewAdventure = () => {
@@ -192,7 +188,7 @@ Uma nova história aguarda para ser escrita. Que tipo de aventura deseja embarca
                     role={msg.role}
                     content={msg.content}
                     onSpeak={msg.role === "assistant" ? handleSpeak : undefined}
-                    isSpeaking={isSpeaking}
+                    isSpeaking={speakingMessageContent === msg.content}
                   />
                 ))}
                 {messages.length > 4 && (
