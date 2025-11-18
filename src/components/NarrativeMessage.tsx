@@ -111,45 +111,57 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
       className={`mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ${
         role === "assistant" ? "pr-12" : "pl-12"
       }`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
-      <div
-        className={`relative rounded-xl p-6 ${
-          role === "assistant"
-            ? "bg-gradient-to-br from-card to-card/50 border border-primary/20 shadow-epic"
-            : "bg-muted/50 border border-muted"
-        }`}
-      >
-        {role === "assistant" && (
-          <div className="absolute -left-3 top-3 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-glow">
-            <span className="text-xs font-bold text-primary-foreground">GM</span>
+      <div className="relative">
+        <div
+          className={`relative p-6 rounded-2xl shadow-lg backdrop-blur-sm transition-all duration-300 ${
+            role === "user"
+              ? "bg-primary/10 border border-primary/20 ml-auto max-w-[85%]"
+              : "bg-card/80 border border-border/50 mr-auto max-w-[90%]"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {role === "assistant" && (
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
+                <span className="text-primary font-bold text-lg">🎲</span>
+              </div>
+            )}
+            <div className="flex-1">
+              <p className="text-foreground leading-relaxed whitespace-pre-wrap text-base">
+                {content}
+              </p>
+            </div>
           </div>
-        )}
-        
-        <div className="prose prose-invert max-w-none">
-          <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap">
-            {content}
-          </p>
         </div>
 
-        {role === "assistant" && onSpeak && isHovered && content && (
-          <Button
-            onClick={handleSpeak}
-            variant="ghost"
-            size="icon"
-            className="absolute top-2 right-2 opacity-70 hover:opacity-100 transition-opacity"
-            disabled={isLoadingAudio}
-            title="Clique para ouvir esta narração (limitado a 1 vez por minuto)"
-          >
-            {isLoadingAudio ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isSpeaking ? (
-              <VolumeX className="h-4 w-4" />
-            ) : (
-              <Volume2 className="h-4 w-4" />
-            )}
-          </Button>
+        {/* Botão de narração visível apenas para mensagens do assistente */}
+        {role === "assistant" && (
+          <div className="mt-3 flex justify-start">
+            <Button
+              onClick={handleSpeak}
+              variant="outline"
+              size="sm"
+              disabled={isLoadingAudio}
+              className="gap-2 text-sm"
+            >
+              {isLoadingAudio ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Gerando áudio...
+                </>
+              ) : isSpeaking ? (
+                <>
+                  <VolumeX className="h-4 w-4" />
+                  Pausar Narração
+                </>
+              ) : (
+                <>
+                  <Volume2 className="h-4 w-4" />
+                  🔊 Ouvir Narração
+                </>
+              )}
+            </Button>
+          </div>
         )}
       </div>
     </div>
