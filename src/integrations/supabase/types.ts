@@ -148,6 +148,89 @@ export type Database = {
           },
         ]
       }
+      npcs: {
+        Row: {
+          armor_class: number
+          attack_bonus: number
+          charisma: number
+          conditions: Json | null
+          constitution: number
+          created_at: string
+          creature_type: string
+          current_hp: number
+          damage_dice: string
+          damage_type: string
+          dexterity: number
+          id: string
+          initiative: number | null
+          initiative_bonus: number
+          intelligence: number
+          max_hp: number
+          name: string
+          notes: string | null
+          room_id: string
+          strength: number
+          updated_at: string
+          wisdom: number
+        }
+        Insert: {
+          armor_class?: number
+          attack_bonus?: number
+          charisma?: number
+          conditions?: Json | null
+          constitution?: number
+          created_at?: string
+          creature_type?: string
+          current_hp: number
+          damage_dice?: string
+          damage_type?: string
+          dexterity?: number
+          id?: string
+          initiative?: number | null
+          initiative_bonus?: number
+          intelligence?: number
+          max_hp: number
+          name: string
+          notes?: string | null
+          room_id: string
+          strength?: number
+          updated_at?: string
+          wisdom?: number
+        }
+        Update: {
+          armor_class?: number
+          attack_bonus?: number
+          charisma?: number
+          conditions?: Json | null
+          constitution?: number
+          created_at?: string
+          creature_type?: string
+          current_hp?: number
+          damage_dice?: string
+          damage_type?: string
+          dexterity?: number
+          id?: string
+          initiative?: number | null
+          initiative_bonus?: number
+          intelligence?: number
+          max_hp?: number
+          name?: string
+          notes?: string | null
+          room_id?: string
+          strength?: number
+          updated_at?: string
+          wisdom?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "npcs_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_players: {
         Row: {
           character_id: string
