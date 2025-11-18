@@ -23,10 +23,12 @@ export type Database = {
           class: string
           constitution: number
           created_at: string
+          current_hit_dice: number | null
           current_hp: number
           current_spell_slots: Json | null
           dexterity: number
           equipped_weapon: Json | null
+          hit_dice: string | null
           id: string
           intelligence: number
           level: number
@@ -49,10 +51,12 @@ export type Database = {
           class: string
           constitution: number
           created_at?: string
+          current_hit_dice?: number | null
           current_hp: number
           current_spell_slots?: Json | null
           dexterity: number
           equipped_weapon?: Json | null
+          hit_dice?: string | null
           id?: string
           intelligence: number
           level?: number
@@ -75,10 +79,12 @@ export type Database = {
           class?: string
           constitution?: number
           created_at?: string
+          current_hit_dice?: number | null
           current_hp?: number
           current_spell_slots?: Json | null
           dexterity?: number
           equipped_weapon?: Json | null
+          hit_dice?: string | null
           id?: string
           intelligence?: number
           level?: number
