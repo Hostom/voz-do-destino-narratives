@@ -3,6 +3,7 @@ import { GameHeader } from "@/components/GameHeader";
 import { NarrativeMessage } from "@/components/NarrativeMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { CharacterCreation } from "@/components/CharacterCreation";
+import { CharacterSelect } from "@/components/CharacterSelect";
 import { DicePanel } from "@/components/DicePanel";
 import { Auth } from "@/components/Auth";
 import { useCharacter } from "@/hooks/useCharacter";
@@ -19,8 +20,11 @@ interface Message {
 const Index = () => {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const { character, loading: characterLoading, createCharacter, getCharacterSummary } = useCharacter();
+  const { character, loading: characterLoading, createCharacter, getCharacterSummary, loadAllCharacters, selectCharacter } = useCharacter();
   const [showCharacterSheet, setShowCharacterSheet] = useState(false);
+  const [showCharacterSelect, setShowCharacterSelect] = useState(false);
+  const [showCharacterCreation, setShowCharacterCreation] = useState(false);
+  const [allCharacters, setAllCharacters] = useState<any[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [speakingMessageContent, setSpeakingMessageContent] = useState<string>("");
@@ -40,6 +44,23 @@ const Index = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Load all characters when user is authenticated and no character is selected
+  useEffect(() => {
+    if (user && !character && !characterLoading) {
+      loadCharactersData();
+    }
+  }, [user, character, characterLoading]);
+
+  const loadCharactersData = async () => {
+    const chars = await loadAllCharacters();
+    setAllCharacters(chars);
+    if (chars.length > 0) {
+      setShowCharacterSelect(true);
+    } else {
+      setShowCharacterCreation(true);
+    }
+  };
 
   // Initialize welcome message when character is ready
   useEffect(() => {
@@ -164,11 +185,20 @@ Diga-me, e deixe o destino se desenrolar...`,
   };
 
   const handleCharacterComplete = async (characterData: any) => {
-    try {
-      await createCharacter(characterData);
-    } catch (error) {
-      console.error("Error creating character:", error);
-    }
+    await createCharacter(characterData);
+    setShowCharacterCreation(false);
+    setShowCharacterSelect(false);
+  };
+
+  const handleCharacterSelect = (selectedCharacter: any) => {
+    selectCharacter(selectedCharacter);
+    setShowCharacterSelect(false);
+    setShowCharacterCreation(false);
+  };
+
+  const handleCreateNew = () => {
+    setShowCharacterSelect(false);
+    setShowCharacterCreation(true);
   };
 
   if (authLoading || characterLoading) {
@@ -187,7 +217,20 @@ Diga-me, e deixe o destino se desenrolar...`,
     return <Auth />;
   }
 
-  if (!character) {
+  // Show character selection screen
+  if (showCharacterSelect && allCharacters.length > 0) {
+    return (
+      <CharacterSelect
+        characters={allCharacters}
+        onSelect={handleCharacterSelect}
+        onCreateNew={handleCreateNew}
+        onCharactersUpdate={loadCharactersData}
+      />
+    );
+  }
+
+  // Show character creation if no character exists or creating new
+  if (!character || showCharacterCreation) {
     return <CharacterCreation onComplete={handleCharacterComplete} />;
   }
 

@@ -70,6 +70,29 @@ export const useCharacter = () => {
     }
   };
 
+  const loadAllCharacters = async (): Promise<Character[]> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from("characters")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error("Error loading characters:", error);
+      return [];
+    }
+  };
+
+  const selectCharacter = (selectedCharacter: Character) => {
+    setCharacter(selectedCharacter);
+  };
+
   const createCharacter = async (characterData: Omit<Character, "id" | "level" | "max_hp" | "current_hp" | "armor_class">) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -196,5 +219,7 @@ ${character.backstory ? `\nHistória: ${character.backstory}` : ''}`;
     updateCharacter,
     deleteCharacter,
     getCharacterSummary,
+    loadAllCharacters,
+    selectCharacter,
   };
 };
