@@ -2,9 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { GameHeader } from "@/components/GameHeader";
 import { NarrativeMessage } from "@/components/NarrativeMessage";
 import { ChatInput } from "@/components/ChatInput";
-import { useToast } from "@/components/ui/use-toast";
+import { CharacterCreation } from "@/components/CharacterCreation";
+import { DicePanel } from "@/components/DicePanel";
+import { useCharacter } from "@/hooks/useCharacter";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Scroll } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -12,14 +15,24 @@ interface Message {
 }
 
 const Index = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: `Bem-vindo, viajante.
+  const { character, loading: characterLoading, createCharacter, getCharacterSummary } = useCharacter();
+  const [showCharacterSheet, setShowCharacterSheet] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [speakingMessageContent, setSpeakingMessageContent] = useState<string>("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
-Eu sou a Voz do Destino, seu mestre de jogo. Juntos, criaremos uma história épica onde cada escolha molda o mundo ao seu redor.
+  // Initialize welcome message when character is ready
+  useEffect(() => {
+    if (character && messages.length === 0) {
+      setMessages([{
+        role: "assistant",
+        content: `Bem-vindo, ${character.name}!
 
-Antes de começarmos, me conte: que tipo de aventura deseja viver?
+Eu sou a Voz do Destino, seu mestre de jogo. Vejo que você é ${character.race === "human" ? "um humano" : `${character.race}`} ${character.class}.
+
+Sua jornada começa agora. Que tipo de aventura deseja viver?
 
 • Uma jornada de fantasia medieval repleta de magia e dragões?
 • Um mistério sombrio em uma cidade steampunk?
@@ -27,12 +40,9 @@ Antes de começarmos, me conte: que tipo de aventura deseja viver?
 • Ou prefere que eu crie algo único para você?
 
 Diga-me, e deixe o destino se desenrolar...`,
-    },
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [speakingMessageContent, setSpeakingMessageContent] = useState<string>("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
+      }]);
+    }
+  }, [character]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -50,13 +60,19 @@ Diga-me, e deixe o destino se desenrolar...`,
     try {
       const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/game-master`;
       
+      // Include character info in the context
+      const systemContext = character ? `\n\nFICHA DO PERSONAGEM:\n${getCharacterSummary()}` : "";
+      const contextualMessages = messages.length === 0 && character
+        ? [{ role: "system" as const, content: `Você é o mestre de jogo. ${systemContext}` }, userMessage]
+        : [...messages, userMessage];
+      
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: [...messages, userMessage] }),
+        body: JSON.stringify({ messages: contextualMessages }),
       });
 
       if (!resp.ok) {
@@ -129,33 +145,28 @@ Diga-me, e deixe o destino se desenrolar...`,
     }
   };
 
-  const handleRoll = (result: number) => {
-    const rollMessage: Message = {
-      role: "user",
-      content: `🎲 Rolou ${result} no d20`,
-    };
-    setMessages((prev) => [...prev, rollMessage]);
-
-    toast({
-      title: "Dados lançados!",
-      description: `Você rolou ${result}`,
-    });
+  const handleCharacterComplete = async (characterData: any) => {
+    try {
+      await createCharacter(characterData);
+    } catch (error) {
+      console.error("Error creating character:", error);
+    }
   };
 
-  const handleSpeak = (text: string) => {
-    setSpeakingMessageContent(text);
-  };
+  if (characterLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const startNewAdventure = () => {
-    setMessages([
-      {
-        role: "assistant",
-        content: `O destino te chama novamente, viajante.
-
-Uma nova história aguarda para ser escrita. Que tipo de aventura deseja embarcar desta vez?`,
-      },
-    ]);
-  };
+  if (!character) {
+    return <CharacterCreation onComplete={handleCharacterComplete} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -165,51 +176,54 @@ Uma nova história aguarda para ser escrita. Que tipo de aventura deseja embarca
 
       <GameHeader />
 
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <div className="flex-1 overflow-y-auto">
-          <div className="container mx-auto max-w-4xl px-6 py-8">
-            {messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center space-y-4 animate-in fade-in zoom-in duration-700">
-                  <BookOpen className="h-16 w-16 mx-auto text-primary animate-pulse-slow" />
-                  <h2 className="text-2xl font-cinzel text-foreground">
-                    Aguardando sua primeira escolha...
-                  </h2>
-                  <p className="text-muted-foreground">
-                    A história começa quando você der o primeiro passo
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <>
-                {messages.map((msg, idx) => (
-                  <NarrativeMessage
-                    key={idx}
-                    role={msg.role}
-                    content={msg.content}
-                    onSpeak={msg.role === "assistant" ? handleSpeak : undefined}
-                    isSpeaking={speakingMessageContent === msg.content}
-                  />
-                ))}
-                {messages.length > 4 && (
-                  <div className="flex justify-center mt-8">
-                    <Button
-                      onClick={startNewAdventure}
-                      variant="outline"
-                      className="border-accent/50 hover:border-accent"
-                    >
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      Nova Aventura
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+      <main className="flex-1 container mx-auto px-4 py-6 max-w-4xl flex flex-col">
+        {/* Character Sheet Button */}
+        <div className="mb-4 flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCharacterSheet(!showCharacterSheet)}
+            className="gap-2"
+          >
+            <Scroll className="h-4 w-4" />
+            {showCharacterSheet ? "Ocultar" : "Ver"} Ficha
+          </Button>
         </div>
 
-        <ChatInput onSend={handleSend} onRoll={handleRoll} disabled={isLoading} />
+        {/* Character Sheet Display */}
+        {showCharacterSheet && (
+          <div className="mb-4 p-4 bg-card border border-primary/20 rounded-lg animate-in slide-in-from-top">
+            <pre className="text-xs whitespace-pre-wrap text-foreground">{getCharacterSummary()}</pre>
+          </div>
+        )}
+
+        <div className="flex-1 space-y-6 mb-6 overflow-y-auto">
+          {messages.map((message, index) => (
+            <NarrativeMessage
+              key={index}
+              role={message.role}
+              content={message.content}
+              onSpeak={(text) => setSpeakingMessageContent(text)}
+              isSpeaking={speakingMessageContent === message.content}
+            />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="space-y-3">
+          <ChatInput
+            onSend={handleSend}
+            onRoll={(result) => {
+              toast({
+                title: "Dado rolado!",
+                description: `Você rolou ${result} no d20`,
+              });
+            }}
+            disabled={isLoading || !!speakingMessageContent}
+          />
+          
+          <DicePanel />
+        </div>
       </main>
     </div>
   );

@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sword, Shield, User, Scroll } from "lucide-react";
+import { Sword, Shield, User, Scroll, Dices } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CharacterData {
@@ -71,64 +71,56 @@ const BACKGROUNDS = [
 export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
   const [step, setStep] = useState(1);
   const { toast } = useToast();
+  const [rollingAttribute, setRollingAttribute] = useState<string | null>(null);
   
   const [character, setCharacter] = useState<CharacterData>({
     name: "",
     race: "",
     class: "",
-    strength: 8,
-    dexterity: 8,
-    constitution: 8,
-    intelligence: 8,
-    wisdom: 8,
-    charisma: 8,
+    strength: 0,
+    dexterity: 0,
+    constitution: 0,
+    intelligence: 0,
+    wisdom: 0,
+    charisma: 0,
     background: "",
     backstory: "",
   });
 
-  const POINTS_TO_DISTRIBUTE = 27;
-  const BASE_SCORE = 8;
-  const MAX_SCORE = 15;
-
-  const calculateUsedPoints = () => {
-    const attrs = [
-      character.strength,
-      character.dexterity,
-      character.constitution,
-      character.intelligence,
-      character.wisdom,
-      character.charisma,
-    ];
+  const rollAttribute = (attr: keyof CharacterData) => {
+    setRollingAttribute(attr as string);
     
-    return attrs.reduce((total, score) => {
-      const cost = score - BASE_SCORE;
-      return total + (cost > 5 ? cost + (cost - 5) : cost);
-    }, 0);
+    // Roll 4d6, drop lowest (standard D&D 5E method)
+    const rolls: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      rolls.push(Math.floor(Math.random() * 6) + 1);
+    }
+    
+    // Sort and drop lowest
+    rolls.sort((a, b) => a - b);
+    const sum = rolls.slice(1).reduce((acc, val) => acc + val, 0);
+    
+    setTimeout(() => {
+      setCharacter({ ...character, [attr]: sum });
+      setRollingAttribute(null);
+      toast({
+        title: "Dados rolados!",
+        description: `Você rolou ${rolls.join(", ")} e obteve ${sum} (descartando o menor).`,
+      });
+    }, 1000);
   };
 
-  const remainingPoints = POINTS_TO_DISTRIBUTE - calculateUsedPoints();
+  const allAttributesRolled = () => {
+    return character.strength > 0 &&
+           character.dexterity > 0 &&
+           character.constitution > 0 &&
+           character.intelligence > 0 &&
+           character.wisdom > 0 &&
+           character.charisma > 0;
+  };
 
   const getAttributeModifier = (score: number) => {
     return Math.floor((score - 10) / 2);
-  };
-
-  const updateAttribute = (attr: keyof CharacterData, increment: boolean) => {
-    const currentValue = character[attr] as number;
-    const newValue = increment ? currentValue + 1 : currentValue - 1;
-    
-    if (newValue < BASE_SCORE || newValue > MAX_SCORE) return;
-    
-    // Calculate cost difference
-    const oldCost = currentValue - BASE_SCORE > 5 ? 
-      (currentValue - BASE_SCORE) + (currentValue - BASE_SCORE - 5) : 
-      currentValue - BASE_SCORE;
-    const newCost = newValue - BASE_SCORE > 5 ? 
-      (newValue - BASE_SCORE) + (newValue - BASE_SCORE - 5) : 
-      newValue - BASE_SCORE;
-    
-    if (increment && remainingPoints - (newCost - oldCost) < 0) return;
-    
-    setCharacter({ ...character, [attr]: newValue });
   };
 
   const handleSubmit = () => {
@@ -224,9 +216,8 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                 </div>
 
                 <div className="bg-muted/50 p-4 rounded-lg text-center">
-                  <p className="text-sm text-muted-foreground">Pontos Restantes</p>
-                  <p className="text-3xl font-bold text-primary">{remainingPoints}</p>
-                  <p className="text-xs text-muted-foreground mt-1">de {POINTS_TO_DISTRIBUTE} pontos</p>
+                  <p className="text-sm text-muted-foreground">Role 4d6 para cada atributo</p>
+                  <p className="text-xs text-muted-foreground mt-1">O dado mais baixo será descartado automaticamente</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -239,33 +230,45 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                     { key: "charisma", label: "Carisma" },
                   ].map(({ key, label }) => {
                     const value = character[key as keyof CharacterData] as number;
-                    const modifier = getAttributeModifier(value);
+                    const modifier = value > 0 ? getAttributeModifier(value) : 0;
+                    const isRolling = rollingAttribute === key;
                     return (
                       <div key={key} className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
                         <div className="flex-1">
                           <p className="font-medium">{label}</p>
                           <p className="text-sm text-muted-foreground">
-                            Modificador: {modifier >= 0 ? "+" : ""}{modifier}
+                            {value > 0 ? `Modificador: ${modifier >= 0 ? "+" : ""}${modifier}` : "Não rolado"}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateAttribute(key as keyof CharacterData, false)}
-                            disabled={value <= BASE_SCORE}
-                          >
-                            -
-                          </Button>
-                          <span className="text-xl font-bold w-8 text-center">{value}</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateAttribute(key as keyof CharacterData, true)}
-                            disabled={value >= MAX_SCORE || remainingPoints <= 0}
-                          >
-                            +
-                          </Button>
+                          {value > 0 ? (
+                            <>
+                              <span className="text-2xl font-bold w-12 text-center text-primary">{value}</span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => rollAttribute(key as keyof CharacterData)}
+                                disabled={isRolling}
+                              >
+                                <Dices className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              onClick={() => rollAttribute(key as keyof CharacterData)}
+                              disabled={isRolling}
+                              className="w-full"
+                            >
+                              {isRolling ? (
+                                <Dices className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Dices className="mr-2 h-4 w-4" />
+                                  Rolar 4d6
+                                </>
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );
@@ -276,7 +279,7 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                   <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
                     Voltar
                   </Button>
-                  <Button onClick={() => setStep(3)} className="flex-1" disabled={remainingPoints !== 0}>
+                  <Button onClick={() => setStep(3)} className="flex-1" disabled={!allAttributesRolled()}>
                     Próximo: História
                   </Button>
                 </div>
