@@ -17,7 +17,7 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
   const [lastRequestTime, setLastRequestTime] = useState<number>(0);
   const { toast } = useToast();
   
-  const COOLDOWN_MS = 60000; // 60 second cooldown between requests (OpenAI rate limit)
+  const COOLDOWN_MS = 70000; // 70 second cooldown to respect OpenAI free tier rate limits
 
   const handleSpeak = async () => {
     if (isSpeaking || isLoadingAudio) {
@@ -25,20 +25,26 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
       return;
     }
 
-    // Check cooldown
+    // Check cooldown - strict throttling to respect API limits
     const now = Date.now();
     const timeSinceLastRequest = now - lastRequestTime;
     if (timeSinceLastRequest < COOLDOWN_MS) {
       const remainingSeconds = Math.ceil((COOLDOWN_MS - timeSinceLastRequest) / 1000);
       toast({
-        title: "Aguarde",
-        description: `Por favor, aguarde ${remainingSeconds} segundos antes de solicitar outra narração.`,
+        title: "Narração temporariamente indisponível",
+        description: `Para respeitar os limites da API, aguarde ${remainingSeconds} segundos antes de solicitar outra narração por voz.`,
+        variant: "destructive",
       });
+      console.log(`[TTS Throttle] Blocked request. ${remainingSeconds}s remaining in cooldown.`);
       return;
     }
 
+    console.log('[TTS] Starting audio generation request...');
+
     setIsLoadingAudio(true);
     setLastRequestTime(now);
+    
+    console.log('[TTS] Cooldown timer started. Next narration available in 70 seconds.');
     
     try {
       const { data, error } = await supabase.functions.invoke("text-to-speech", {
@@ -51,16 +57,18 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
         
         if (errorMessage.includes("rate limit") || errorMessage.includes("Rate limit")) {
           toast({
-            title: "Limite de solicitações atingido",
-            description: "O serviço de narração está temporariamente limitado. Por favor, aguarde 60 segundos e tente novamente.",
+            title: "Limite da API atingido",
+            description: "Você atingiu o limite de narrações. O plano gratuito da OpenAI permite poucas requisições. Aguarde 70 segundos.",
             variant: "destructive",
           });
+          console.error('[TTS] OpenAI rate limit hit:', errorMessage);
         } else {
           toast({
             title: "Erro na narração",
-            description: "Não foi possível gerar o áudio. Tente novamente mais tarde.",
+            description: "Não foi possível gerar o áudio. A narração textual continua disponível.",
             variant: "destructive",
           });
+          console.error('[TTS] Error:', errorMessage);
         }
         throw error;
       }
@@ -90,8 +98,9 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
       };
 
       await audio.play();
+      console.log('[TTS] Audio playback started successfully.');
     } catch (error) {
-      console.error("Error generating speech:", error);
+      console.error("[TTS] Error generating speech:", error);
     } finally {
       setIsLoadingAudio(false);
     }
@@ -131,6 +140,7 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
             size="icon"
             className="absolute top-2 right-2 opacity-70 hover:opacity-100 transition-opacity"
             disabled={isLoadingAudio}
+            title="Clique para ouvir esta narração (limitado a 1 vez por minuto)"
           >
             {isLoadingAudio ? (
               <Loader2 className="h-4 w-4 animate-spin" />
