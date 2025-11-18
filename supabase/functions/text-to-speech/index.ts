@@ -17,40 +17,34 @@ serve(async (req) => {
       throw new Error("Text is required");
     }
 
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
-    if (!ELEVENLABS_API_KEY) {
-      throw new Error("ELEVENLABS_API_KEY is not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not configured");
     }
 
-    console.log("Generating speech with ElevenLabs...");
+    console.log("Generating speech with OpenAI TTS...");
 
-    // Using George voice (JBFqnCBsd6RMkjVDRZzb) - perfect for dramatic narration
-    const voiceId = "JBFqnCBsd6RMkjVDRZzb";
-    
+    // Using onyx voice - deep and dramatic, perfect for game master narration
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+      "https://api.openai.com/v1/audio/speech",
       {
         method: "POST",
         headers: {
-          "xi-api-key": ELEVENLABS_API_KEY,
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text,
-          model_id: "eleven_multilingual_v2",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.5,
-            use_speaker_boost: true,
-          },
+          model: "tts-1",
+          input: text,
+          voice: "onyx",
+          response_format: "mp3",
         }),
       }
     );
 
     if (!response.ok) {
       const error = await response.text();
-      console.error("ElevenLabs API error:", response.status, error);
+      console.error("OpenAI API error:", response.status, error);
       throw new Error(`Failed to generate speech: ${response.status}`);
     }
 
