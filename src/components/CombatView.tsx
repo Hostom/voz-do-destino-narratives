@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Swords, Shield, Heart, ChevronRight, X } from "lucide-react";
 import { Room, RoomPlayer } from "@/hooks/useRoom";
+import { CombatActions } from "@/components/CombatActions";
+import { CombatLog } from "@/components/CombatLog";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -35,6 +37,7 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
   const initiativeOrder = Array.isArray(room.initiative_order) ? room.initiative_order : [];
   const currentTurnCharacterId = initiativeOrder[room.current_turn];
   const currentTurnPlayer = players.find(p => p.character_id === currentTurnCharacterId);
+  const isCurrentUserTurn = currentTurnPlayer?.user_id === currentUserId;
 
   // Calculate round number
   const roundNumber = Math.floor(room.current_turn / players.length) + 1;
@@ -153,16 +156,17 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
         </Card>
 
         {/* Combat Actions (placeholder for future phases) */}
-        <Card className="bg-card/80 backdrop-blur border-primary/20">
-          <CardHeader>
-            <CardTitle>Ações de Combate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground text-center py-8">
-              Sistema de ações de combate será implementado na próxima fase
-            </p>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {currentUserId && (
+            <CombatActions
+              roomId={room.id}
+              currentPlayerId={players.find(p => p.user_id === currentUserId)?.id || ""}
+              availablePlayers={players}
+              isYourTurn={isCurrentUserTurn}
+            />
+          )}
+          <CombatLog roomId={room.id} />
+        </div>
       </div>
     </div>
   );
