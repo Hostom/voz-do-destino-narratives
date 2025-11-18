@@ -4,10 +4,12 @@ import { NarrativeMessage } from "@/components/NarrativeMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { CharacterCreation } from "@/components/CharacterCreation";
 import { DicePanel } from "@/components/DicePanel";
+import { Auth } from "@/components/Auth";
 import { useCharacter } from "@/hooks/useCharacter";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Scroll } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -15,6 +17,8 @@ interface Message {
 }
 
 const Index = () => {
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const { character, loading: characterLoading, createCharacter, getCharacterSummary } = useCharacter();
   const [showCharacterSheet, setShowCharacterSheet] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -22,6 +26,20 @@ const Index = () => {
   const [speakingMessageContent, setSpeakingMessageContent] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Check auth status
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Initialize welcome message when character is ready
   useEffect(() => {
@@ -153,7 +171,7 @@ Diga-me, e deixe o destino se desenrolar...`,
     }
   };
 
-  if (characterLoading) {
+  if (authLoading || characterLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 flex items-center justify-center">
         <div className="text-center">
@@ -162,6 +180,11 @@ Diga-me, e deixe o destino se desenrolar...`,
         </div>
       </div>
     );
+  }
+
+  // Show auth if not authenticated
+  if (!user) {
+    return <Auth />;
   }
 
   if (!character) {
