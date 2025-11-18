@@ -201,6 +201,23 @@ Diga-me, e deixe o destino se desenrolar...`,
     setShowCharacterCreation(true);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setMessages([]);
+    toast({
+      title: "Desconectado",
+      description: "Você saiu com sucesso.",
+    });
+  };
+
+  const handleBackToCharacterSelect = () => {
+    setMessages([]);
+    setShowCharacterSelect(true);
+    selectCharacter(null as any);
+    loadCharactersData();
+  };
+
   if (authLoading || characterLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 flex items-center justify-center">
@@ -240,7 +257,10 @@ Diga-me, e deixe o destino se desenrolar...`,
       <div className="fixed inset-0 bg-gradient-glow opacity-20 pointer-events-none"></div>
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none"></div>
 
-      <GameHeader />
+      <GameHeader 
+        onLogout={handleLogout}
+        onBackToCharacterSelect={handleBackToCharacterSelect}
+      />
 
       <main className="flex-1 container mx-auto px-4 py-6 max-w-4xl flex flex-col">
         {/* Character Sheet Button */}
