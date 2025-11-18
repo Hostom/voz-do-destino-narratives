@@ -92,10 +92,46 @@ serve(async (req) => {
         ability: "strength"
       };
 
-      // Calculate attack roll
+      // Check conditions for advantage/disadvantage
+      const actorConditions = (actor.conditions as any[]) || [];
+      const targetConditions = (target.conditions as any[]) || [];
+      
+      let hasAdvantage = false;
+      let hasDisadvantage = false;
+
+      // Actor conditions affecting attacks
+      if (actorConditions.some(c => c.id === "poisoned")) hasDisadvantage = true;
+      if (actorConditions.some(c => c.id === "frightened")) hasDisadvantage = true;
+      if (actorConditions.some(c => c.id === "invisible")) hasAdvantage = true;
+
+      // Target conditions affecting attacks
+      if (targetConditions.some(c => c.id === "prone")) hasAdvantage = true; // for melee
+      if (targetConditions.some(c => c.id === "paralyzed")) hasAdvantage = true;
+      if (targetConditions.some(c => c.id === "stunned")) hasAdvantage = true;
+      if (targetConditions.some(c => c.id === "unconscious")) hasAdvantage = true;
+      if (targetConditions.some(c => c.id === "invisible")) hasDisadvantage = true;
+      if (targetConditions.some(c => c.id === "restrained")) hasAdvantage = true;
+
+      // Calculate attack roll with advantage/disadvantage
       const abilityScore = character[weapon.ability] || character.strength;
       const abilityMod = Math.floor((abilityScore - 10) / 2);
-      const attackRoll = Math.floor(Math.random() * 20) + 1;
+      
+      let attackRoll: number;
+      if (hasAdvantage && !hasDisadvantage) {
+        const roll1 = Math.floor(Math.random() * 20) + 1;
+        const roll2 = Math.floor(Math.random() * 20) + 1;
+        attackRoll = Math.max(roll1, roll2);
+        logEntry.description = `[Vantagem: rolou ${roll1} e ${roll2}] `;
+      } else if (hasDisadvantage && !hasAdvantage) {
+        const roll1 = Math.floor(Math.random() * 20) + 1;
+        const roll2 = Math.floor(Math.random() * 20) + 1;
+        attackRoll = Math.min(roll1, roll2);
+        logEntry.description = `[Desvantagem: rolou ${roll1} e ${roll2}] `;
+      } else {
+        attackRoll = Math.floor(Math.random() * 20) + 1;
+        logEntry.description = "";
+      }
+      
       const attackTotal = attackRoll + abilityMod + character.proficiency_bonus;
 
       logEntry.target_name = target.characters.name;
@@ -104,7 +140,7 @@ serve(async (req) => {
       // Check if hit
       if (attackRoll === 1) {
         // Critical miss
-        logEntry.description = `${character.name} atacou ${target.characters.name} com ${weapon.name} e teve uma FALHA CRÍTICA! (rolou 1)`;
+        logEntry.description += `${character.name} atacou ${target.characters.name} com ${weapon.name} e teve uma FALHA CRÍTICA! (rolou 1)`;
         logEntry.damage = 0;
       } else if (attackRoll === 20 || attackTotal >= target.characters.armor_class) {
         // Hit or critical hit
@@ -128,12 +164,12 @@ serve(async (req) => {
           .eq("id", target.characters.id);
 
         logEntry.damage = totalDamage;
-        logEntry.description = isCritical
+        logEntry.description += isCritical
           ? `${character.name} acertou um ACERTO CRÍTICO em ${target.characters.name}! Rolou ${attackRoll} no ataque. Causou ${totalDamage} de dano ${weapon.damage_type}! (HP: ${target.characters.current_hp} → ${newHp})`
           : `${character.name} acertou ${target.characters.name} com ${weapon.name}! Rolou ${attackRoll} + ${abilityMod + character.proficiency_bonus} = ${attackTotal} vs AC ${target.characters.armor_class}. Causou ${totalDamage} de dano ${weapon.damage_type}! (HP: ${target.characters.current_hp} → ${newHp})`;
       } else {
         // Miss
-        logEntry.description = `${character.name} atacou ${target.characters.name} com ${weapon.name} e ERROU! Rolou ${attackRoll} + ${abilityMod + character.proficiency_bonus} = ${attackTotal} vs AC ${target.characters.armor_class}`;
+        logEntry.description += `${character.name} atacou ${target.characters.name} com ${weapon.name} e ERROU! Rolou ${attackRoll} + ${abilityMod + character.proficiency_bonus} = ${attackTotal} vs AC ${target.characters.armor_class}`;
         logEntry.damage = 0;
       }
     }
