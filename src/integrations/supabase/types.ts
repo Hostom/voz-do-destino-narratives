@@ -24,13 +24,18 @@ export type Database = {
           constitution: number
           created_at: string
           current_hp: number
+          current_spell_slots: Json | null
           dexterity: number
+          equipped_weapon: Json | null
           id: string
           intelligence: number
           level: number
           max_hp: number
           name: string
+          proficiency_bonus: number
           race: string
+          saving_throws: Json | null
+          spell_slots: Json | null
           strength: number
           updated_at: string
           user_id: string
@@ -45,13 +50,18 @@ export type Database = {
           constitution: number
           created_at?: string
           current_hp: number
+          current_spell_slots?: Json | null
           dexterity: number
+          equipped_weapon?: Json | null
           id?: string
           intelligence: number
           level?: number
           max_hp: number
           name: string
+          proficiency_bonus?: number
           race: string
+          saving_throws?: Json | null
+          spell_slots?: Json | null
           strength: number
           updated_at?: string
           user_id: string
@@ -66,13 +76,18 @@ export type Database = {
           constitution?: number
           created_at?: string
           current_hp?: number
+          current_spell_slots?: Json | null
           dexterity?: number
+          equipped_weapon?: Json | null
           id?: string
           intelligence?: number
           level?: number
           max_hp?: number
           name?: string
+          proficiency_bonus?: number
           race?: string
+          saving_throws?: Json | null
+          spell_slots?: Json | null
           strength?: number
           updated_at?: string
           user_id?: string
@@ -80,32 +95,85 @@ export type Database = {
         }
         Relationships: []
       }
+      combat_log: {
+        Row: {
+          action_type: string
+          character_name: string
+          created_at: string
+          damage: number | null
+          description: string
+          id: string
+          roll_result: number | null
+          room_id: string
+          round_number: number
+          target_name: string | null
+        }
+        Insert: {
+          action_type: string
+          character_name: string
+          created_at?: string
+          damage?: number | null
+          description: string
+          id?: string
+          roll_result?: number | null
+          room_id: string
+          round_number: number
+          target_name?: string | null
+        }
+        Update: {
+          action_type?: string
+          character_name?: string
+          created_at?: string
+          damage?: number | null
+          description?: string
+          id?: string
+          roll_result?: number | null
+          room_id?: string
+          round_number?: number
+          target_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "combat_log_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_players: {
         Row: {
           character_id: string
+          conditions: Json | null
           id: string
           initiative: number | null
           is_ready: boolean
           joined_at: string
           room_id: string
+          temp_hp: number | null
           user_id: string
         }
         Insert: {
           character_id: string
+          conditions?: Json | null
           id?: string
           initiative?: number | null
           is_ready?: boolean
           joined_at?: string
           room_id: string
+          temp_hp?: number | null
           user_id: string
         }
         Update: {
           character_id?: string
+          conditions?: Json | null
           id?: string
           initiative?: number | null
           is_ready?: boolean
           joined_at?: string
           room_id?: string
+          temp_hp?: number | null
           user_id?: string
         }
         Relationships: [
@@ -160,6 +228,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_modifier: { Args: { ability_score: number }; Returns: number }
       generate_room_code: { Args: never; Returns: string }
     }
     Enums: {

@@ -20,6 +20,8 @@ export interface RoomPlayer {
   joined_at: string;
   is_ready: boolean;
   initiative: number;
+  conditions: any;
+  temp_hp: number;
   characters?: {
     id: string;
     name: string;
@@ -30,6 +32,16 @@ export interface RoomPlayer {
     max_hp: number;
     armor_class: number;
     dexterity: number;
+    strength: number;
+    constitution: number;
+    intelligence: number;
+    wisdom: number;
+    charisma: number;
+    proficiency_bonus: number;
+    equipped_weapon: any;
+    spell_slots: any;
+    current_spell_slots: any;
+    saving_throws: any;
   };
 }
 
@@ -172,7 +184,17 @@ export const useRoom = () => {
             current_hp,
             max_hp,
             armor_class,
-            dexterity
+            dexterity,
+            strength,
+            constitution,
+            intelligence,
+            wisdom,
+            charisma,
+            proficiency_bonus,
+            equipped_weapon,
+            spell_slots,
+            current_spell_slots,
+            saving_throws
           )
         `)
         .eq('room_id', roomId);
