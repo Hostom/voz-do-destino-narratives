@@ -5,6 +5,7 @@ import { Swords, Shield, Heart, ChevronRight, X } from "lucide-react";
 import { Room, RoomPlayer } from "@/hooks/useRoom";
 import { CombatActions } from "@/components/CombatActions";
 import { CombatLog } from "@/components/CombatLog";
+import { ConditionsPanel } from "@/components/ConditionsPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -124,6 +125,15 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
                       <p className="text-sm text-muted-foreground">
                         Rolou {roll} + {dexModifier} (DES) = {player.initiative}
                       </p>
+                      {((player.conditions as any[]) || []).length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {((player.conditions as any[]) || []).map((condition: any) => (
+                            <Badge key={condition.id} variant="destructive" className="text-xs">
+                              {condition.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -155,17 +165,28 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
           </CardContent>
         </Card>
 
-        {/* Combat Actions (placeholder for future phases) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {currentUserId && (
-            <CombatActions
+        {/* Combat Actions and Logs */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            {currentUserId && (
+              <CombatActions
+                roomId={room.id}
+                currentPlayerId={players.find(p => p.user_id === currentUserId)?.id || ""}
+                availablePlayers={players}
+                isYourTurn={isCurrentUserTurn}
+              />
+            )}
+          </div>
+          <div className="lg:col-span-1">
+            <ConditionsPanel 
               roomId={room.id}
-              currentPlayerId={players.find(p => p.user_id === currentUserId)?.id || ""}
-              availablePlayers={players}
-              isYourTurn={isCurrentUserTurn}
+              players={players}
+              isGM={isGM}
             />
-          )}
-          <CombatLog roomId={room.id} />
+          </div>
+          <div className="lg:col-span-1">
+            <CombatLog roomId={room.id} />
+          </div>
         </div>
       </div>
     </div>
