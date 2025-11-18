@@ -12,10 +12,10 @@ interface RoomLobbyProps {
   players: RoomPlayer[];
   onLeave: () => void;
   onToggleReady: () => void;
-  onStartCombat?: () => void;
+  onRollInitiative: () => void;
 }
 
-export const RoomLobby = ({ room, players, onLeave, onToggleReady, onStartCombat }: RoomLobbyProps) => {
+export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiative }: RoomLobbyProps) => {
   const { toast } = useToast();
   const [isGM, setIsGM] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -140,15 +140,15 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onStartCombat
             </Button>
           )}
           
-          {isGM && onStartCombat && (
+          {isGM && (
             <Button 
-              onClick={onStartCombat}
+              onClick={onRollInitiative}
               disabled={!allReady}
               className="flex-1"
               size="lg"
             >
               <Swords className="w-4 h-4 mr-2" />
-              Iniciar Combate
+              Rolar Iniciativa e Iniciar
               {!allReady && " (Aguardando jogadores)"}
             </Button>
           )}

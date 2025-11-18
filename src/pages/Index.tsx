@@ -11,6 +11,7 @@ import { NarrativeMessage } from "@/components/NarrativeMessage";
 import { CreateRoom } from "@/components/CreateRoom";
 import { JoinRoom } from "@/components/JoinRoom";
 import { RoomLobby } from "@/components/RoomLobby";
+import { CombatView } from "@/components/CombatView";
 import { useCharacter, Character } from "@/hooks/useCharacter";
 import { useRoom } from "@/hooks/useRoom";
 import { Button } from "@/components/ui/button";
@@ -32,9 +33,9 @@ const Index = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
-  const [view, setView] = useState<'menu' | 'create' | 'join' | 'lobby' | 'game'>('menu');
+  const [view, setView] = useState<'menu' | 'create' | 'join' | 'lobby' | 'combat' | 'game'>('menu');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady } = useRoom();
+  const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat } = useRoom();
   const { toast } = useToast();
 
   // Check auth status
@@ -229,6 +230,25 @@ Diga-me, e deixe o destino se desenrolar...`,
     setView('menu');
   };
 
+  const handleRollInitiative = async () => {
+    await rollInitiative();
+    setView('combat');
+  };
+
+  const handleEndCombat = async () => {
+    await endCombat();
+    setView('lobby');
+  };
+
+  // Auto-switch to combat view when combat becomes active
+  useEffect(() => {
+    if (room?.combat_active && view === 'lobby') {
+      setView('combat');
+    } else if (room && !room.combat_active && view === 'combat') {
+      setView('lobby');
+    }
+  }, [room?.combat_active, view]);
+
   if (authLoading || characterLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center">
@@ -304,7 +324,11 @@ Diga-me, e deixe o destino se desenrolar...`,
   }
 
   if (view === 'lobby' && room) {
-    return <RoomLobby room={room} players={players} onLeave={handleLeaveRoom} onToggleReady={toggleReady} />;
+    return <RoomLobby room={room} players={players} onLeave={handleLeaveRoom} onToggleReady={toggleReady} onRollInitiative={handleRollInitiative} />;
+  }
+
+  if (view === 'combat' && room) {
+    return <CombatView room={room} players={players} onAdvanceTurn={advanceTurn} onEndCombat={handleEndCombat} />;
   }
 
   // Game view (original RPG interface)

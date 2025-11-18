@@ -29,6 +29,7 @@ export interface RoomPlayer {
     current_hp: number;
     max_hp: number;
     armor_class: number;
+    dexterity: number;
   };
 }
 
@@ -170,7 +171,8 @@ export const useRoom = () => {
             level,
             current_hp,
             max_hp,
-            armor_class
+            armor_class,
+            dexterity
           )
         `)
         .eq('room_id', roomId);
@@ -206,7 +208,170 @@ export const useRoom = () => {
     }
   };
 
-  // Subscribe to room changes
+  const rollInitiative = async () => {
+    try {
+      if (!room) return;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.id !== room.gm_id) {
+        toast({
+          title: "Erro",
+          description: "Apenas o GM pode rolar iniciativa",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Roll initiative for each player
+      const initiativeRolls = players.map(player => {
+        const dexModifier = Math.floor(((player.characters?.dexterity || 10) - 10) / 2);
+        const roll = Math.floor(Math.random() * 20) + 1;
+        const initiative = roll + dexModifier;
+
+        return {
+          id: player.id,
+          character_id: player.character_id,
+          name: player.characters?.name || "Unknown",
+          roll,
+          modifier: dexModifier,
+          initiative,
+          dexterity: player.characters?.dexterity || 10
+        };
+      });
+
+      // Sort by initiative (highest first), then by dexterity for ties
+      const sorted = initiativeRolls.sort((a, b) => {
+        if (b.initiative !== a.initiative) {
+          return b.initiative - a.initiative;
+        }
+        return b.dexterity - a.dexterity;
+      });
+
+      // Update each player's initiative
+      for (const player of sorted) {
+        await supabase
+          .from('room_players')
+          .update({ initiative: player.initiative })
+          .eq('id', player.id);
+      }
+
+      // Update room with initiative order and set combat active
+      const { error } = await supabase
+        .from('rooms')
+        .update({
+          initiative_order: sorted.map(p => p.character_id),
+          combat_active: true,
+          current_turn: 0
+        })
+        .eq('id', room.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Iniciativa Rolada!",
+        description: "O combate começou!",
+      });
+    } catch (error) {
+      console.error("Error rolling initiative:", error);
+      toast({
+        title: "Erro ao rolar iniciativa",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const advanceTurn = async () => {
+    try {
+      if (!room) return;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.id !== room.gm_id) {
+        toast({
+          title: "Erro",
+          description: "Apenas o GM pode avançar o turno",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const initiativeOrder = Array.isArray(room.initiative_order) 
+        ? room.initiative_order 
+        : [];
+
+      if (initiativeOrder.length === 0) return;
+
+      const nextTurn = (room.current_turn + 1) % initiativeOrder.length;
+
+      const { error } = await supabase
+        .from('rooms')
+        .update({ current_turn: nextTurn })
+        .eq('id', room.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Próximo turno",
+        description: "Turno avançado!",
+      });
+    } catch (error) {
+      console.error("Error advancing turn:", error);
+      toast({
+        title: "Erro ao avançar turno",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const endCombat = async () => {
+    try {
+      if (!room) return;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.id !== room.gm_id) {
+        toast({
+          title: "Erro",
+          description: "Apenas o GM pode encerrar o combate",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('rooms')
+        .update({
+          combat_active: false,
+          current_turn: 0,
+          initiative_order: []
+        })
+        .eq('id', room.id);
+
+      if (error) throw error;
+
+      // Reset all player initiatives
+      for (const player of players) {
+        await supabase
+          .from('room_players')
+          .update({ initiative: 0 })
+          .eq('id', player.id);
+      }
+
+      toast({
+        title: "Combate encerrado",
+        description: "Voltando ao lobby",
+      });
+    } catch (error) {
+      console.error("Error ending combat:", error);
+      toast({
+        title: "Erro ao encerrar combate",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Subscribe to room and player changes
   useEffect(() => {
     if (!room) return;
 
@@ -226,12 +391,24 @@ export const useRoom = () => {
           loadPlayers(room.id);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms',
+          filter: `id=eq.${room.id}`
+        },
+        (payload) => {
+          setRoom(payload.new as Room);
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [room]);
+  }, [room?.id]);
 
   return {
     room,
@@ -241,5 +418,8 @@ export const useRoom = () => {
     joinRoom,
     leaveRoom,
     toggleReady,
+    rollInitiative,
+    advanceTurn,
+    endCombat,
   };
 };
