@@ -47,16 +47,19 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
-        },
+      },
+      backgroundImage: {
+        'gradient-epic': 'var(--gradient-epic)',
+        'gradient-glow': 'var(--gradient-glow)',
+        'gradient-veil': 'var(--gradient-veil)',
+      },
+      boxShadow: {
+        'epic': 'var(--shadow-epic)',
+        'deep': 'var(--shadow-deep)',
+        'glow': 'var(--shadow-glow)',
+      },
+      fontFamily: {
+        'cinzel': ['Cinzel', 'serif'],
       },
       borderRadius: {
         lg: "var(--radius)",
