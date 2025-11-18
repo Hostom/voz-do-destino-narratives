@@ -61,6 +61,17 @@ export const CombatActions = ({ roomId, currentPlayerId, availablePlayers, isYou
         description: "Verifique o log de combate",
       });
 
+      // If there's a narrative, show it
+      if (data?.narrative) {
+        setTimeout(() => {
+          toast({
+            title: "🎭 Voz do Destino",
+            description: data.narrative,
+            duration: 8000,
+          });
+        }, 500);
+      }
+
       setSelectedTarget("");
     } catch (error) {
       console.error("Error executing action:", error);
