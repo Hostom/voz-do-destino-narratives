@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Copy, Users, Shield, Swords, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Room, RoomPlayer } from "@/hooks/useRoom";
+import { RestPanel } from "@/components/RestPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -128,30 +129,42 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiat
         </Card>
 
         {/* Actions */}
-        <div className="flex gap-4">
-          {!isGM && currentPlayer && (
-            <Button 
-              onClick={onToggleReady}
-              variant={currentPlayer.is_ready ? "secondary" : "default"}
-              className="flex-1"
-              size="lg"
-            >
-              {currentPlayer.is_ready ? "Cancelar Pronto" : "Estou Pronto"}
-            </Button>
+        <div className="space-y-4">
+          {/* Rest Panel */}
+          {currentUserId && (
+            <RestPanel 
+              roomId={room.id}
+              players={players}
+              currentUserId={currentUserId}
+            />
           )}
-          
-          {isGM && (
-            <Button 
-              onClick={onRollInitiative}
-              disabled={!allReady}
-              className="flex-1"
-              size="lg"
-            >
-              <Swords className="w-4 h-4 mr-2" />
-              Rolar Iniciativa e Iniciar
-              {!allReady && " (Aguardando jogadores)"}
-            </Button>
-          )}
+
+          {/* Ready and Initiative Buttons */}
+          <div className="flex gap-4">
+            {!isGM && currentPlayer && (
+              <Button 
+                onClick={onToggleReady}
+                variant={currentPlayer.is_ready ? "secondary" : "default"}
+                className="flex-1"
+                size="lg"
+              >
+                {currentPlayer.is_ready ? "Cancelar Pronto" : "Estou Pronto"}
+              </Button>
+            )}
+            
+            {isGM && (
+              <Button 
+                onClick={onRollInitiative}
+                disabled={!allReady}
+                className="flex-1"
+                size="lg"
+              >
+                <Swords className="w-4 h-4 mr-2" />
+                Rolar Iniciativa e Iniciar
+                {!allReady && " (Aguardando jogadores)"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
