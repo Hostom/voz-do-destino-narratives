@@ -80,12 +80,87 @@ export type Database = {
         }
         Relationships: []
       }
+      room_players: {
+        Row: {
+          character_id: string
+          id: string
+          initiative: number | null
+          is_ready: boolean
+          joined_at: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          character_id: string
+          id?: string
+          initiative?: number | null
+          is_ready?: boolean
+          joined_at?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          character_id?: string
+          id?: string
+          initiative?: number | null
+          is_ready?: boolean
+          joined_at?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_players_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          combat_active: boolean
+          created_at: string
+          current_turn: number | null
+          gm_id: string
+          id: string
+          initiative_order: Json | null
+          room_code: string
+        }
+        Insert: {
+          combat_active?: boolean
+          created_at?: string
+          current_turn?: number | null
+          gm_id: string
+          id?: string
+          initiative_order?: Json | null
+          room_code: string
+        }
+        Update: {
+          combat_active?: boolean
+          created_at?: string
+          current_turn?: number | null
+          gm_id?: string
+          id?: string
+          initiative_order?: Json | null
+          room_code?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_room_code: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
