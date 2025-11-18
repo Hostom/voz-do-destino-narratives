@@ -14,29 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      character_items: {
+        Row: {
+          character_id: string
+          created_at: string | null
+          description: string | null
+          equipped: boolean | null
+          id: string
+          item_name: string
+          item_type: string
+          properties: Json | null
+          quantity: number
+          updated_at: string | null
+          weight: number
+        }
+        Insert: {
+          character_id: string
+          created_at?: string | null
+          description?: string | null
+          equipped?: boolean | null
+          id?: string
+          item_name: string
+          item_type?: string
+          properties?: Json | null
+          quantity?: number
+          updated_at?: string | null
+          weight?: number
+        }
+        Update: {
+          character_id?: string
+          created_at?: string | null
+          description?: string | null
+          equipped?: boolean | null
+          id?: string
+          item_name?: string
+          item_type?: string
+          properties?: Json | null
+          quantity?: number
+          updated_at?: string | null
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_items_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       characters: {
         Row: {
           armor_class: number
           background: string | null
           backstory: string | null
+          carrying_capacity: number | null
           charisma: number
           class: string
           constitution: number
+          copper_pieces: number | null
           created_at: string
           current_hit_dice: number | null
           current_hp: number
           current_spell_slots: Json | null
           dexterity: number
+          electrum_pieces: number | null
           equipped_weapon: Json | null
+          gold_pieces: number | null
           hit_dice: string | null
           id: string
           intelligence: number
           level: number
           max_hp: number
           name: string
+          platinum_pieces: number | null
           proficiency_bonus: number
           race: string
           saving_throws: Json | null
+          silver_pieces: number | null
           spell_slots: Json | null
           strength: number
           updated_at: string
@@ -47,24 +103,30 @@ export type Database = {
           armor_class?: number
           background?: string | null
           backstory?: string | null
+          carrying_capacity?: number | null
           charisma: number
           class: string
           constitution: number
+          copper_pieces?: number | null
           created_at?: string
           current_hit_dice?: number | null
           current_hp: number
           current_spell_slots?: Json | null
           dexterity: number
+          electrum_pieces?: number | null
           equipped_weapon?: Json | null
+          gold_pieces?: number | null
           hit_dice?: string | null
           id?: string
           intelligence: number
           level?: number
           max_hp: number
           name: string
+          platinum_pieces?: number | null
           proficiency_bonus?: number
           race: string
           saving_throws?: Json | null
+          silver_pieces?: number | null
           spell_slots?: Json | null
           strength: number
           updated_at?: string
@@ -75,24 +137,30 @@ export type Database = {
           armor_class?: number
           background?: string | null
           backstory?: string | null
+          carrying_capacity?: number | null
           charisma?: number
           class?: string
           constitution?: number
+          copper_pieces?: number | null
           created_at?: string
           current_hit_dice?: number | null
           current_hp?: number
           current_spell_slots?: Json | null
           dexterity?: number
+          electrum_pieces?: number | null
           equipped_weapon?: Json | null
+          gold_pieces?: number | null
           hit_dice?: string | null
           id?: string
           intelligence?: number
           level?: number
           max_hp?: number
           name?: string
+          platinum_pieces?: number | null
           proficiency_bonus?: number
           race?: string
           saving_throws?: Json | null
+          silver_pieces?: number | null
           spell_slots?: Json | null
           strength?: number
           updated_at?: string
