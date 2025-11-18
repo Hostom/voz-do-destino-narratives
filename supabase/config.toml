@@ -1,0 +1,4 @@
+project_id = "ljxdyiueksipqzsokinu"
+
+[functions.game-master]
+verify_jwt = false

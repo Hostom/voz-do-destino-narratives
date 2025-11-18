@@ -48,28 +48,82 @@ Diga-me, e deixe o destino se desenrolar...`,
     setIsLoading(true);
 
     try {
-      // TODO: Integrate with Lovable AI
-      // For now, simulate a response
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/game-master`;
+      
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: [...messages, userMessage] }),
+      });
 
-      const aiResponse: Message = {
-        role: "assistant",
-        content: `Sua escolha ressoa através das névoas do destino...
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to connect to Game Master");
+      }
 
-*Os dados do universo rolam em silêncio*
+      if (!resp.body) throw new Error("No response body");
 
-Esta será uma jornada memorável. Deixe-me começar a tecer sua história...
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let streamDone = false;
+      let assistantContent = "";
 
-(Nota: A integração com IA será implementada em breve para narrativas completas e dinâmicas)`,
-      };
+      // Add empty assistant message that will be updated
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
-      setMessages((prev) => [...prev, aiResponse]);
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") {
+            streamDone = true;
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantContent += content;
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                const lastMsg = newMessages[newMessages.length - 1];
+                if (lastMsg?.role === "assistant") {
+                  newMessages[newMessages.length - 1] = { role: "assistant", content: assistantContent };
+                }
+                return newMessages;
+              });
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
     } catch (error) {
+      console.error("Error sending message:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível conectar com o Mestre. Tente novamente.",
+        description: error instanceof Error ? error.message : "Não foi possível conectar com o Mestre. Tente novamente.",
         variant: "destructive",
       });
+      // Remove the empty assistant message on error
+      setMessages((prev) => prev.filter((msg) => msg.content !== ""));
     } finally {
       setIsLoading(false);
     }
