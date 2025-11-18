@@ -24,28 +24,53 @@ serve(async (req) => {
 
     console.log("Generating speech with OpenAI TTS...");
 
-    // Using onyx voice - deep and dramatic, perfect for game master narration
-    const response = await fetch(
-      "https://api.openai.com/v1/audio/speech",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "tts-1",
-          input: text,
-          voice: "onyx",
-          response_format: "mp3",
-        }),
-      }
-    );
+    // Retry logic for rate limits
+    const maxRetries = 3;
+    let response: Response | null = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      // Using onyx voice - deep and dramatic, perfect for game master narration
+      response = await fetch(
+        "https://api.openai.com/v1/audio/speech",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENAI_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "tts-1",
+            input: text,
+            voice: "onyx",
+            response_format: "mp3",
+          }),
+        }
+      );
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("OpenAI API error:", response.status, error);
-      throw new Error(`Failed to generate speech: ${response.status}`);
+      if (response.status === 429) {
+        const retryAfter = response.headers.get("retry-after");
+        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
+        console.log(`Rate limited. Retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries})`);
+        
+        if (attempt < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        throw new Error("Rate limit exceeded. Please try again in a few moments.");
+      }
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("OpenAI API error:", response.status, error);
+        throw new Error(`Failed to generate speech: ${response.status}`);
+      }
+
+      // Success - break out of retry loop
+      break;
+    }
+
+    if (!response || !response.ok) {
+      throw new Error("Failed to generate speech after retries");
     }
 
     const audioBuffer = await response.arrayBuffer();
