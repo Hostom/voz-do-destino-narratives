@@ -99,20 +99,19 @@ export const CombatLog = ({ roomId }: CombatLogProps) => {
               </p>
             ) : (
               logs.map((log) => (
-                <div
-                  key={log.id}
-                  className="p-3 rounded-lg bg-background/50 border border-border"
-                >
-                  <p className={`text-sm font-semibold ${getActionColor(log.action_type)}`}>
-                    {log.character_name}
-                    {log.target_name && ` → ${log.target_name}`}
-                  </p>
-                  <p className="text-sm mt-1">{log.description}</p>
-                  {log.damage !== undefined && log.damage > 0 && (
-                    <p className="text-xs text-destructive font-bold mt-1">
-                      💥 {log.damage} de dano
+                <div key={log.id} className="space-y-2">
+                  <div className="p-3 rounded-lg bg-background/50 border border-border">
+                    <p className={`text-sm font-semibold ${getActionColor(log.action_type)}`}>
+                      {log.character_name}
+                      {log.target_name && ` → ${log.target_name}`}
                     </p>
-                  )}
+                    <p className="text-sm mt-1">{log.description}</p>
+                    {log.damage !== undefined && log.damage > 0 && (
+                      <p className="text-xs text-destructive font-bold mt-1">
+                        💥 {log.damage} de dano
+                      </p>
+                    )}
+                  </div>
                 </div>
               ))
             )}

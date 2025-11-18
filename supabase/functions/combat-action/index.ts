@@ -250,8 +250,75 @@ serve(async (req) => {
       console.error("Error saving log:", logError);
     }
 
+    // Get AI narration from game master
+    let narrativeMessage = '';
+    try {
+      const narrativePrompt = `Narre brevemente esta ação de combate de D&D 5e de forma cinematográfica (máximo 2-3 frases):
+
+Personagem: ${logEntry.character_name}
+Ação: ${actionType}
+${logEntry.target_name ? `Alvo: ${logEntry.target_name}` : ''}
+${logEntry.roll_result ? `Rolagem: ${logEntry.roll_result}` : ''}
+${logEntry.damage ? `Dano: ${logEntry.damage}` : ''}
+Resultado: ${logEntry.description}
+
+Seja dramático, descritivo e épico. Não use asteriscos ou formatação, apenas texto puro e fluido.`;
+
+      const gmResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/game-master`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: narrativePrompt }
+          ]
+        })
+      });
+
+      if (gmResponse.ok) {
+        const reader = gmResponse.body?.getReader();
+        const decoder = new TextDecoder();
+        
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') break;
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (content) {
+                    narrativeMessage += content;
+                  }
+                } catch (e) {
+                  // Ignore parse errors
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error getting narrative:', error);
+    }
+
     return new Response(
-      JSON.stringify({ success: true, log: logEntry }),
+      JSON.stringify({ 
+        success: true, 
+        log: logEntry,
+        narrative: narrativeMessage || null,
+        timestamp: new Date().toISOString()
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
