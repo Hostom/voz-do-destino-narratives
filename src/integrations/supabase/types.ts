@@ -14,6 +14,91 @@ export type Database = {
   }
   public: {
     Tables: {
+      ability_checks: {
+        Row: {
+          ability: string
+          advantage: boolean | null
+          character_id: string | null
+          character_name: string
+          check_type: string
+          created_at: string | null
+          dc: number | null
+          description: string | null
+          disadvantage: boolean | null
+          id: string
+          is_secret: boolean | null
+          modifier: number
+          npc_id: string | null
+          requested_by_gm: boolean | null
+          roll_result: number
+          room_id: string
+          success: boolean | null
+          total: number
+        }
+        Insert: {
+          ability: string
+          advantage?: boolean | null
+          character_id?: string | null
+          character_name: string
+          check_type: string
+          created_at?: string | null
+          dc?: number | null
+          description?: string | null
+          disadvantage?: boolean | null
+          id?: string
+          is_secret?: boolean | null
+          modifier: number
+          npc_id?: string | null
+          requested_by_gm?: boolean | null
+          roll_result: number
+          room_id: string
+          success?: boolean | null
+          total: number
+        }
+        Update: {
+          ability?: string
+          advantage?: boolean | null
+          character_id?: string | null
+          character_name?: string
+          check_type?: string
+          created_at?: string | null
+          dc?: number | null
+          description?: string | null
+          disadvantage?: boolean | null
+          id?: string
+          is_secret?: boolean | null
+          modifier?: number
+          npc_id?: string | null
+          requested_by_gm?: boolean | null
+          roll_result?: number
+          room_id?: string
+          success?: boolean | null
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ability_checks_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ability_checks_npc_id_fkey"
+            columns: ["npc_id"]
+            isOneToOne: false
+            referencedRelation: "npcs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ability_checks_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       character_items: {
         Row: {
           character_id: string
@@ -168,6 +253,66 @@ export type Database = {
           wisdom?: number
         }
         Relationships: []
+      }
+      check_requests: {
+        Row: {
+          ability: string
+          check_type: string
+          completed: boolean | null
+          created_at: string | null
+          created_by: string
+          dc: number
+          description: string | null
+          expires_at: string | null
+          id: string
+          room_id: string
+          target_all: boolean | null
+          target_character_id: string | null
+        }
+        Insert: {
+          ability: string
+          check_type: string
+          completed?: boolean | null
+          created_at?: string | null
+          created_by: string
+          dc: number
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          room_id: string
+          target_all?: boolean | null
+          target_character_id?: string | null
+        }
+        Update: {
+          ability?: string
+          check_type?: string
+          completed?: boolean | null
+          created_at?: string | null
+          created_by?: string
+          dc?: number
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          room_id?: string
+          target_all?: boolean | null
+          target_character_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_requests_target_character_id_fkey"
+            columns: ["target_character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       combat_log: {
         Row: {
