@@ -280,6 +280,7 @@ Diga-me, e deixe o destino se desenrolar...`,
         onSelect={handleCharacterSelect}
         onCreateNew={handleCreateNew}
         onCharactersUpdate={loadCharactersData}
+        onBack={view === 'menu' ? () => setShowCharacterSelection(false) : undefined}
       />
     );
   }
@@ -316,11 +317,11 @@ Diga-me, e deixe o destino se desenrolar...`,
   }
 
   if (view === 'create') {
-    return <CreateRoom onCreateRoom={handleCreateRoom} loading={roomLoading} />;
+    return <CreateRoom onCreateRoom={handleCreateRoom} loading={roomLoading} onBack={() => setView('menu')} />;
   }
 
   if (view === 'join') {
-    return <JoinRoom onJoinRoom={handleJoinRoomWithCode} loading={roomLoading} character={character} />;
+    return <JoinRoom onJoinRoom={handleJoinRoomWithCode} loading={roomLoading} character={character} onBack={() => setView('menu')} />;
   }
 
   if (view === 'lobby' && room) {

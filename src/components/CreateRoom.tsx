@@ -1,17 +1,29 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Plus } from "lucide-react";
+import { Shield, Plus, ArrowLeft } from "lucide-react";
 
 interface CreateRoomProps {
   onCreateRoom: () => void;
   loading: boolean;
+  onBack?: () => void;
 }
 
-export const CreateRoom = ({ onCreateRoom, loading }: CreateRoomProps) => {
+export const CreateRoom = ({ onCreateRoom, loading, onBack }: CreateRoomProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-6">
       <Card className="w-full max-w-md bg-card/80 backdrop-blur border-primary/20">
         <CardHeader className="text-center">
+          {onBack && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onBack}
+              className="absolute top-4 left-4"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+          )}
           <div className="flex justify-center mb-4">
             <div className="p-4 rounded-full bg-primary/10">
               <Shield className="w-12 h-12 text-primary" />
