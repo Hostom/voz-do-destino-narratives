@@ -521,18 +521,7 @@ Decidam juntos, e deixem o destino se desenrolar...`,
             <div className="pt-4">
               <ChatInput 
                 onSend={handleSend} 
-                onRoll={(result) => console.log('Rolled:', result)} 
                 disabled={isLoading}
-                roomId={room?.id}
-                characterName={character?.name}
-                characterStats={character ? {
-                  strength: character.strength,
-                  dexterity: character.dexterity,
-                  constitution: character.constitution,
-                  intelligence: character.intelligence,
-                  wisdom: character.wisdom,
-                  charisma: character.charisma
-                } : undefined}
               />
             </div>
           </div>
@@ -545,7 +534,18 @@ Decidam juntos, e deixem o destino se desenrolar...`,
           )}
         </div>
 
-        <DicePanel />
+        <DicePanel 
+          roomId={room?.id}
+          characterName={character?.name}
+          characterStats={character ? {
+            strength: character.strength,
+            dexterity: character.dexterity,
+            constitution: character.constitution,
+            intelligence: character.intelligence,
+            wisdom: character.wisdom,
+            charisma: character.charisma
+          } : undefined}
+        />
       </div>
     </div>
   );
