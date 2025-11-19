@@ -8,6 +8,8 @@ import { CombatLog } from "@/components/CombatLog";
 import { ConditionsPanel } from "@/components/ConditionsPanel";
 import { GMPanel } from "@/components/GMPanel";
 import { GMPlayerViewer } from "@/components/GMPlayerViewer";
+import { GMCheckRequestPanel } from "@/components/GMCheckRequestPanel";
+import { AbilityCheckPanel } from "@/components/AbilityCheckPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -229,6 +231,11 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
             <>
               <div className="space-y-6">
                 <GMPanel roomId={room.id} players={players} />
+                <GMCheckRequestPanel 
+                  roomId={room.id}
+                  players={players}
+                  gmId={room.gm_id}
+                />
                 <GMPlayerViewer roomId={room.id} />
               </div>
               <div className="space-y-6">
@@ -242,14 +249,22 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
             </>
           ) : (
             <>
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 space-y-6">
                 {currentUserId && (
-                  <CombatActions
-                    roomId={room.id}
-                    currentPlayerId={players.find(p => p.user_id === currentUserId)?.id || ""}
-                    availablePlayers={players}
-                    isYourTurn={isCurrentUserTurn}
-                  />
+                  <>
+                    <CombatActions
+                      roomId={room.id}
+                      currentPlayerId={players.find(p => p.user_id === currentUserId)?.id || ""}
+                      availablePlayers={players}
+                      isYourTurn={isCurrentUserTurn}
+                    />
+                    {players.find(p => p.user_id === currentUserId)?.characters && (
+                      <AbilityCheckPanel 
+                        roomId={room.id}
+                        character={players.find(p => p.user_id === currentUserId)!.characters!}
+                      />
+                    )}
+                  </>
                 )}
               </div>
               <div className="lg:col-span-1">
