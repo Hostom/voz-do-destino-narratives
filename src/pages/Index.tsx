@@ -107,8 +107,22 @@ Diga-me, e deixe o destino se desenrolar...`,
       const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/game-master`;
       
       const systemContext = character ? `\n\nFICHA DO PERSONAGEM:\n${getCharacterSummary()}` : "";
+      
+      // Adicionar contexto da sala se estiver em uma sessão multiplayer
+      let roomContext = "";
+      if (room && players.length > 0) {
+        roomContext = `\n\nCONTEXTO DA SESSÃO:\nVocê está narrando para um grupo de ${players.length} jogador(es):\n`;
+        players.forEach(player => {
+          const char = player.characters;
+          if (char) {
+            roomContext += `- ${char.name} (${char.race} ${char.class}, Nível ${char.level})\n`;
+          }
+        });
+        roomContext += `\n⚔️ IMPORTANTE: Quando houver um confronto ou combate, você DEVE incluir o marcador [INICIAR_COMBATE] no início da sua resposta para que o sistema de iniciativa seja ativado automaticamente. Após o marcador, descreva a cena de combate normalmente.\n`;
+      }
+      
       const contextualMessages = messages.length === 0 && character
-        ? [{ role: "system" as const, content: `Você é o mestre de jogo. ${systemContext}` }, userMessage]
+        ? [{ role: "system" as const, content: `Você é o mestre de jogo. ${systemContext}${roomContext}` }, userMessage]
         : [...messages, userMessage];
 
       const resp = await fetch(CHAT_URL, {
@@ -173,6 +187,28 @@ Diga-me, e deixe o destino se desenrolar...`,
         }
       }
 
+      // Detectar se a IA quer iniciar combate
+      if (assistantContent.includes("[INICIAR_COMBATE]")) {
+        // Remove o marcador da mensagem
+        assistantContent = assistantContent.replace("[INICIAR_COMBATE]", "").trim();
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: "assistant", content: assistantContent };
+          return updated;
+        });
+        
+        // Inicia o combate após um breve delay para o usuário ler a mensagem
+        setTimeout(async () => {
+          if (room) {
+            await handleRollInitiative();
+            toast({
+              title: "Combate Iniciado!",
+              description: "Rolando iniciativa para todos os participantes...",
+            });
+          }
+        }, 2000);
+      }
+
       setIsLoading(false);
     } catch (error) {
       console.error("Error:", error);
@@ -230,22 +266,40 @@ Diga-me, e deixe o destino se desenrolar...`,
     setView('menu');
   };
 
+  const handleStartSession = () => {
+    setView('game');
+    // Limpa mensagens anteriores e começa nova sessão
+    setMessages([{
+      role: "assistant",
+      content: `Bem-vindos, aventureiros! A sessão está começando.
+
+Todos os jogadores estão reunidos e prontos para começar. Que tipo de aventura vocês desejam embarcar?
+
+• Uma jornada de fantasia medieval repleta de magia e dragões?
+• Um mistério sombrio em uma cidade steampunk?
+• Uma exploração espacial em galáxias desconhecidas?
+• Ou preferem que eu crie algo único para o grupo?
+
+Decidam juntos, e deixem o destino se desenrolar...`,
+    }]);
+  };
+
   const handleRollInitiative = async () => {
     await rollInitiative();
-    setView('combat');
+    // A view já vai mudar para combat pelo useEffect que monitora room.combat_active
   };
 
   const handleEndCombat = async () => {
     await endCombat();
-    setView('lobby');
+    // A view já vai mudar para game pelo useEffect que monitora room.combat_active
   };
 
-  // Auto-switch to combat view when combat becomes active
+  // Auto-switch to combat view when combat becomes active or back to game when it ends
   useEffect(() => {
-    if (room?.combat_active && view === 'lobby') {
+    if (room?.combat_active && view !== 'combat') {
       setView('combat');
     } else if (room && !room.combat_active && view === 'combat') {
-      setView('lobby');
+      setView('game');
     }
   }, [room?.combat_active, view]);
 
@@ -325,7 +379,7 @@ Diga-me, e deixe o destino se desenrolar...`,
   }
 
   if (view === 'lobby' && room) {
-    return <RoomLobby room={room} players={players} onLeave={handleLeaveRoom} onToggleReady={toggleReady} onRollInitiative={handleRollInitiative} onRefreshPlayers={refreshPlayers} />;
+    return <RoomLobby room={room} players={players} onLeave={handleLeaveRoom} onToggleReady={toggleReady} onStartSession={handleStartSession} onRefreshPlayers={refreshPlayers} />;
   }
 
   if (view === 'combat' && room) {
@@ -342,7 +396,9 @@ Diga-me, e deixe o destino se desenrolar...`,
       <div className="relative z-10 flex flex-col h-screen">
         <GameHeader 
           onLogout={handleLogout}
-          onBackToCharacterSelect={handleBackToCharacterSelect}
+          onBackToCharacterSelect={room ? undefined : handleBackToCharacterSelect}
+          onBackToLobby={room ? () => setView('lobby') : undefined}
+          roomCode={room?.room_code}
         />
 
         {showCharacterSheet && character && (
