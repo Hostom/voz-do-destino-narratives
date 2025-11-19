@@ -526,26 +526,27 @@ Decidam juntos, e deixem o destino se desenrolar...`,
             </div>
           </div>
 
-          {/* Coluna do chat do grupo - só aparece se estiver em uma sala */}
+          {/* Coluna do chat do grupo e dados - só aparece se estiver em uma sala */}
           {room && character && (
-            <div className="flex-1 min-w-[300px] max-w-[400px]">
-              <RoomChat roomId={room.id} characterName={character.name} />
+            <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4">
+              <div className="flex-1 min-h-0">
+                <RoomChat roomId={room.id} characterName={character.name} />
+              </div>
+              <DicePanel 
+                roomId={room.id}
+                characterName={character.name}
+                characterStats={{
+                  strength: character.strength,
+                  dexterity: character.dexterity,
+                  constitution: character.constitution,
+                  intelligence: character.intelligence,
+                  wisdom: character.wisdom,
+                  charisma: character.charisma
+                }}
+              />
             </div>
           )}
         </div>
-
-        <DicePanel 
-          roomId={room?.id}
-          characterName={character?.name}
-          characterStats={character ? {
-            strength: character.strength,
-            dexterity: character.dexterity,
-            constitution: character.constitution,
-            intelligence: character.intelligence,
-            wisdom: character.wisdom,
-            charisma: character.charisma
-          } : undefined}
-        />
       </div>
     </div>
   );
