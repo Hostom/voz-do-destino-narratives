@@ -92,18 +92,18 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
   const roundNumber = Math.floor(room.current_turn / combatants.length) + 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 p-2 md:p-6">
+      <div className="max-w-6xl mx-auto space-y-3 md:space-y-6">
         {/* Combat Header */}
         <Card className="bg-card/80 backdrop-blur border-primary/20">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Swords className="w-8 h-8 text-destructive animate-pulse" />
+          <CardHeader className="p-3 md:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
+                <Swords className="w-6 h-6 md:w-8 md:h-8 text-destructive animate-pulse" />
                 <div>
-                  <CardTitle className="text-2xl">Combate Ativo</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Rodada {roundNumber} • Código da sala: {room.room_code}
+                  <CardTitle className="text-lg md:text-2xl">Combate Ativo</CardTitle>
+                  <p className="text-xs md:text-sm text-muted-foreground">
+                    Rodada {roundNumber} • Sala: {room.room_code}
                   </p>
                 </div>
               </div>
