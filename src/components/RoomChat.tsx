@@ -25,21 +25,24 @@ interface TypingUser {
 interface RoomChatProps {
   roomId: string;
   characterName: string;
-  currentTurnCharacterName?: string | null;
-  isUserTurn?: boolean;
+  currentTurn: number;
+  initiativeOrder: any[];
   isGM?: boolean;
 }
 
-export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUserTurn, isGM }: RoomChatProps) => {
+export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, isGM = false }: RoomChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isNarrative, setIsNarrative] = useState(false);
+  const [isAIResponding, setIsAIResponding] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
+
+  const isMyTurn = initiativeOrder[currentTurn]?.character_name === characterName;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -193,6 +196,29 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
       return;
     }
 
+    // Se for GM e não for narrativa, chamar a IA
+    if (isGM && !isNarrative) {
+      setIsAIResponding(true);
+      try {
+        await supabase.functions.invoke('game-master', {
+          body: { 
+            messages: [{ role: 'user', content: newMessage.trim() }],
+            roomId,
+            characterName: 'Mestre do Jogo'
+          }
+        });
+      } catch (error) {
+        console.error('Error calling game master:', error);
+        toast({
+          title: "Erro",
+          description: "Falha ao obter resposta da IA",
+          variant: "destructive",
+        });
+      } finally {
+        setIsAIResponding(false);
+      }
+    }
+
     setNewMessage("");
     setIsNarrative(false);
     setIsTyping(false);
@@ -215,13 +241,13 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
           Chat do Grupo (Social)
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Canal social - conversa entre jogadores
+          {isGM ? "Chat Principal - Narrativa da IA visível para todos" : "Chat Principal - Narrativa e ações dos jogadores"}
         </p>
-        {currentTurnCharacterName && (
+        {initiativeOrder.length > 0 && (
           <div className="mt-2 text-sm">
             <span className="text-muted-foreground">Turno de: </span>
-            <span className="font-semibold text-primary">{currentTurnCharacterName}</span>
-            {isUserTurn && <span className="ml-2 text-xs text-accent">(Sua vez!)</span>}
+            <span className="font-semibold text-primary">{initiativeOrder[currentTurn]?.character_name || 'Aguardando'}</span>
+            {isMyTurn && <span className="ml-2 text-xs text-accent">(Sua vez!)</span>}
           </div>
         )}
       </CardHeader>
@@ -290,19 +316,17 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
                 handleTyping();
               }}
               placeholder={
-                !isGM && currentTurnCharacterName && !isUserTurn
-                  ? `Aguarde o turno de ${currentTurnCharacterName}...`
-                  : isNarrative
-                  ? "Escreva uma narração épica..."
-                  : "Digite sua mensagem..."
+                isGM
+                  ? (isNarrative ? "Escreva uma narração épica..." : "Digite sua mensagem para a IA...")
+                  : (isMyTurn ? "Digite sua ação..." : "Aguarde sua vez...")
               }
               className="flex-1"
-              disabled={!isGM && currentTurnCharacterName && !isUserTurn}
+              disabled={!isGM && !isMyTurn}
             />
             <Button 
               type="submit" 
               size="icon" 
-              disabled={!newMessage.trim() || (!isGM && currentTurnCharacterName && !isUserTurn)}
+              disabled={!newMessage.trim() || isAIResponding || (!isGM && !isMyTurn)}
             >
               <Send className="w-4 h-4" />
             </Button>
