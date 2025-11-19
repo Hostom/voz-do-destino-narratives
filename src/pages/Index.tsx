@@ -16,6 +16,7 @@ import { useCharacter, Character } from "@/hooks/useCharacter";
 import { useRoom } from "@/hooks/useRoom";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Scroll } from "lucide-react";
+import { RoomChat } from "@/components/RoomChat";
 
 interface Message {
   role: "user" | "assistant";
@@ -485,30 +486,42 @@ Decidam juntos, e deixem o destino se desenrolar...`,
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
-          {messages.map((msg, idx) => (
-            <NarrativeMessage
-              key={idx}
-              role={msg.role}
-              content={msg.content}
-              onSpeak={(content) => {
-                setCurrentSpeakingIndex(idx);
-              }}
-              isSpeaking={currentSpeakingIndex === idx}
-            />
-          ))}
-          {isLoading && (
-            <div className="flex justify-center">
-              <div className="animate-pulse text-muted-foreground">
-                A Voz do Destino está narrando...
-              </div>
+        <div className="flex-1 flex gap-4 px-4 pb-4 overflow-hidden">
+          {/* Coluna principal - Narrativa */}
+          <div className={`flex flex-col ${room ? 'flex-[2]' : 'flex-1'}`}>
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+              {messages.map((msg, idx) => (
+                <NarrativeMessage
+                  key={idx}
+                  role={msg.role}
+                  content={msg.content}
+                  onSpeak={(content) => {
+                    setCurrentSpeakingIndex(idx);
+                  }}
+                  isSpeaking={currentSpeakingIndex === idx}
+                />
+              ))}
+              {isLoading && (
+                <div className="flex justify-center">
+                  <div className="animate-pulse text-muted-foreground">
+                    A Voz do Destino está narrando...
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="pt-4">
+              <ChatInput onSend={handleSend} onRoll={(result) => console.log('Rolled:', result)} disabled={isLoading} />
+            </div>
+          </div>
+
+          {/* Coluna do chat do grupo - só aparece se estiver em uma sala */}
+          {room && character && (
+            <div className="flex-1 min-w-[300px] max-w-[400px]">
+              <RoomChat roomId={room.id} characterName={character.name} />
             </div>
           )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="px-4 pb-4">
-          <ChatInput onSend={handleSend} onRoll={(result) => console.log('Rolled:', result)} disabled={isLoading} />
         </div>
 
         <DicePanel />
