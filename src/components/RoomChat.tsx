@@ -14,6 +14,7 @@ interface ChatMessage {
   character_name: string;
   message: string;
   created_at: string;
+  is_narrative?: boolean;
 }
 
 interface TypingUser {
@@ -34,6 +35,7 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
   const [newMessage, setNewMessage] = useState("");
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [isNarrative, setIsNarrative] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -178,6 +180,7 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
       user_id: user.id,
       character_name: characterName,
       message: newMessage.trim(),
+      is_narrative: isNarrative,
     });
 
     if (error) {
@@ -191,6 +194,7 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
     }
 
     setNewMessage("");
+    setIsNarrative(false);
     setIsTyping(false);
     
     if (channelRef.current) {
@@ -224,10 +228,17 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className="bg-secondary/50 rounded-lg p-3 animate-in slide-in-from-bottom-2"
+                className={`rounded-lg p-3 animate-in slide-in-from-bottom-2 ${
+                  msg.is_narrative
+                    ? "bg-gradient-to-r from-primary/20 to-accent/20 border-l-4 border-primary"
+                    : "bg-secondary/50"
+                }`}
               >
                 <div className="flex items-baseline gap-2 mb-1">
-                  <span className="font-semibold text-primary text-sm">
+                  {msg.is_narrative && (
+                    <span className="text-xs font-bold text-primary">📜 NARRAÇÃO</span>
+                  )}
+                  <span className={`font-semibold text-sm ${msg.is_narrative ? "text-primary" : "text-primary"}`}>
                     {msg.character_name}
                   </span>
                   <span className="text-xs text-muted-foreground">
@@ -237,7 +248,9 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
                     })}
                   </span>
                 </div>
-                <p className="text-sm text-foreground">{msg.message}</p>
+                <p className={`text-sm ${msg.is_narrative ? "font-medium text-foreground" : "text-foreground"}`}>
+                  {msg.message}
+                </p>
               </div>
             ))}
             
@@ -252,28 +265,45 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
           </div>
         </ScrollArea>
 
-        <form onSubmit={sendMessage} className="flex gap-2">
-          <Input
-            value={newMessage}
-            onChange={(e) => {
-              setNewMessage(e.target.value);
-              handleTyping();
-            }}
-            placeholder={
-              !isGM && currentTurnCharacterName && !isUserTurn
-                ? `Aguarde o turno de ${currentTurnCharacterName}...`
-                : "Digite sua mensagem..."
-            }
-            className="flex-1"
-            disabled={!isGM && currentTurnCharacterName && !isUserTurn}
-          />
-          <Button 
-            type="submit" 
-            size="icon" 
-            disabled={!newMessage.trim() || (!isGM && currentTurnCharacterName && !isUserTurn)}
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+        <form onSubmit={sendMessage} className="space-y-2">
+          {isGM && (
+            <div className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isNarrative}
+                  onChange={(e) => setIsNarrative(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-muted-foreground">Mensagem Narrativa</span>
+              </label>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              value={newMessage}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                handleTyping();
+              }}
+              placeholder={
+                !isGM && currentTurnCharacterName && !isUserTurn
+                  ? `Aguarde o turno de ${currentTurnCharacterName}...`
+                  : isNarrative
+                  ? "Escreva uma narração épica..."
+                  : "Digite sua mensagem..."
+              }
+              className="flex-1"
+              disabled={!isGM && currentTurnCharacterName && !isUserTurn}
+            />
+            <Button 
+              type="submit" 
+              size="icon" 
+              disabled={!newMessage.trim() || (!isGM && currentTurnCharacterName && !isUserTurn)}
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
