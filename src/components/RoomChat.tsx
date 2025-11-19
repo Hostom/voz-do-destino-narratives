@@ -56,7 +56,7 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
   useEffect(() => {
     const loadMessages = async () => {
       const { data, error } = await supabase
-        .from("group_chat_messages" as any)
+        .from("room_chat_messages")
         .select("*")
         .eq("room_id", roomId)
         .order("created_at", { ascending: true });
@@ -85,10 +85,11 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
         {
           event: "INSERT",
           schema: "public",
-          table: "group_chat_messages" as any,
+          table: "room_chat_messages",
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
+          console.log("Nova mensagem recebida em tempo real:", payload.new);
           setMessages((prev) => [...prev, payload.new as ChatMessage]);
         }
       )
@@ -178,13 +179,13 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
       return;
     }
 
-    const { error } = await supabase.from("group_chat_messages" as any).insert({
+    const { error } = await supabase.from("room_chat_messages").insert({
       room_id: roomId,
       user_id: user.id,
       character_name: characterName,
       message: newMessage.trim(),
       is_narrative: isNarrative,
-    } as any);
+    });
 
     if (error) {
       console.error("Error sending message:", error);

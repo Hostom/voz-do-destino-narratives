@@ -200,7 +200,7 @@ serve(async (req) => {
 
                 if (room) {
                   const { error: insertError } = await supabase
-                    .from("group_chat_messages")
+                    .from("room_chat_messages")
                     .insert({
                       room_id: roomId,
                       user_id: room.gm_id,
@@ -212,7 +212,7 @@ serve(async (req) => {
                   if (insertError) {
                     console.error("Error saving GM message:", insertError);
                   } else {
-                    console.log("GM response saved successfully");
+                    console.log("GM response saved to database successfully");
                   }
                 }
               }
