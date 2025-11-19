@@ -7,6 +7,7 @@ import { CombatActions } from "@/components/CombatActions";
 import { CombatLog } from "@/components/CombatLog";
 import { ConditionsPanel } from "@/components/ConditionsPanel";
 import { GMPanel } from "@/components/GMPanel";
+import { GMPlayerViewer } from "@/components/GMPlayerViewer";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -223,20 +224,19 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
         </Card>
 
         {/* Combat Actions, GM Panel, Conditions and Logs */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isGM ? (
             <>
-              <div className="lg:col-span-1">
+              <div className="space-y-6">
                 <GMPanel roomId={room.id} players={players} />
+                <GMPlayerViewer roomId={room.id} />
               </div>
-              <div className="lg:col-span-1">
+              <div className="space-y-6">
                 <ConditionsPanel 
                   roomId={room.id}
                   players={players}
                   isGM={isGM}
                 />
-              </div>
-              <div className="lg:col-span-1">
                 <CombatLog roomId={room.id} />
               </div>
             </>

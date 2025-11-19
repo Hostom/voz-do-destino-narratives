@@ -8,9 +8,19 @@ interface ChatInputProps {
   onSend: (message: string) => void;
   onRoll: (result: number) => void;
   disabled?: boolean;
+  roomId?: string;
+  characterName?: string;
+  characterStats?: {
+    strength: number;
+    dexterity: number;
+    constitution: number;
+    intelligence: number;
+    wisdom: number;
+    charisma: number;
+  };
 }
 
-export const ChatInput = ({ onSend, onRoll, disabled }: ChatInputProps) => {
+export const ChatInput = ({ onSend, onRoll, disabled, roomId, characterName, characterStats }: ChatInputProps) => {
   const [input, setInput] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -52,7 +62,12 @@ export const ChatInput = ({ onSend, onRoll, disabled }: ChatInputProps) => {
         </div>
         
         <div className="flex justify-between items-center">
-          <DiceRoller onRoll={onRoll} />
+          <DiceRoller 
+            onRoll={onRoll} 
+            roomId={roomId}
+            characterName={characterName}
+            characterStats={characterStats}
+          />
           <p className="text-xs text-muted-foreground">
             Enter para enviar · Shift+Enter para nova linha
           </p>
