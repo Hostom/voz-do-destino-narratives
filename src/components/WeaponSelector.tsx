@@ -116,19 +116,19 @@ export const WeaponSelector = ({ characterId, currentWeapon, onWeaponChange }: W
 
   return (
     <Card className="bg-card/80 backdrop-blur border-primary/20">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
           <Swords className="w-5 h-5" />
           Arsenal de Armas D&D 5e
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Tabs defaultValue="simple_melee" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="simple_melee">Simples C/C</TabsTrigger>
-            <TabsTrigger value="simple_ranged">Simples Dist.</TabsTrigger>
-            <TabsTrigger value="martial_melee">Marcial C/C</TabsTrigger>
-            <TabsTrigger value="martial_ranged">Marcial Dist.</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4 h-auto">
+            <TabsTrigger value="simple_melee" className="text-xs sm:text-sm">Simples C/C</TabsTrigger>
+            <TabsTrigger value="simple_ranged" className="text-xs sm:text-sm">Simples Dist.</TabsTrigger>
+            <TabsTrigger value="martial_melee" className="text-xs sm:text-sm">Marcial C/C</TabsTrigger>
+            <TabsTrigger value="martial_ranged" className="text-xs sm:text-sm">Marcial Dist.</TabsTrigger>
           </TabsList>
 
           <TabsContent value="simple_melee" className="space-y-2 mt-4">
