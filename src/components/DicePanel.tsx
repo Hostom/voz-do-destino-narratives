@@ -1,13 +1,34 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dices, Plus, Minus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dices, Plus, Minus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DiceType {
   sides: number;
   label: string;
   color: string;
+}
+
+interface SelectedDice {
+  sides: number;
+  label: string;
+  count: number;
+}
+
+interface DicePanelProps {
+  roomId?: string;
+  characterName?: string;
+  characterStats?: {
+    strength: number;
+    dexterity: number;
+    constitution: number;
+    intelligence: number;
+    wisdom: number;
+    charisma: number;
+  };
 }
 
 const DICE_TYPES: DiceType[] = [
@@ -19,32 +40,103 @@ const DICE_TYPES: DiceType[] = [
   { sides: 20, label: "d20", color: "bg-purple-500" },
 ];
 
-export const DicePanel = () => {
+const calculateModifier = (abilityScore: number): number => {
+  return Math.floor((abilityScore - 10) / 2);
+};
+
+export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelProps) => {
   const [diceCount, setDiceCount] = useState(1);
+  const [selectedDice, setSelectedDice] = useState<SelectedDice[]>([]);
   const [rolling, setRolling] = useState(false);
   const [lastRoll, setLastRoll] = useState<{ dice: string; results: number[]; total: number } | null>(null);
+  const [selectedModifier, setSelectedModifier] = useState<string>("none");
   const { toast } = useToast();
 
-  const rollDice = (sides: number, label: string) => {
-    if (rolling) return;
+  const addDiceToSelection = (sides: number, label: string) => {
+    const existing = selectedDice.find(d => d.sides === sides);
+    if (existing) {
+      setSelectedDice(selectedDice.map(d => 
+        d.sides === sides ? { ...d, count: d.count + diceCount } : d
+      ));
+    } else {
+      setSelectedDice([...selectedDice, { sides, label, count: diceCount }]);
+    }
+  };
+
+  const removeDiceFromSelection = (sides: number) => {
+    setSelectedDice(selectedDice.filter(d => d.sides !== sides));
+  };
+
+  const rollAllDice = async () => {
+    if (rolling || selectedDice.length === 0) return;
     
     setRolling(true);
     setLastRoll(null);
 
-    const results: number[] = [];
-    for (let i = 0; i < diceCount; i++) {
-      results.push(Math.floor(Math.random() * sides) + 1);
+    const allResults: { label: string; results: number[] }[] = [];
+    let totalSum = 0;
+
+    for (const dice of selectedDice) {
+      const results: number[] = [];
+      for (let i = 0; i < dice.count; i++) {
+        const roll = Math.floor(Math.random() * dice.sides) + 1;
+        results.push(roll);
+        totalSum += roll;
+      }
+      allResults.push({ label: `${dice.count}${dice.label}`, results });
     }
 
-    setTimeout(() => {
-      const total = results.reduce((sum, val) => sum + val, 0);
-      setLastRoll({ dice: `${diceCount}${label}`, results, total });
+    // Adiciona o modificador UMA VEZ ao total
+    let modifier = 0;
+    let modifierText = "";
+    if (selectedModifier !== "none" && characterStats) {
+      const stat = characterStats[selectedModifier as keyof typeof characterStats];
+      modifier = calculateModifier(stat);
+      const modifierLabel = {
+        strength: "FOR",
+        dexterity: "DES",
+        constitution: "CON",
+        intelligence: "INT",
+        wisdom: "SAB",
+        charisma: "CAR"
+      }[selectedModifier];
+      modifierText = ` + ${modifierLabel} (${modifier >= 0 ? '+' : ''}${modifier})`;
+    }
+
+    const finalTotal = totalSum + modifier;
+
+    setTimeout(async () => {
+      const diceDescription = allResults.map(r => r.label).join(" + ");
+      const resultsDescription = allResults.map(r => `${r.label}: [${r.results.join(", ")}]`).join(" + ");
+      
+      setLastRoll({ 
+        dice: diceDescription, 
+        results: allResults.flatMap(r => r.results), 
+        total: finalTotal 
+      });
       setRolling(false);
       
       toast({
-        title: `🎲 ${diceCount}${label}`,
-        description: `Resultados: ${results.join(", ")} = ${total}`,
+        title: `🎲 ${diceDescription}${modifierText}`,
+        description: `Resultados: ${resultsDescription}${modifierText} = ${finalTotal}`,
       });
+
+      // Envia para o chat se houver roomId
+      if (roomId && characterName) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const message = `🎲 Rolou ${diceDescription}: ${resultsDescription}${modifierText} = **${finalTotal}**`;
+          await supabase.from("room_chat_messages").insert({
+            room_id: roomId,
+            user_id: user.id,
+            character_name: characterName,
+            message: message,
+          });
+        }
+      }
+
+      // Limpa a seleção após rolar
+      setSelectedDice([]);
     }, 800);
   };
 
@@ -55,6 +147,16 @@ export const DicePanel = () => {
       setDiceCount(diceCount - 1);
     }
   };
+
+  const modifierOptions = characterStats ? [
+    { value: "none", label: "Sem modificador" },
+    { value: "strength", label: `Força (${calculateModifier(characterStats.strength) >= 0 ? '+' : ''}${calculateModifier(characterStats.strength)})` },
+    { value: "dexterity", label: `Destreza (${calculateModifier(characterStats.dexterity) >= 0 ? '+' : ''}${calculateModifier(characterStats.dexterity)})` },
+    { value: "constitution", label: `Constituição (${calculateModifier(characterStats.constitution) >= 0 ? '+' : ''}${calculateModifier(characterStats.constitution)})` },
+    { value: "intelligence", label: `Inteligência (${calculateModifier(characterStats.intelligence) >= 0 ? '+' : ''}${calculateModifier(characterStats.intelligence)})` },
+    { value: "wisdom", label: `Sabedoria (${calculateModifier(characterStats.wisdom) >= 0 ? '+' : ''}${calculateModifier(characterStats.wisdom)})` },
+    { value: "charisma", label: `Carisma (${calculateModifier(characterStats.charisma) >= 0 ? '+' : ''}${calculateModifier(characterStats.charisma)})` },
+  ] : [];
 
   return (
     <Card className="border-primary/20 bg-card/50 backdrop-blur-sm">
@@ -83,21 +185,78 @@ export const DicePanel = () => {
           </div>
         </div>
 
-        {/* Dice buttons */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          {DICE_TYPES.map(({ sides, label }) => (
-            <Button
-              key={sides}
-              onClick={() => rollDice(sides, label)}
-              disabled={rolling}
-              variant="outline"
-              className="h-16 flex flex-col items-center justify-center gap-1 hover:border-primary transition-all"
-            >
-              <Dices className={`h-5 w-5 ${rolling ? "animate-spin" : ""}`} />
-              <span className="text-xs font-bold">{label}</span>
-            </Button>
-          ))}
+        {/* Modifier selector */}
+        {characterStats && (
+          <div>
+            <span className="text-sm font-medium text-foreground mb-2 block">Modificador (aplicado 1x ao total)</span>
+            <Select value={selectedModifier} onValueChange={setSelectedModifier}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione modificador" />
+              </SelectTrigger>
+              <SelectContent>
+                {modifierOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Dice buttons - Add to selection */}
+        <div>
+          <span className="text-sm font-medium text-foreground mb-2 block">Selecione os dados</span>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {DICE_TYPES.map(({ sides, label }) => (
+              <Button
+                key={sides}
+                onClick={() => addDiceToSelection(sides, label)}
+                disabled={rolling}
+                variant="outline"
+                className="h-16 flex flex-col items-center justify-center gap-1 hover:border-primary transition-all"
+              >
+                <Dices className="h-5 w-5" />
+                <span className="text-xs font-bold">{label}</span>
+              </Button>
+            ))}
+          </div>
         </div>
+
+        {/* Selected dice display */}
+        {selectedDice.length > 0 && (
+          <div className="space-y-2">
+            <span className="text-sm font-medium text-foreground">Dados selecionados:</span>
+            <div className="flex flex-wrap gap-2">
+              {selectedDice.map((dice) => (
+                <div
+                  key={dice.sides}
+                  className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/30 rounded-md"
+                >
+                  <span className="text-sm font-medium">
+                    {dice.count}{dice.label}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0"
+                    onClick={() => removeDiceFromSelection(dice.sides)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <Button
+              onClick={rollAllDice}
+              disabled={rolling}
+              className="w-full gap-2"
+            >
+              <Dices className={rolling ? "animate-spin" : ""} />
+              {rolling ? "Rolando..." : "Rolar Todos os Dados"}
+            </Button>
+          </div>
+        )}
 
         {/* Last roll result */}
         {lastRoll && (
