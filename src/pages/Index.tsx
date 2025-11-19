@@ -107,19 +107,91 @@ Diga-me, e deixe o destino se desenrolar...`,
     try {
       const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/game-master`;
       
-      const systemContext = character ? `\n\nFICHA DO PERSONAGEM:\n${getCharacterSummary()}` : "";
+      // Identificar o jogador atual
+      const currentPlayer = character ? players.find(p => p.character_id === character.id) : null;
+      const currentPlayerId = currentPlayer?.id || "";
+      const currentPlayerName = character?.name || "Jogador Desconhecido";
       
-      // Adicionar contexto da sala se estiver em uma sessão multiplayer
+      // Contexto do personagem atual (quem está enviando a mensagem)
+      const systemContext = character ? `\n\nJOGADOR ATIVO: ${currentPlayerName} (ID: ${currentPlayerId})\nFICHA DO JOGADOR ATIVO:\n${getCharacterSummary()}` : "";
+      
+      // Adicionar fichas completas de TODOS os jogadores na sala
       let roomContext = "";
       if (room && players.length > 0) {
-        roomContext = `\n\nCONTEXTO DA SESSÃO:\nVocê está narrando para um grupo de ${players.length} jogador(es):\n`;
-        players.forEach(player => {
+        roomContext = `\n\n🎮 SISTEMA MULTIPLAYER - ${players.length} JOGADOR(ES) NA SALA:\n`;
+        roomContext += `📍 Sala ID: ${room.id}\n`;
+        roomContext += `📍 Código da Sala: ${room.room_code}\n\n`;
+        
+        roomContext += `⚠️ REGRAS CRÍTICAS DE ISOLAMENTO:\n`;
+        roomContext += `- NUNCA misture atributos entre jogadores\n`;
+        roomContext += `- SEMPRE use a ficha do jogador correto ao narrar ações\n`;
+        roomContext += `- Cada ficha pertence SOMENTE ao seu jogador (identificado por ID único)\n`;
+        roomContext += `- Quando um jogador perguntar "meus atributos" ou "minha ficha", use APENAS a ficha dele\n\n`;
+        
+        roomContext += `═══════════════════════════════════════\n`;
+        roomContext += `📋 FICHAS COMPLETAS DE TODOS OS JOGADORES:\n`;
+        roomContext += `═══════════════════════════════════════\n\n`;
+        
+        players.forEach((player, index) => {
           const char = player.characters;
           if (char) {
-            roomContext += `- ${char.name} (${char.race} ${char.class}, Nível ${char.level})\n`;
+            const isActivePlayer = player.id === currentPlayerId;
+            roomContext += `${isActivePlayer ? "👉 " : ""}JOGADOR ${index + 1}${isActivePlayer ? " (ATIVO - ENVIOU ESTA MENSAGEM)" : ""}:\n`;
+            roomContext += `🆔 Player ID: ${player.id}\n`;
+            roomContext += `🆔 Character ID: ${char.id}\n`;
+            roomContext += `👤 Nome: ${char.name}\n`;
+            roomContext += `🧬 Raça: ${char.race}\n`;
+            roomContext += `⚔️ Classe: ${char.class}\n`;
+            roomContext += `📊 Nível: ${char.level}\n`;
+            roomContext += `❤️ HP: ${char.current_hp}/${char.max_hp}\n`;
+            roomContext += `🛡️ CA (Armor Class): ${char.armor_class}\n`;
+            roomContext += `🎲 Bônus de Proficiência: +${char.proficiency_bonus}\n\n`;
+            
+            roomContext += `📊 ATRIBUTOS:\n`;
+            roomContext += `- Força (STR): ${char.strength} (mod: ${Math.floor((char.strength - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.strength - 10) / 2)})\n`;
+            roomContext += `- Destreza (DEX): ${char.dexterity} (mod: ${Math.floor((char.dexterity - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.dexterity - 10) / 2)})\n`;
+            roomContext += `- Constituição (CON): ${char.constitution} (mod: ${Math.floor((char.constitution - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.constitution - 10) / 2)})\n`;
+            roomContext += `- Inteligência (INT): ${char.intelligence} (mod: ${Math.floor((char.intelligence - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.intelligence - 10) / 2)})\n`;
+            roomContext += `- Sabedoria (WIS): ${char.wisdom} (mod: ${Math.floor((char.wisdom - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.wisdom - 10) / 2)})\n`;
+            roomContext += `- Carisma (CHA): ${char.charisma} (mod: ${Math.floor((char.charisma - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.charisma - 10) / 2)})\n\n`;
+            
+            if (char.equipped_weapon && typeof char.equipped_weapon === 'object') {
+              const weapon = char.equipped_weapon as any;
+              roomContext += `⚔️ ARMA EQUIPADA: ${weapon.name || 'Desconhecida'}\n`;
+              roomContext += `  - Dano: ${weapon.damage_dice || '1d4'}\n`;
+              roomContext += `  - Tipo: ${weapon.damage_type || 'contundente'}\n`;
+              roomContext += `  - Atributo: ${weapon.ability || 'strength'}\n\n`;
+            }
+            
+            if (char.spell_slots && typeof char.spell_slots === 'object') {
+              const spellSlots = char.spell_slots as Record<string, number>;
+              const hasSpells = Object.values(spellSlots).some(val => val > 0);
+              if (hasSpells) {
+                roomContext += `✨ ESPAÇOS DE MAGIA:\n`;
+                Object.entries(spellSlots).forEach(([level, slots]) => {
+                  if (slots > 0) {
+                    roomContext += `  - Nível ${level}: ${slots} espaços\n`;
+                  }
+                });
+                roomContext += `\n`;
+              }
+            }
+            
+            if (player.conditions && Array.isArray(player.conditions) && player.conditions.length > 0) {
+              roomContext += `⚠️ CONDIÇÕES ATIVAS: ${player.conditions.join(', ')}\n\n`;
+            }
+            
+            roomContext += `───────────────────────────────────────\n\n`;
           }
         });
-        roomContext += `\n⚔️ IMPORTANTE: Quando houver um confronto ou combate, você DEVE incluir o marcador [INICIAR_COMBATE] no início da sua resposta para que o sistema de iniciativa seja ativado automaticamente. Após o marcador, descreva a cena de combate normalmente.\n`;
+        
+        roomContext += `\n⚔️ COMBATE: Quando houver um confronto, você DEVE incluir [INICIAR_COMBATE] no início da resposta.\n\n`;
+        roomContext += `🎯 INSTRUÇÕES DE NARRATIVA:\n`;
+        roomContext += `1. Use a ficha do JOGADOR ATIVO ao responder perguntas pessoais\n`;
+        roomContext += `2. Ao narrar ações, sempre verifique os atributos do jogador correto\n`;
+        roomContext += `3. NUNCA invente ou adivinhe estatísticas\n`;
+        roomContext += `4. Em cenas de grupo, use cada ficha apropriadamente\n`;
+        roomContext += `5. Mantenha a coerência dos dados de cada personagem\n`;
       }
       
       const contextualMessages = messages.length === 0 && character
