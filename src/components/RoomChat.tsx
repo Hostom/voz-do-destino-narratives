@@ -49,11 +49,11 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
     scrollToBottom();
   }, [messages]);
 
-  // Carregar mensagens existentes
+  // Carregar mensagens existentes do grupo
   useEffect(() => {
     const loadMessages = async () => {
       const { data, error } = await supabase
-        .from("room_chat_messages")
+        .from("group_chat_messages" as any)
         .select("*")
         .eq("room_id", roomId)
         .order("created_at", { ascending: true });
@@ -64,7 +64,7 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
       }
 
       if (data) {
-        setMessages(data);
+        setMessages(data as ChatMessage[]);
       }
     };
 
@@ -82,7 +82,7 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
         {
           event: "INSERT",
           schema: "public",
-          table: "room_chat_messages",
+          table: "group_chat_messages" as any,
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
@@ -175,13 +175,13 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
       return;
     }
 
-    const { error } = await supabase.from("room_chat_messages").insert({
+    const { error } = await supabase.from("group_chat_messages" as any).insert({
       room_id: roomId,
       user_id: user.id,
       character_name: characterName,
       message: newMessage.trim(),
       is_narrative: isNarrative,
-    });
+    } as any);
 
     if (error) {
       console.error("Error sending message:", error);
@@ -212,8 +212,11 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <MessageSquare className="w-5 h-5" />
-          Chat do Grupo
+          Chat do Grupo (Social)
         </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Canal social - conversa entre jogadores
+        </p>
         {currentTurnCharacterName && (
           <div className="mt-2 text-sm">
             <span className="text-muted-foreground">Turno de: </span>
