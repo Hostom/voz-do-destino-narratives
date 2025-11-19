@@ -1,12 +1,14 @@
-import { Scroll, Sparkles, LogOut, Users } from "lucide-react";
+import { Scroll, Sparkles, LogOut, Users, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface GameHeaderProps {
   onLogout?: () => void;
   onBackToCharacterSelect?: () => void;
+  onBackToLobby?: () => void;
+  roomCode?: string;
 }
 
-export const GameHeader = ({ onLogout, onBackToCharacterSelect }: GameHeaderProps) => {
+export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, roomCode }: GameHeaderProps) => {
   return (
     <header className="relative border-b border-border/50 backdrop-blur-epic bg-card/30">
       <div className="container mx-auto px-6 py-6">
@@ -27,10 +29,24 @@ export const GameHeader = ({ onLogout, onBackToCharacterSelect }: GameHeaderProp
           <div className="flex items-center gap-3">
             <div className="hidden md:flex items-center gap-2 mr-4">
               <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-              <span className="text-muted-foreground text-sm">Sistema Ativo</span>
+              <span className="text-muted-foreground text-sm">
+                {roomCode ? `Sala: ${roomCode}` : 'Sistema Ativo'}
+              </span>
             </div>
             
-            {onBackToCharacterSelect && (
+            {onBackToLobby && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onBackToLobby}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Voltar ao Lobby</span>
+              </Button>
+            )}
+            
+            {onBackToCharacterSelect && !roomCode && (
               <Button
                 variant="outline"
                 size="sm"
