@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Swords, Check } from "lucide-react";
+import { Swords, Check, Sword, CircleDot, Crosshair } from "lucide-react";
 import { DND_WEAPONS, Weapon, getWeaponsByCategory } from "@/lib/dnd-weapons";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -125,10 +125,22 @@ export const WeaponSelector = ({ characterId, currentWeapon, onWeaponChange }: W
       <CardContent className="space-y-4 pt-0">
         <Tabs defaultValue="simple_melee" className="w-full">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 h-auto bg-muted/50 p-1">
-            <TabsTrigger value="simple_melee" className="text-xs whitespace-nowrap px-2">Simples C/C</TabsTrigger>
-            <TabsTrigger value="simple_ranged" className="text-xs whitespace-nowrap px-2">Simples Dist.</TabsTrigger>
-            <TabsTrigger value="martial_melee" className="text-xs whitespace-nowrap px-2">Marcial C/C</TabsTrigger>
-            <TabsTrigger value="martial_ranged" className="text-xs whitespace-nowrap px-2">Marcial Dist.</TabsTrigger>
+            <TabsTrigger value="simple_melee" className="text-xs whitespace-nowrap px-2 flex items-center gap-1">
+              <Sword className="w-3 h-3" />
+              Simples C/C
+            </TabsTrigger>
+            <TabsTrigger value="simple_ranged" className="text-xs whitespace-nowrap px-2 flex items-center gap-1">
+              <CircleDot className="w-3 h-3" />
+              Simples Dist.
+            </TabsTrigger>
+            <TabsTrigger value="martial_melee" className="text-xs whitespace-nowrap px-2 flex items-center gap-1">
+              <Swords className="w-3 h-3" />
+              Marcial C/C
+            </TabsTrigger>
+            <TabsTrigger value="martial_ranged" className="text-xs whitespace-nowrap px-2 flex items-center gap-1">
+              <Crosshair className="w-3 h-3" />
+              Marcial Dist.
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="simple_melee" className="space-y-2 mt-4">
