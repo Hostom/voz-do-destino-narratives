@@ -227,7 +227,7 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
           {isGM ? (
             <>
               <div className="lg:col-span-1">
-                <GMPanel roomId={room.id} />
+                <GMPanel roomId={room.id} players={players} />
               </div>
               <div className="lg:col-span-1">
                 <ConditionsPanel 

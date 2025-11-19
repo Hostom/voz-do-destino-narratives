@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Sparkles, Heart, Dices, Shield, Star } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { TrendingUp, Sparkles, Heart, Dices, Shield, Star, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -11,6 +12,7 @@ import {
   CLASS_HIT_DICE,
   getClassLabels 
 } from "@/lib/dnd-progression";
+import { getXPProgressPercentage, getXPToNextLevel, XP_TABLE } from "@/lib/dnd-xp-progression";
 
 interface Character {
   id: string;
@@ -25,6 +27,8 @@ interface Character {
   current_hit_dice: number;
   proficiency_bonus: number;
   hit_dice: string;
+  experience_points?: number;
+  experience_to_next_level?: number;
 }
 
 interface LevelUpPanelProps {
@@ -120,6 +124,14 @@ export const LevelUpPanel = ({ character, onLevelUp }: LevelUpPanelProps) => {
     return changes;
   };
 
+  // XP Progress
+  const currentXP = character.experience_points || 0;
+  const xpProgress = getXPProgressPercentage(currentXP, character.level);
+  const xpToNext = getXPToNextLevel(currentXP, character.level);
+  const currentLevelXP = XP_TABLE[character.level];
+  const nextLevelXP = XP_TABLE[character.level + 1];
+  const canLevelUp = character.level < 20 && currentXP >= nextLevelXP;
+
   if (character.level >= 20) {
     return (
       <Card className="bg-card/80 backdrop-blur border-primary/20">
@@ -139,16 +151,41 @@ export const LevelUpPanel = ({ character, onLevelUp }: LevelUpPanelProps) => {
   }
 
   return (
-    <Card className="bg-card/80 backdrop-blur border-primary/20">
+    <Card className="bg-gradient-to-br from-primary/10 via-card to-card/80 backdrop-blur border-primary/30">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-primary" />
-          Progressão de Nível
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <TrendingUp className="w-6 h-6 text-primary" />
+          Subir de Nível
         </CardTitle>
         <CardDescription>
-          {character.name} - {classLabels[character.class]} Nível {character.level}
+          Prepare-se para a jornada até o nível {newLevel}
         </CardDescription>
       </CardHeader>
+      
+      {/* XP Progress Bar */}
+      <CardContent className="space-y-2 pb-4">
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-primary" />
+            <span className="font-medium">Experiência</span>
+          </div>
+          <span className="text-muted-foreground">
+            {currentXP.toLocaleString()} / {nextLevelXP.toLocaleString()} XP
+          </span>
+        </div>
+        <Progress value={xpProgress} className="h-2" />
+        {!canLevelUp && (
+          <p className="text-xs text-muted-foreground text-center">
+            Faltam {xpToNext.toLocaleString()} XP para o próximo nível
+          </p>
+        )}
+        {canLevelUp && (
+          <Badge variant="default" className="w-full justify-center animate-pulse">
+            Pronto para subir de nível!
+          </Badge>
+        )}
+      </CardContent>
+
       <CardContent className="space-y-4">
         {!showPreview ? (
           <>
@@ -200,12 +237,12 @@ export const LevelUpPanel = ({ character, onLevelUp }: LevelUpPanelProps) => {
 
             <Button 
               onClick={previewLevelUp}
-              disabled={isLevelingUp}
+              disabled={isLevelingUp || !canLevelUp}
               className="w-full"
               size="lg"
             >
               <TrendingUp className="w-4 h-4 mr-2" />
-              Subir para Nível {newLevel}
+              {canLevelUp ? `Subir para Nível ${newLevel}` : "XP Insuficiente"}
             </Button>
           </>
         ) : (

@@ -16,6 +16,7 @@ import {
 import { Crown, Plus, Trash2, Heart, Shield, Swords, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { GMXPDistribution } from "./GMXPDistribution";
 
 interface NPC {
   id: string;
@@ -42,9 +43,10 @@ interface NPC {
 
 interface GMPanelProps {
   roomId: string;
+  players?: any[];
 }
 
-export const GMPanel = ({ roomId }: GMPanelProps) => {
+export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
   const [npcs, setNpcs] = useState<NPC[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -443,6 +445,13 @@ export const GMPanel = ({ roomId }: GMPanelProps) => {
           })
         )}
       </CardContent>
+
+      {/* XP Distribution Panel */}
+      {players.length > 0 && (
+        <div className="px-6 pb-6">
+          <GMXPDistribution roomId={roomId} players={players} />
+        </div>
+      )}
     </Card>
   );
 };
