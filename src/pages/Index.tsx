@@ -36,7 +36,7 @@ const Index = () => {
   const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
   const [view, setView] = useState<'menu' | 'create' | 'join' | 'lobby' | 'combat' | 'game'>('menu');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, refreshPlayers } = useRoom();
+  const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, startSession, refreshPlayers } = useRoom();
   const { toast } = useToast();
 
   // Check auth status
@@ -346,22 +346,8 @@ Diga-me, e deixe o destino se desenrolar...`,
     setView('menu');
   };
 
-  const handleStartSession = () => {
-    setView('game');
-    // Limpa mensagens anteriores e começa nova sessão
-    setMessages([{
-      role: "assistant",
-      content: `Bem-vindos, aventureiros! A sessão está começando.
-
-Todos os jogadores estão reunidos e prontos para começar. Que tipo de aventura vocês desejam embarcar?
-
-• Uma jornada de fantasia medieval repleta de magia e dragões?
-• Um mistério sombrio em uma cidade steampunk?
-• Uma exploração espacial em galáxias desconhecidas?
-• Ou preferem que eu crie algo único para o grupo?
-
-Decidam juntos, e deixem o destino se desenrolar...`,
-    }]);
+  const handleStartSession = async () => {
+    await startSession();
   };
 
   const handleRollInitiative = async () => {
@@ -374,14 +360,36 @@ Decidam juntos, e deixem o destino se desenrolar...`,
     // A view já vai mudar para game pelo useEffect que monitora room.combat_active
   };
 
-  // Auto-switch to combat view when combat becomes active or back to game when it ends
+  // Auto-switch views based on room state
   useEffect(() => {
-    if (room?.combat_active && view !== 'combat') {
+    if (!room) return;
+
+    // Switch to game view when session starts
+    if (room.session_active && view === 'lobby') {
+      setView('game');
+      // Limpa mensagens anteriores e começa nova sessão
+      setMessages([{
+        role: "assistant",
+        content: `Bem-vindos, aventureiros! A sessão está começando.
+
+Todos os jogadores estão reunidos e prontos para começar. Que tipo de aventura vocês desejam embarcar?
+
+• Uma jornada de fantasia medieval repleta de magia e dragões?
+• Um mistério sombrio em uma cidade steampunk?
+• Uma exploração espacial em galáxias desconhecidas?
+• Ou preferem que eu crie algo único para o grupo?
+
+Decidam juntos, e deixem o destino se desenrolar...`,
+      }]);
+    }
+
+    // Switch to combat view when combat becomes active
+    if (room.combat_active && view !== 'combat') {
       setView('combat');
-    } else if (room && !room.combat_active && view === 'combat') {
+    } else if (!room.combat_active && view === 'combat') {
       setView('game');
     }
-  }, [room?.combat_active, view]);
+  }, [room?.session_active, room?.combat_active, view]);
 
   if (authLoading || characterLoading) {
     return (
