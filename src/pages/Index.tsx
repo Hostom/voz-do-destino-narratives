@@ -17,6 +17,7 @@ import { useRoom } from "@/hooks/useRoom";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Scroll, MessageSquare, Dices } from "lucide-react";
 import { RoomChat } from "@/components/RoomChat";
+import { GMChat } from "@/components/GMChat";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -609,25 +610,34 @@ Decidam juntos, e deixem o destino se desenrolar...`,
             </div>
           </div>
 
-          {/* Desktop: Coluna do chat do grupo e dados */}
+          {/* Desktop: Coluna dos chats (GM e Grupo) e dados */}
           {room && character && !isMobile && (
             <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4">
-              <div className="flex-1 min-h-0">
-                <RoomChat 
-                  roomId={room.id} 
-                  characterName={character.name}
-                  currentTurnCharacterName={
-                    room.combat_active && room.initiative_order && Array.isArray(room.initiative_order) && room.initiative_order.length > 0
-                      ? room.initiative_order[room.current_turn || 0]?.name
-                      : null
-                  }
-                  isUserTurn={
-                    room.combat_active && room.initiative_order && Array.isArray(room.initiative_order) && room.initiative_order.length > 0
-                      ? room.initiative_order[room.current_turn || 0]?.characterId === character.id
-                      : false
-                  }
-                  isGM={room.gm_id === user?.id}
-                />
+              <div className="flex-1 min-h-0 flex flex-col gap-2">
+                <div className="flex-1 min-h-0">
+                  <GMChat 
+                    roomId={room.id} 
+                    characterName={character.name}
+                    isGM={room.gm_id === user?.id}
+                  />
+                </div>
+                <div className="flex-1 min-h-0">
+                  <RoomChat 
+                    roomId={room.id} 
+                    characterName={character.name}
+                    currentTurnCharacterName={
+                      room.combat_active && room.initiative_order && Array.isArray(room.initiative_order) && room.initiative_order.length > 0
+                        ? room.initiative_order[room.current_turn || 0]?.name
+                        : null
+                    }
+                    isUserTurn={
+                      room.combat_active && room.initiative_order && Array.isArray(room.initiative_order) && room.initiative_order.length > 0
+                        ? room.initiative_order[room.current_turn || 0]?.characterId === character.id
+                        : false
+                    }
+                    isGM={room.gm_id === user?.id}
+                  />
+                </div>
               </div>
               <DicePanel 
                 roomId={room.id}
@@ -644,12 +654,29 @@ Decidam juntos, e deixem o destino se desenrolar...`,
             </div>
           )}
 
-          {/* Mobile: Botões flutuantes para abrir chat e dados */}
+          {/* Mobile: Botões flutuantes para abrir chats e dados */}
           {room && character && isMobile && (
             <div className="fixed bottom-20 right-4 flex flex-col gap-2 z-50">
               <Sheet>
                 <SheetTrigger asChild>
                   <Button size="icon" className="h-12 w-12 rounded-full shadow-lg bg-primary">
+                    <Scroll className="h-6 w-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[80vh]">
+                  <div className="h-full">
+                    <GMChat 
+                      roomId={room.id} 
+                      characterName={character.name}
+                      isGM={room.gm_id === user?.id}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button size="icon" className="h-12 w-12 rounded-full shadow-lg bg-secondary">
                     <MessageSquare className="h-6 w-6" />
                   </Button>
                 </SheetTrigger>

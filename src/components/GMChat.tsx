@@ -54,7 +54,7 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
       }
 
       if (data) {
-        setMessages(data as GMMessage[]);
+        setMessages(data as unknown as GMMessage[]);
       }
     };
 
