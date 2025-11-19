@@ -590,6 +590,7 @@ export type Database = {
           id: string
           initiative_order: Json | null
           room_code: string
+          session_active: boolean
         }
         Insert: {
           combat_active?: boolean
@@ -599,6 +600,7 @@ export type Database = {
           id?: string
           initiative_order?: Json | null
           room_code: string
+          session_active?: boolean
         }
         Update: {
           combat_active?: boolean
@@ -608,6 +610,7 @@ export type Database = {
           id?: string
           initiative_order?: Json | null
           room_code?: string
+          session_active?: boolean
         }
         Relationships: []
       }

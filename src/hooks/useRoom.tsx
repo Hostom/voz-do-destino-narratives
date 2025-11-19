@@ -10,6 +10,7 @@ export interface Room {
   combat_active: boolean;
   current_turn: number;
   initiative_order: any;
+  session_active: boolean;
 }
 
 export interface RoomPlayer {
@@ -456,6 +457,41 @@ export const useRoom = () => {
     }
   };
 
+  const startSession = async () => {
+    if (!room) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.id !== room.gm_id) {
+        toast({
+          title: "Acesso negado",
+          description: "Apenas o GM pode iniciar a sessão",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('rooms')
+        .update({ session_active: true })
+        .eq('id', room.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sessão iniciada!",
+        description: "Todos os jogadores foram notificados",
+      });
+    } catch (error) {
+      console.error("Error starting session:", error);
+      toast({
+        title: "Erro ao iniciar sessão",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Subscribe to room and player changes
   useEffect(() => {
     if (!room) return;
@@ -510,6 +546,7 @@ export const useRoom = () => {
     rollInitiative,
     advanceTurn,
     endCombat,
+    startSession,
     refreshPlayers,
   };
 };
