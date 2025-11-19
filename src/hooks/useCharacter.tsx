@@ -19,9 +19,12 @@ export interface Character {
   armor_class: number;
   background: string;
   backstory: string;
+  experience_points?: number;
+  experience_to_next_level?: number;
 }
 
 import { getSpellSlotsForLevel, CLASS_HIT_DICE } from "@/lib/dnd-progression";
+import { getXPForLevel } from "@/lib/dnd-xp-progression";
 
 const CLASS_HP = CLASS_HIT_DICE;
 
@@ -105,6 +108,8 @@ export const useCharacter = () => {
         current_spell_slots: spellSlots,
         hit_dice: `1d${baseHP}`,
         current_hit_dice: 1,
+        experience_points: 0,
+        experience_to_next_level: getXPForLevel(1),
       };
 
       const { data, error } = await supabase

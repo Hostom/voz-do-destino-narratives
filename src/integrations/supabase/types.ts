@@ -166,6 +166,8 @@ export type Database = {
           dexterity: number
           electrum_pieces: number | null
           equipped_weapon: Json | null
+          experience_points: number | null
+          experience_to_next_level: number | null
           gold_pieces: number | null
           hit_dice: string | null
           id: string
@@ -200,6 +202,8 @@ export type Database = {
           dexterity: number
           electrum_pieces?: number | null
           equipped_weapon?: Json | null
+          experience_points?: number | null
+          experience_to_next_level?: number | null
           gold_pieces?: number | null
           hit_dice?: string | null
           id?: string
@@ -234,6 +238,8 @@ export type Database = {
           dexterity?: number
           electrum_pieces?: number | null
           equipped_weapon?: Json | null
+          experience_points?: number | null
+          experience_to_next_level?: number | null
           gold_pieces?: number | null
           hit_dice?: string | null
           id?: string
@@ -354,6 +360,51 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "combat_log_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      experience_rewards: {
+        Row: {
+          amount: number
+          awarded_by: string
+          character_id: string
+          created_at: string | null
+          id: string
+          reason: string | null
+          room_id: string
+        }
+        Insert: {
+          amount: number
+          awarded_by: string
+          character_id: string
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          room_id: string
+        }
+        Update: {
+          amount?: number
+          awarded_by?: string
+          character_id?: string
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_rewards_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experience_rewards_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
