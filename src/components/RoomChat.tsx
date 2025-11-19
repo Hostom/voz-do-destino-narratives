@@ -196,8 +196,8 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
       return;
     }
 
-    // Se for GM e não for narrativa, chamar a IA
-    if (isGM && !isNarrative) {
+    // Se não for narrativa do GM, chamar a IA para narrar
+    if (!isNarrative || !isGM) {
       setIsAIResponding(true);
       try {
         await supabase.functions.invoke('game-master', {
@@ -318,15 +318,14 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
               placeholder={
                 isGM
                   ? (isNarrative ? "Escreva uma narração épica..." : "Digite sua mensagem para a IA...")
-                  : (isMyTurn ? "Digite sua ação..." : "Aguarde sua vez...")
+                  : "Digite sua ação..."
               }
               className="flex-1"
-              disabled={!isGM && !isMyTurn}
             />
             <Button 
               type="submit" 
               size="icon" 
-              disabled={!newMessage.trim() || isAIResponding || (!isGM && !isMyTurn)}
+              disabled={!newMessage.trim() || isAIResponding}
             >
               <Send className="w-4 h-4" />
             </Button>
