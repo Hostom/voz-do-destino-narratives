@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Scroll, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useCollection } from "@/hooks/useCollection";
 
 interface GMMessage {
   id: string;
@@ -25,11 +25,16 @@ interface GMChatProps {
 }
 
 export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
-  const [messages, setMessages] = useState<GMMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
+
+  // Use useCollection hook - single source of truth for gm_messages
+  const { data: messages, loading } = useCollection<GMMessage>("gm_messages", {
+    roomId,
+    orderBy: "created_at",
+    ascending: true,
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -38,54 +43,6 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Load existing GM messages
-  useEffect(() => {
-    const loadMessages = async () => {
-      const { data, error } = await supabase
-        .from("gm_messages" as any)
-        .select("*")
-        .eq("room_id", roomId)
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("Error loading GM messages:", error);
-        return;
-      }
-
-      if (data) {
-        setMessages(data as unknown as GMMessage[]);
-      }
-    };
-
-    loadMessages();
-  }, [roomId]);
-
-  // Setup realtime for GM messages
-  useEffect(() => {
-    const channel = supabase.channel(`gm-chat:${roomId}`);
-
-    channel
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "gm_messages" as any,
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as GMMessage]);
-        }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [roomId]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,26 +59,48 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
       return;
     }
 
-    const { error } = await supabase.from("gm_messages" as any).insert({
+    const messageContent = newMessage.trim();
+    setNewMessage("");
+
+    // ALWAYS save player message to gm_messages first
+    const { error: insertError } = await supabase.from("gm_messages" as any).insert({
       room_id: roomId,
       player_id: user.id,
-      sender: isGM ? "GM" : "player",
+      sender: "player",
       character_name: characterName,
-      content: newMessage.trim(),
+      content: messageContent,
       type: "gm",
     } as any);
 
-    if (error) {
-      console.error("Error sending GM message:", error);
+    if (insertError) {
+      console.error("Error sending GM message:", insertError);
       toast({
         title: "Erro",
         description: "Não foi possível enviar a mensagem",
         variant: "destructive",
       });
+      setNewMessage(messageContent); // Restore message on error
       return;
     }
 
-    setNewMessage("");
+    // Then trigger masterNarrate (server-side action)
+    // The server will save the GM response to gm_messages
+    try {
+      await supabase.functions.invoke('game-master', {
+        body: {
+          messages: [{ role: 'user', content: messageContent }],
+          roomId,
+          characterName: characterName,
+        },
+      });
+    } catch (error) {
+      console.error('Error calling game master:', error);
+      toast({
+        title: "Erro",
+        description: "Falha ao obter resposta da IA",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -138,6 +117,11 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
       <CardContent className="flex-1 flex flex-col gap-3 p-4 overflow-hidden">
         <ScrollArea className="flex-1 pr-4 h-[400px]">
           <div className="space-y-3">
+            {loading && messages.length === 0 && (
+              <div className="text-center text-muted-foreground text-sm">
+                Carregando mensagens...
+              </div>
+            )}
             {messages.map((msg) => (
               <div
                 key={msg.id}

@@ -111,8 +111,8 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, roomId, characterName = 'Mestre do Jogo' } = await req.json();
-    console.log("Received messages:", messages?.length || 0);
+    const { messages: clientMessages, roomId, characterName = 'Mestre do Jogo' } = await req.json();
+    console.log("Received client messages:", clientMessages?.length || 0);
     console.log("Room ID:", roomId, "Character:", characterName);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -126,7 +126,41 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log("Calling Lovable AI Gateway...");
+    // Build message history from gm_messages if roomId is provided
+    // This ensures the AI has full context from the database (single source of truth)
+    let messageHistory: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
+      { role: "system", content: GAME_MASTER_PROMPT },
+    ];
+
+    if (roomId) {
+      const { data: gmMessages, error: gmError } = await supabase
+        .from("gm_messages")
+        .select("*")
+        .eq("room_id", roomId)
+        .order("created_at", { ascending: true });
+
+      if (!gmError && gmMessages) {
+        // Convert gm_messages to chat format
+        gmMessages.forEach((msg) => {
+          if (msg.sender === "player") {
+            messageHistory.push({
+              role: "user",
+              content: msg.content,
+            });
+          } else if (msg.sender === "GM") {
+            messageHistory.push({
+              role: "assistant",
+              content: msg.content,
+            });
+          }
+        });
+      }
+    } else {
+      // Fallback to client-provided messages if no roomId
+      messageHistory.push(...(clientMessages || []));
+    }
+
+    console.log("Calling Lovable AI Gateway with", messageHistory.length, "messages...");
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -135,10 +169,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: GAME_MASTER_PROMPT },
-          ...messages,
-        ],
+        messages: messageHistory,
         stream: true,
       }),
     });
@@ -187,9 +218,9 @@ serve(async (req) => {
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
-              // Save the complete GM response to database
+              // ALWAYS save the complete GM response to gm_messages table
               if (fullResponse && roomId) {
-                console.log("Saving GM response to database...");
+                console.log("Saving GM response to gm_messages...");
                 
                 // Get the GM user id from the room
                 const { data: room } = await supabase
@@ -200,19 +231,20 @@ serve(async (req) => {
 
                 if (room) {
                   const { error: insertError } = await supabase
-                    .from("room_chat_messages")
+                    .from("gm_messages")
                     .insert({
                       room_id: roomId,
-                      user_id: room.gm_id,
-                      character_name: characterName,
-                      message: fullResponse,
-                      is_narrative: true,
+                      player_id: room.gm_id,
+                      sender: "GM",
+                      character_name: characterName || "Mestre do Jogo",
+                      content: fullResponse,
+                      type: "gm",
                     });
                   
                   if (insertError) {
-                    console.error("Error saving GM message:", insertError);
+                    console.error("Error saving GM message to gm_messages:", insertError);
                   } else {
-                    console.log("GM response saved to database successfully");
+                    console.log("GM response saved to gm_messages successfully");
                   }
                 }
               }
