@@ -37,44 +37,53 @@ export const RestPanel = ({ roomId, players, currentUserId }: RestPanelProps) =>
         return;
       }
 
-      // Roll hit dice
-      const hitDiceType = (character as any).hit_dice || "1d8";
-      const diceSize = parseInt(hitDiceType.split("d")[1]);
-      const roll = Math.floor(Math.random() * diceSize) + 1;
-      
-      // Add Constitution modifier
-      const conMod = Math.floor((character.constitution - 10) / 2);
-      const healAmount = Math.max(1, roll + conMod);
-      
-      // Calculate new HP
-      const newHp = Math.min(character.max_hp, character.current_hp + healAmount);
-      const actualHealing = newHp - character.current_hp;
-
-      // Update character
-      const { error } = await supabase
-        .from("characters")
-        .update({
-          current_hp: newHp,
-          current_hit_dice: currentHitDice - 1,
-        })
-        .eq("id", character.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "☕ Descanso Curto Completo!",
-        description: `${character.name} rolou ${roll} + ${conMod} (CON) e recuperou ${actualHealing} HP. Dados de vida restantes: ${currentHitDice - 1}/${character.level}`,
-      });
-    } catch (error) {
-      console.error("Error during short rest:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível completar o descanso",
-        variant: "destructive",
-      });
+      await rollHitDice();
     } finally {
       setIsResting(false);
     }
+  };
+
+  const rollHitDice = async () => {
+    if (!character || !currentPlayer) return;
+
+    const currentHitDice = (character as any).current_hit_dice || 0;
+    if (currentHitDice <= 0) {
+      toast({
+        title: "Sem dados de vida",
+        description: "Você não tem dados de vida disponíveis.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Roll hit dice
+    const hitDiceType = (character as any).hit_dice || "1d8";
+    const diceSize = parseInt(hitDiceType.split("d")[1]);
+    const roll = Math.floor(Math.random() * diceSize) + 1;
+    
+    // Add Constitution modifier
+    const conMod = Math.floor((character.constitution - 10) / 2);
+    const healAmount = Math.max(1, roll + conMod);
+    
+    // Calculate new HP
+    const newHp = Math.min(character.max_hp, character.current_hp + healAmount);
+    const actualHealing = newHp - character.current_hp;
+
+    // Update character
+    const { error } = await supabase
+      .from("characters")
+      .update({
+        current_hp: newHp,
+        current_hit_dice: currentHitDice - 1,
+      })
+      .eq("id", character.id);
+
+    if (error) throw error;
+
+    toast({
+      title: "🎲 Dado de Vida Rolado!",
+      description: `Você rolou ${roll} + ${conMod} (CON) e recuperou ${actualHealing} HP. Dados de vida restantes: ${currentHitDice - 1}/${character.level}`,
+    });
   };
 
   const handleLongRest = async () => {
@@ -257,12 +266,28 @@ export const RestPanel = ({ roomId, players, currentUserId }: RestPanelProps) =>
           </Button>
         </div>
 
+        {/* Roll Hit Dice Button */}
+        <Button
+          onClick={rollHitDice}
+          disabled={isResting || ((character as any).current_hit_dice || 0) <= 0}
+          className="w-full"
+          variant="secondary"
+        >
+          <Dices className="w-4 h-4 mr-2" />
+          Rolar Dado de Vida (Recuperar HP)
+        </Button>
+
         {/* Rest Info */}
         <div className="text-xs text-muted-foreground space-y-1 p-3 bg-muted/50 rounded-lg">
-          <p><strong>☕ Descanso Curto (1 hora):</strong></p>
+          <p><strong>🎲 Rolar Dado de Vida:</strong></p>
           <ul className="list-disc list-inside ml-2 space-y-1">
-            <li>Gasta 1 dado de vida para recuperar HP</li>
+            <li>Use para recuperar HP quando precisar</li>
             <li>Rola o dado + modificador de Constituição</li>
+            <li>Dados de vida recuperam após descanso longo</li>
+          </ul>
+          <p className="mt-2"><strong>☕ Descanso Curto (1 hora):</strong></p>
+          <ul className="list-disc list-inside ml-2 space-y-1">
+            <li>Mesmo efeito de rolar dado de vida</li>
           </ul>
           <p className="mt-2"><strong>🌙 Descanso Longo (8 horas):</strong></p>
           <ul className="list-disc list-inside ml-2 space-y-1">

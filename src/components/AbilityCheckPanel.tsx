@@ -190,7 +190,7 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
         {/* Pending Requests */}
         {pendingRequests.length > 0 && (
           <div className="space-y-2">
-            <Label className="text-sm font-semibold text-primary">Testes Solicitados pelo GM</Label>
+            <Label className="text-sm font-semibold text-primary">Testes Solicitados</Label>
             {pendingRequests.map((request) => (
               <Card key={request.id} className="p-3 bg-primary/5 border-primary/20">
                 <div className="space-y-2">
