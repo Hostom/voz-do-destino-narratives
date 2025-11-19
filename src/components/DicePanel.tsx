@@ -160,10 +160,10 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
 
   return (
     <Card className="border-primary/20 bg-card/50 backdrop-blur-sm">
-      <div className="p-4 space-y-4">
+      <div className="p-3 md:p-4 space-y-3 md:space-y-4">
         {/* Dice count control */}
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-foreground">Quantidade de Dados</span>
+          <span className="text-xs md:text-sm font-medium text-foreground">Quantidade de Dados</span>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -188,7 +188,7 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
         {/* Modifier selector */}
         {characterStats && (
           <div>
-            <span className="text-sm font-medium text-foreground mb-2 block">Modificador (aplicado 1x ao total)</span>
+            <span className="text-xs md:text-sm font-medium text-foreground mb-2 block">Modificador (aplicado 1x ao total)</span>
             <Select value={selectedModifier} onValueChange={setSelectedModifier}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione modificador" />
@@ -206,8 +206,8 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
 
         {/* Dice buttons - Add to selection */}
         <div>
-          <span className="text-sm font-medium text-foreground mb-2 block">Selecione os dados</span>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <span className="text-xs md:text-sm font-medium text-foreground mb-2 block">Selecione os dados</span>
+          <div className="grid grid-cols-3 gap-2">
             {DICE_TYPES.map(({ sides, label }) => (
               <Button
                 key={sides}
@@ -226,14 +226,14 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
         {/* Selected dice display */}
         {selectedDice.length > 0 && (
           <div className="space-y-2">
-            <span className="text-sm font-medium text-foreground">Dados selecionados:</span>
+            <span className="text-xs md:text-sm font-medium text-foreground">Dados selecionados:</span>
             <div className="flex flex-wrap gap-2">
               {selectedDice.map((dice) => (
                 <div
                   key={dice.sides}
-                  className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/30 rounded-md"
+                  className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 bg-primary/10 border border-primary/30 rounded-md"
                 >
-                  <span className="text-sm font-medium">
+                  <span className="text-xs md:text-sm font-medium">
                     {dice.count}{dice.label}
                   </span>
                   <Button
@@ -250,7 +250,7 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
             <Button
               onClick={rollAllDice}
               disabled={rolling}
-              className="w-full gap-2"
+              className="w-full gap-2 text-sm md:text-base"
             >
               <Dices className={rolling ? "animate-spin" : ""} />
               {rolling ? "Rolando..." : "Rolar Todos os Dados"}
@@ -260,15 +260,15 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
 
         {/* Last roll result */}
         {lastRoll && (
-          <div className="flex items-center justify-center gap-3 p-3 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg animate-in fade-in zoom-in duration-300">
+          <div className="flex items-center justify-center gap-2 md:gap-3 p-2 md:p-3 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg animate-in fade-in zoom-in duration-300">
             <div className="text-center">
               <p className="text-xs text-muted-foreground">{lastRoll.dice}</p>
-              <p className="text-sm text-foreground">{lastRoll.results.join(" + ")}</p>
+              <p className="text-xs md:text-sm text-foreground">{lastRoll.results.join(" + ")}</p>
             </div>
-            <div className="h-12 w-px bg-border" />
+            <div className="h-10 md:h-12 w-px bg-border" />
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Total</p>
-              <p className="text-2xl font-bold text-primary">{lastRoll.total}</p>
+              <p className="text-xl md:text-2xl font-bold text-primary">{lastRoll.total}</p>
             </div>
           </div>
         )}
