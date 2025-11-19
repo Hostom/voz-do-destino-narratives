@@ -11,6 +11,7 @@ import { InventoryPanel } from "@/components/InventoryPanel";
 import { AbilityCheckPanel } from "@/components/AbilityCheckPanel";
 import { CheckHistoryPanel } from "@/components/CheckHistoryPanel";
 import { GMCheckRequestPanel } from "@/components/GMCheckRequestPanel";
+import { LevelUpPanel } from "@/components/LevelUpPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -168,6 +169,16 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiat
                 )}
                 <CheckHistoryPanel roomId={room.id} />
               </div>
+              
+              {/* Level Up Panel */}
+              {currentPlayer.characters && (
+                <LevelUpPanel 
+                  character={currentPlayer.characters}
+                  onLevelUp={() => {
+                    onRefreshPlayers?.();
+                  }}
+                />
+              )}
               
               {/* GM Check Request */}
               {isGM && (

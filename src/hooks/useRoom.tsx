@@ -48,6 +48,8 @@ export interface RoomPlayer {
     electrum_pieces: number;
     gold_pieces: number;
     platinum_pieces: number;
+    current_hit_dice: number;
+    hit_dice: string;
   };
 }
 
@@ -206,7 +208,9 @@ export const useRoom = () => {
             silver_pieces,
             electrum_pieces,
             gold_pieces,
-            platinum_pieces
+            platinum_pieces,
+            current_hit_dice,
+            hit_dice
           )
         `)
         .eq('room_id', roomId);

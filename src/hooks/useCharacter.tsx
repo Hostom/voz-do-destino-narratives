@@ -21,32 +21,9 @@ export interface Character {
   backstory: string;
 }
 
-const CLASS_HP: Record<string, number> = {
-  fighter: 10,
-  wizard: 6,
-  rogue: 8,
-  cleric: 8,
-  barbarian: 12,
-  bard: 8,
-  druid: 8,
-  monk: 8,
-  paladin: 10,
-  ranger: 10,
-  sorcerer: 6,
-  warlock: 8,
-};
+import { getSpellSlotsForLevel, CLASS_HIT_DICE } from "@/lib/dnd-progression";
 
-// Spell slots per class at level 1
-const CLASS_SPELL_SLOTS: Record<string, Record<string, number>> = {
-  wizard: { "1": 2, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
-  sorcerer: { "1": 2, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
-  cleric: { "1": 2, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
-  druid: { "1": 2, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
-  bard: { "1": 2, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
-  warlock: { "1": 1, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
-  paladin: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 }, // Gets at level 2
-  ranger: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 }, // Gets at level 2
-};
+const CLASS_HP = CLASS_HIT_DICE;
 
 export const useCharacter = () => {
   const [character, setCharacter] = useState<Character | null>(null);
@@ -115,7 +92,7 @@ export const useCharacter = () => {
       const maxHP = baseHP + constitutionModifier;
 
       // Get spell slots for the class
-      const spellSlots = CLASS_SPELL_SLOTS[characterData.class] || { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 };
+      const spellSlots = getSpellSlotsForLevel(characterData.class, 1);
 
       const newCharacter = {
         user_id: user.id,
