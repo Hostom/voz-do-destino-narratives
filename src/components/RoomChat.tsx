@@ -64,7 +64,7 @@ export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUs
       }
 
       if (data) {
-        setMessages(data as ChatMessage[]);
+        setMessages(data as unknown as ChatMessage[]);
       }
     };
 
