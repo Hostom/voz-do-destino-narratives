@@ -1,10 +1,28 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Input validation schema
+const weaponSchema = z.object({
+  name: z.string().min(1).max(100),
+  damage_dice: z.string().regex(/^\d+d\d+$/),
+  damage_type: z.string().min(1).max(50),
+  ability: z.enum(["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]),
+}).optional();
+
+const combatActionSchema = z.object({
+  actionType: z.enum(["attack", "cast_spell", "dodge", "disengage", "dash", "help"]),
+  roomId: z.string().uuid(),
+  actorId: z.string().uuid(),
+  targetId: z.string().uuid().optional(),
+  spellLevel: z.number().int().min(1).max(9).optional(),
+  weaponOverride: weaponSchema,
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,13 +30,38 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // JWT Authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      throw new Error("Unauthorized: No authorization header");
+    }
 
-    const { actionType, roomId, actorId, targetId, spellLevel, weaponOverride } = await req.json();
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
+    // Create client with user's token for authentication
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    // Verify user authentication
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      throw new Error("Unauthorized: Invalid token");
+    }
+
+    console.log("Authenticated user:", user.id);
+
+    // Validate input
+    const requestBody = await req.json();
+    const validatedInput = combatActionSchema.parse(requestBody);
+    const { actionType, roomId, actorId, targetId, spellLevel, weaponOverride } = validatedInput;
 
     console.log("Combat action:", { actionType, roomId, actorId, targetId });
+
+    // Use service role key for database operations (bypasses RLS for complex queries)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get room and validate
     const { data: room, error: roomError } = await supabase
@@ -50,6 +93,11 @@ serve(async (req) => {
     }
 
     const character = actor.characters as any;
+
+    // Authorization check: user must be the actor or the GM
+    if (actor.user_id !== user.id && room.gm_id !== user.id) {
+      throw new Error("Unauthorized: You can only perform actions for your own character or as GM");
+    }
     
     // Calculate round number
     const playersCount = await supabase
@@ -359,10 +407,17 @@ Seja dramático, descritivo e épico. Não use asteriscos ou formatação, apena
     );
   } catch (error) {
     console.error("Error in combat-action:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const status = errorMessage.startsWith("Unauthorized") ? 401 : 
+                   errorMessage.includes("required") || errorMessage.includes("not found") ? 400 : 500;
+    
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ 
+        error: errorMessage,
+        success: false 
+      }),
       {
-        status: 500,
+        status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
