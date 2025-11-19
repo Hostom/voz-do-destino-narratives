@@ -20,9 +20,10 @@ interface RoomLobbyProps {
   onLeave: () => void;
   onToggleReady: () => void;
   onRollInitiative: () => void;
+  onRefreshPlayers?: () => void;
 }
 
-export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiative }: RoomLobbyProps) => {
+export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiative, onRefreshPlayers }: RoomLobbyProps) => {
   const { toast } = useToast();
   const [isGM, setIsGM] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -121,12 +122,6 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiat
                     <Badge variant={player.is_ready ? "default" : "secondary"}>
                       {player.is_ready ? "Pronto" : "Não pronto"}
                     </Badge>
-                    {player.user_id === room.gm_id && (
-                      <Badge variant="outline" className="border-primary text-primary">
-                        <Shield className="w-3 h-3 mr-1" />
-                        GM
-                      </Badge>
-                    )}
                   </div>
                 </div>
               ))
@@ -144,7 +139,7 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiat
                   characterId={currentPlayer.character_id}
                   currentWeapon={currentPlayer.characters?.equipped_weapon}
                   onWeaponChange={() => {
-                    // Reload will happen via realtime subscription
+                    onRefreshPlayers?.();
                   }}
                 />
                 <RestPanel 

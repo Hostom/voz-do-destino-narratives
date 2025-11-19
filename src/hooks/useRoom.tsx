@@ -480,6 +480,10 @@ export const useRoom = () => {
     };
   }, [room?.id]);
 
+  const refreshPlayers = () => {
+    if (room?.id) loadPlayers(room.id);
+  };
+
   return {
     room,
     players,
@@ -491,5 +495,6 @@ export const useRoom = () => {
     rollInitiative,
     advanceTurn,
     endCombat,
+    refreshPlayers,
   };
 };

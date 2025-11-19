@@ -36,6 +36,18 @@ const CLASS_HP: Record<string, number> = {
   warlock: 8,
 };
 
+// Spell slots per class at level 1
+const CLASS_SPELL_SLOTS: Record<string, Record<string, number>> = {
+  wizard: { "1": 2, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
+  sorcerer: { "1": 2, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
+  cleric: { "1": 2, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
+  druid: { "1": 2, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
+  bard: { "1": 2, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
+  warlock: { "1": 1, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 },
+  paladin: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 }, // Gets at level 2
+  ranger: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 }, // Gets at level 2
+};
+
 export const useCharacter = () => {
   const [character, setCharacter] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,6 +114,9 @@ export const useCharacter = () => {
       const baseHP = CLASS_HP[characterData.class] || 8;
       const maxHP = baseHP + constitutionModifier;
 
+      // Get spell slots for the class
+      const spellSlots = CLASS_SPELL_SLOTS[characterData.class] || { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0 };
+
       const newCharacter = {
         user_id: user.id,
         ...characterData,
@@ -109,6 +124,10 @@ export const useCharacter = () => {
         max_hp: maxHP,
         current_hp: maxHP,
         armor_class: 10 + Math.floor((characterData.dexterity - 10) / 2),
+        spell_slots: spellSlots,
+        current_spell_slots: spellSlots,
+        hit_dice: `1d${baseHP}`,
+        current_hit_dice: 1,
       };
 
       const { data, error } = await supabase

@@ -35,7 +35,7 @@ const Index = () => {
   const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
   const [view, setView] = useState<'menu' | 'create' | 'join' | 'lobby' | 'combat' | 'game'>('menu');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat } = useRoom();
+  const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, refreshPlayers } = useRoom();
   const { toast } = useToast();
 
   // Check auth status
@@ -324,7 +324,7 @@ Diga-me, e deixe o destino se desenrolar...`,
   }
 
   if (view === 'lobby' && room) {
-    return <RoomLobby room={room} players={players} onLeave={handleLeaveRoom} onToggleReady={toggleReady} onRollInitiative={handleRollInitiative} />;
+    return <RoomLobby room={room} players={players} onLeave={handleLeaveRoom} onToggleReady={toggleReady} onRollInitiative={handleRollInitiative} onRefreshPlayers={refreshPlayers} />;
   }
 
   if (view === 'combat' && room) {
