@@ -24,9 +24,12 @@ interface TypingUser {
 interface RoomChatProps {
   roomId: string;
   characterName: string;
+  currentTurnCharacterName?: string | null;
+  isUserTurn?: boolean;
+  isGM?: boolean;
 }
 
-export const RoomChat = ({ roomId, characterName }: RoomChatProps) => {
+export const RoomChat = ({ roomId, characterName, currentTurnCharacterName, isUserTurn, isGM }: RoomChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
@@ -207,9 +210,16 @@ export const RoomChat = ({ roomId, characterName }: RoomChatProps) => {
           <MessageSquare className="w-5 h-5" />
           Chat do Grupo
         </CardTitle>
+        {currentTurnCharacterName && (
+          <div className="mt-2 text-sm">
+            <span className="text-muted-foreground">Turno de: </span>
+            <span className="font-semibold text-primary">{currentTurnCharacterName}</span>
+            {isUserTurn && <span className="ml-2 text-xs text-accent">(Sua vez!)</span>}
+          </div>
+        )}
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-3 p-4">
-        <ScrollArea className="flex-1 pr-4">
+      <CardContent className="flex-1 flex flex-col gap-3 p-4 overflow-hidden">
+        <ScrollArea className="flex-1 pr-4 h-[400px]">
           <div className="space-y-3">
             {messages.map((msg) => (
               <div
@@ -249,10 +259,19 @@ export const RoomChat = ({ roomId, characterName }: RoomChatProps) => {
               setNewMessage(e.target.value);
               handleTyping();
             }}
-            placeholder="Digite sua mensagem..."
+            placeholder={
+              !isGM && currentTurnCharacterName && !isUserTurn
+                ? `Aguarde o turno de ${currentTurnCharacterName}...`
+                : "Digite sua mensagem..."
+            }
             className="flex-1"
+            disabled={!isGM && currentTurnCharacterName && !isUserTurn}
           />
-          <Button type="submit" size="icon" disabled={!newMessage.trim()}>
+          <Button 
+            type="submit" 
+            size="icon" 
+            disabled={!newMessage.trim() || (!isGM && currentTurnCharacterName && !isUserTurn)}
+          >
             <Send className="w-4 h-4" />
           </Button>
         </form>

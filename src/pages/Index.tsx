@@ -613,7 +613,21 @@ Decidam juntos, e deixem o destino se desenrolar...`,
           {room && character && !isMobile && (
             <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4">
               <div className="flex-1 min-h-0">
-                <RoomChat roomId={room.id} characterName={character.name} />
+                <RoomChat 
+                  roomId={room.id} 
+                  characterName={character.name}
+                  currentTurnCharacterName={
+                    room.combat_active && room.initiative_order && Array.isArray(room.initiative_order) && room.initiative_order.length > 0
+                      ? room.initiative_order[room.current_turn || 0]?.name
+                      : null
+                  }
+                  isUserTurn={
+                    room.combat_active && room.initiative_order && Array.isArray(room.initiative_order) && room.initiative_order.length > 0
+                      ? room.initiative_order[room.current_turn || 0]?.characterId === character.id
+                      : false
+                  }
+                  isGM={room.gm_id === user?.id}
+                />
               </div>
               <DicePanel 
                 roomId={room.id}
@@ -641,7 +655,21 @@ Decidam juntos, e deixem o destino se desenrolar...`,
                 </SheetTrigger>
                 <SheetContent side="bottom" className="h-[80vh]">
                   <div className="h-full">
-                    <RoomChat roomId={room.id} characterName={character.name} />
+                    <RoomChat 
+                      roomId={room.id} 
+                      characterName={character.name}
+                      currentTurnCharacterName={
+                        room.combat_active && room.initiative_order && Array.isArray(room.initiative_order) && room.initiative_order.length > 0
+                          ? room.initiative_order[room.current_turn || 0]?.name
+                          : null
+                      }
+                      isUserTurn={
+                        room.combat_active && room.initiative_order && Array.isArray(room.initiative_order) && room.initiative_order.length > 0
+                          ? room.initiative_order[room.current_turn || 0]?.characterId === character.id
+                          : false
+                      }
+                      isGM={room.gm_id === user?.id}
+                    />
                   </div>
                 </SheetContent>
               </Sheet>
