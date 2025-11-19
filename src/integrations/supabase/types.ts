@@ -618,6 +618,10 @@ export type Database = {
     Functions: {
       calculate_modifier: { Args: { ability_score: number }; Returns: number }
       generate_room_code: { Args: never; Returns: string }
+      user_is_in_room: {
+        Args: { room_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
