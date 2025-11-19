@@ -15,8 +15,10 @@ import { CombatView } from "@/components/CombatView";
 import { useCharacter, Character } from "@/hooks/useCharacter";
 import { useRoom } from "@/hooks/useRoom";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Scroll } from "lucide-react";
+import { BookOpen, Scroll, MessageSquare, Dices } from "lucide-react";
 import { RoomChat } from "@/components/RoomChat";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Message {
   role: "user" | "assistant";
@@ -38,6 +40,7 @@ const Index = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, startSession, refreshPlayers } = useRoom();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // Check auth status
   useEffect(() => {
@@ -573,10 +576,10 @@ Decidam juntos, e deixem o destino se desenrolar...`,
           </div>
         )}
 
-        <div className="flex-1 flex gap-4 px-4 pb-4 overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row gap-4 px-2 md:px-4 pb-4 overflow-hidden">
           {/* Coluna principal - Narrativa */}
-          <div className={`flex flex-col ${room ? 'flex-[2]' : 'flex-1'}`}>
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+          <div className={`flex flex-col ${room ? 'flex-1 md:flex-[2]' : 'flex-1'}`}>
+            <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 pr-2">
               {messages.map((msg, idx) => (
                 <NarrativeMessage
                   key={idx}
@@ -590,7 +593,7 @@ Decidam juntos, e deixem o destino se desenrolar...`,
               ))}
               {isLoading && (
                 <div className="flex justify-center">
-                  <div className="animate-pulse text-muted-foreground">
+                  <div className="animate-pulse text-muted-foreground text-sm">
                     A Voz do Destino está narrando...
                   </div>
                 </div>
@@ -598,7 +601,7 @@ Decidam juntos, e deixem o destino se desenrolar...`,
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="pt-4">
+            <div className="pt-2 md:pt-4">
               <ChatInput 
                 onSend={handleSend} 
                 disabled={isLoading}
@@ -606,8 +609,8 @@ Decidam juntos, e deixem o destino se desenrolar...`,
             </div>
           </div>
 
-          {/* Coluna do chat do grupo e dados - só aparece se estiver em uma sala */}
-          {room && character && (
+          {/* Desktop: Coluna do chat do grupo e dados */}
+          {room && character && !isMobile && (
             <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4">
               <div className="flex-1 min-h-0">
                 <RoomChat roomId={room.id} characterName={character.name} />
@@ -624,6 +627,48 @@ Decidam juntos, e deixem o destino se desenrolar...`,
                   charisma: character.charisma
                 }}
               />
+            </div>
+          )}
+
+          {/* Mobile: Botões flutuantes para abrir chat e dados */}
+          {room && character && isMobile && (
+            <div className="fixed bottom-20 right-4 flex flex-col gap-2 z-50">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button size="icon" className="h-12 w-12 rounded-full shadow-lg bg-primary">
+                    <MessageSquare className="h-6 w-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[80vh]">
+                  <div className="h-full">
+                    <RoomChat roomId={room.id} characterName={character.name} />
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button size="icon" className="h-12 w-12 rounded-full shadow-lg bg-primary">
+                    <Dices className="h-6 w-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">
+                  <div className="py-4">
+                    <DicePanel 
+                      roomId={room.id}
+                      characterName={character.name}
+                      characterStats={{
+                        strength: character.strength,
+                        dexterity: character.dexterity,
+                        constitution: character.constitution,
+                        intelligence: character.intelligence,
+                        wisdom: character.wisdom,
+                        charisma: character.charisma
+                      }}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           )}
         </div>
