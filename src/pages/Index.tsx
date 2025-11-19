@@ -208,7 +208,12 @@ Diga-me, e deixe o destino se desenrolar...`,
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: contextualMessages }),
+        body: JSON.stringify({ 
+          messages: contextualMessages,
+          roomId: room?.id,
+          playerId: user?.id,
+          characterName: character?.name,
+        }),
       });
 
       if (!resp.ok) {

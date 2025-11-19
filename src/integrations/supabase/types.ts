@@ -412,6 +412,47 @@ export type Database = {
           },
         ]
       }
+      gm_messages: {
+        Row: {
+          character_name: string
+          content: string
+          created_at: string
+          id: string
+          player_id: string
+          room_id: string
+          sender: string
+          type: string
+        }
+        Insert: {
+          character_name: string
+          content: string
+          created_at?: string
+          id?: string
+          player_id: string
+          room_id: string
+          sender: string
+          type?: string
+        }
+        Update: {
+          character_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          room_id?: string
+          sender?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gm_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       npcs: {
         Row: {
           armor_class: number

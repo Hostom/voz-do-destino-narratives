@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,14 +111,20 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, roomId, playerId, characterName } = await req.json();
     console.log("Received messages:", messages?.length || 0);
+    console.log("Room ID:", roomId, "Player ID:", playerId, "Character:", characterName);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY is not configured");
       throw new Error("LOVABLE_API_KEY is not configured");
     }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     console.log("Calling Lovable AI Gateway...");
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -163,7 +170,76 @@ serve(async (req) => {
     }
 
     console.log("Streaming response from AI Gateway");
-    return new Response(response.body, {
+    
+    // Collect the full response to save to database
+    let fullResponse = "";
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    if (!reader) {
+      throw new Error("No response body");
+    }
+
+    // Create a custom stream that both passes through and collects the response
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              // Save the complete GM response to database
+              if (fullResponse && roomId && playerId) {
+                console.log("Saving GM response to database...");
+                const { error: insertError } = await supabase
+                  .from("gm_messages")
+                  .insert({
+                    room_id: roomId,
+                    player_id: playerId,
+                    sender: "GM",
+                    character_name: "Voz do Destino",
+                    content: fullResponse,
+                    type: "gm",
+                  });
+                
+                if (insertError) {
+                  console.error("Error saving GM message:", insertError);
+                } else {
+                  console.log("GM response saved successfully");
+                }
+              }
+              controller.close();
+              break;
+            }
+            
+            // Decode and collect the response
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  const content = data.choices?.[0]?.delta?.content;
+                  if (content) {
+                    fullResponse += content;
+                  }
+                } catch (e) {
+                  // Skip parsing errors
+                }
+              }
+            }
+            
+            // Pass through the chunk
+            controller.enqueue(value);
+          }
+        } catch (error) {
+          console.error("Stream error:", error);
+          controller.error(error);
+        }
+      },
+    });
+
+    return new Response(stream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {
