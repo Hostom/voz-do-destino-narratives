@@ -59,7 +59,7 @@ export const useRoom = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const createRoom = async () => {
+  const createRoom = async (characterId: string) => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -80,6 +80,17 @@ export const useRoom = () => {
         .single();
 
       if (roomError) throw roomError;
+
+      // Add GM as a player in the room
+      const { error: playerError } = await supabase
+        .from('room_players')
+        .insert({
+          room_id: roomData.id,
+          character_id: characterId,
+          user_id: user.id,
+        });
+
+      if (playerError) throw playerError;
 
       setRoom(roomData);
       toast({

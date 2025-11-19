@@ -248,9 +248,16 @@ Diga-me, e deixe o destino se desenrolar...`,
   };
 
   const handleCreateRoom = async () => {
-    const newRoom = await createRoom();
-    if (newRoom && character) {
-      await joinRoom(newRoom.room_code, character.id);
+    if (!character) {
+      toast({
+        title: "Erro",
+        description: "Você precisa ter um personagem selecionado para criar uma sala",
+        variant: "destructive",
+      });
+      return;
+    }
+    const newRoom = await createRoom(character.id);
+    if (newRoom) {
       setView('lobby');
     }
   };
