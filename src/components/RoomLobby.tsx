@@ -49,6 +49,7 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiat
   };
 
   const currentPlayer = players.find(p => p.user_id === currentUserId);
+  const gmPlayer = players.find(p => p.user_id === room.gm_id);
   const allReady = players.length > 0 && players.every(p => p.is_ready);
 
   return (
@@ -193,7 +194,7 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onRollInitiat
 
           {/* Ready and Initiative Buttons */}
           <div className="flex gap-4">
-            {!isGM && currentPlayer && (
+            {currentPlayer && (
               <Button 
                 onClick={onToggleReady}
                 variant={currentPlayer.is_ready ? "secondary" : "default"}
