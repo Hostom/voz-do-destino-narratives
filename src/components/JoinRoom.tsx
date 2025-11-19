@@ -3,16 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, ArrowRight } from "lucide-react";
+import { Users, ArrowRight, ArrowLeft } from "lucide-react";
 import { Character } from "@/hooks/useCharacter";
 
 interface JoinRoomProps {
   onJoinRoom: (roomCode: string, characterId: string) => void;
   loading: boolean;
   character: Character | null;
+  onBack?: () => void;
 }
 
-export const JoinRoom = ({ onJoinRoom, loading, character }: JoinRoomProps) => {
+export const JoinRoom = ({ onJoinRoom, loading, character, onBack }: JoinRoomProps) => {
   const [roomCode, setRoomCode] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -26,6 +27,17 @@ export const JoinRoom = ({ onJoinRoom, loading, character }: JoinRoomProps) => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-6">
       <Card className="w-full max-w-md bg-card/80 backdrop-blur border-primary/20">
         <CardHeader className="text-center">
+          {onBack && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onBack}
+              className="absolute top-4 left-4"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+          )}
           <div className="flex justify-center mb-4">
             <div className="p-4 rounded-full bg-primary/10">
               <Users className="w-12 h-12 text-primary" />

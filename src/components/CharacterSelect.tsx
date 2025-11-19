@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Scroll, Plus, Trash2, Sword, Shield, Heart } from "lucide-react";
+import { Scroll, Plus, Trash2, Sword, Shield, Heart, ArrowLeft } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,7 @@ interface CharacterSelectProps {
   onSelect: (character: Character) => void;
   onCreateNew: () => void;
   onCharactersUpdate: () => void;
+  onBack?: () => void;
 }
 
 const getRaceLabel = (race: string) => {
@@ -65,7 +66,7 @@ const getClassLabel = (className: string) => {
   return labels[className] || className;
 };
 
-export const CharacterSelect = ({ characters, onSelect, onCreateNew, onCharactersUpdate }: CharacterSelectProps) => {
+export const CharacterSelect = ({ characters, onSelect, onCreateNew, onCharactersUpdate, onBack }: CharacterSelectProps) => {
   const { toast } = useToast();
 
   const handleDelete = async (characterId: string, characterName: string) => {
@@ -96,6 +97,17 @@ export const CharacterSelect = ({ characters, onSelect, onCreateNew, onCharacter
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-5xl">
+        {onBack && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onBack}
+            className="mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao Menu
+          </Button>
+        )}
         <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3 flex items-center justify-center gap-3">
             <Scroll className="h-10 w-10 text-primary" />
