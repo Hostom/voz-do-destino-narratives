@@ -116,19 +116,19 @@ export const WeaponSelector = ({ characterId, currentWeapon, onWeaponChange }: W
 
   return (
     <Card className="bg-card/80 backdrop-blur border-primary/20">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Swords className="w-5 h-5" />
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg mb-2">
+          <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
           Arsenal de Armas D&D 5e
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-0">
         <Tabs defaultValue="simple_melee" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-auto">
-            <TabsTrigger value="simple_melee" className="text-xs sm:text-sm">Simples C/C</TabsTrigger>
-            <TabsTrigger value="simple_ranged" className="text-xs sm:text-sm">Simples Dist.</TabsTrigger>
-            <TabsTrigger value="martial_melee" className="text-xs sm:text-sm">Marcial C/C</TabsTrigger>
-            <TabsTrigger value="martial_ranged" className="text-xs sm:text-sm">Marcial Dist.</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 h-auto bg-muted/50 p-1">
+            <TabsTrigger value="simple_melee" className="text-xs whitespace-nowrap px-2">Simples C/C</TabsTrigger>
+            <TabsTrigger value="simple_ranged" className="text-xs whitespace-nowrap px-2">Simples Dist.</TabsTrigger>
+            <TabsTrigger value="martial_melee" className="text-xs whitespace-nowrap px-2">Marcial C/C</TabsTrigger>
+            <TabsTrigger value="martial_ranged" className="text-xs whitespace-nowrap px-2">Marcial Dist.</TabsTrigger>
           </TabsList>
 
           <TabsContent value="simple_melee" className="space-y-2 mt-4">
