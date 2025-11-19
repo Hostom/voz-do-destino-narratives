@@ -111,9 +111,9 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, roomId, playerId, characterName } = await req.json();
+    const { messages, roomId, characterName = 'Mestre do Jogo' } = await req.json();
     console.log("Received messages:", messages?.length || 0);
-    console.log("Room ID:", roomId, "Player ID:", playerId, "Character:", characterName);
+    console.log("Room ID:", roomId, "Character:", characterName);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -188,23 +188,32 @@ serve(async (req) => {
             const { done, value } = await reader.read();
             if (done) {
               // Save the complete GM response to database
-              if (fullResponse && roomId && playerId) {
+              if (fullResponse && roomId) {
                 console.log("Saving GM response to database...");
-                const { error: insertError } = await supabase
-                  .from("gm_messages")
-                  .insert({
-                    room_id: roomId,
-                    player_id: playerId,
-                    sender: "GM",
-                    character_name: "Voz do Destino",
-                    content: fullResponse,
-                    type: "gm",
-                  });
                 
-                if (insertError) {
-                  console.error("Error saving GM message:", insertError);
-                } else {
-                  console.log("GM response saved successfully");
+                // Get the GM user id from the room
+                const { data: room } = await supabase
+                  .from('rooms')
+                  .select('gm_id')
+                  .eq('id', roomId)
+                  .single();
+
+                if (room) {
+                  const { error: insertError } = await supabase
+                    .from("group_chat_messages")
+                    .insert({
+                      room_id: roomId,
+                      user_id: room.gm_id,
+                      character_name: characterName,
+                      message: fullResponse,
+                      is_narrative: true,
+                    });
+                  
+                  if (insertError) {
+                    console.error("Error saving GM message:", insertError);
+                  } else {
+                    console.log("GM response saved successfully");
+                  }
                 }
               }
               controller.close();
