@@ -10,6 +10,8 @@ import { GMPanel } from "@/components/GMPanel";
 import { GMPlayerViewer } from "@/components/GMPlayerViewer";
 import { GMCheckRequestPanel } from "@/components/GMCheckRequestPanel";
 import { AbilityCheckPanel } from "@/components/AbilityCheckPanel";
+import { TurnHistory } from "@/components/TurnHistory";
+import { useTurnNotification } from "@/hooks/useTurnNotification";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -90,6 +92,18 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
 
   // Calculate round number
   const roundNumber = Math.floor(room.current_turn / combatants.length) + 1;
+
+  // Get current turn character for notifications
+  const currentCombatant = combatants[room.current_turn];
+  const currentCharacterName = currentCombatant?.displayName || null;
+  const userCharacter = players.find(p => p.user_id === currentUserId)?.characters;
+
+  // Setup turn notifications
+  useTurnNotification({
+    isUserTurn: isCurrentUserTurn,
+    currentTurnCharacterName: currentCharacterName,
+    characterName: userCharacter?.name || "",
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 p-2 md:p-6">
@@ -244,6 +258,7 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
                   players={players}
                   isGM={isGM}
                 />
+                <TurnHistory roomId={room.id} />
                 <CombatLog roomId={room.id} />
               </div>
             </>
@@ -274,7 +289,8 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
                   isGM={isGM}
                 />
               </div>
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 space-y-6">
+                <TurnHistory roomId={room.id} />
                 <CombatLog roomId={room.id} />
               </div>
             </>

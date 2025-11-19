@@ -500,6 +500,7 @@ export type Database = {
           character_name: string
           created_at: string
           id: string
+          is_narrative: boolean | null
           message: string
           room_id: string
           user_id: string
@@ -508,6 +509,7 @@ export type Database = {
           character_name: string
           created_at?: string
           id?: string
+          is_narrative?: boolean | null
           message: string
           room_id: string
           user_id: string
@@ -516,6 +518,7 @@ export type Database = {
           character_name?: string
           created_at?: string
           id?: string
+          is_narrative?: boolean | null
           message?: string
           room_id?: string
           user_id?: string
