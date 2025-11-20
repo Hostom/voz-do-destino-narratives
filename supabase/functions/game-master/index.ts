@@ -127,25 +127,45 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Build message history from gm_messages if roomId is provided
-    // This ensures the AI has full context from the database (single source of truth)
+    // OPTIMIZATION: Limit context to last 30 messages to avoid token overflow
+    // and maintain better performance while preserving recent context
+    const MAX_CONTEXT_MESSAGES = 30;
+    
     let messageHistory: Array<{ role: "user" | "assistant" | "system"; content: string }> = [
       { role: "system", content: GAME_MASTER_PROMPT },
     ];
 
     if (roomId) {
+      console.log("Fetching conversation history for room:", roomId);
+      
+      // Fetch ONLY the most recent messages to optimize token usage
       const { data: gmMessages, error: gmError } = await supabase
         .from("gm_messages")
         .select("*")
         .eq("room_id", roomId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false }) // Get newest first
+        .limit(MAX_CONTEXT_MESSAGES);
 
-      if (!gmError && gmMessages) {
+      if (!gmError && gmMessages && gmMessages.length > 0) {
+        console.log(`Found ${gmMessages.length} messages, using last ${MAX_CONTEXT_MESSAGES} for context`);
+        
+        // Reverse to get chronological order (oldest to newest)
+        const recentMessages = gmMessages.reverse();
+        
+        // Add context note if we're at the limit
+        if (gmMessages.length >= MAX_CONTEXT_MESSAGES) {
+          messageHistory.push({
+            role: "system",
+            content: `[CONTEXTO RECENTE: As últimas ${MAX_CONTEXT_MESSAGES} mensagens da sessão. Mantenha consistência com eventos e decisões recentes mencionadas nestas mensagens.]`
+          });
+        }
+        
         // Convert gm_messages to chat format
-        gmMessages.forEach((msg) => {
+        recentMessages.forEach((msg) => {
           if (msg.sender === "player") {
             messageHistory.push({
               role: "user",
-              content: msg.content,
+              content: `[${msg.character_name}]: ${msg.content}`,
             });
           } else if (msg.sender === "GM") {
             messageHistory.push({
@@ -154,6 +174,8 @@ serve(async (req) => {
             });
           }
         });
+        
+        console.log("Context built with", messageHistory.length - 1, "messages (excluding system prompt)");
       }
     } else {
       // Fallback to client-provided messages if no roomId
