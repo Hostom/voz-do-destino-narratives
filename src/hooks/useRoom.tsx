@@ -51,6 +51,8 @@ export interface RoomPlayer {
     platinum_pieces: number;
     current_hit_dice: number;
     hit_dice: string;
+    experience_points: number;
+    experience_to_next_level: number;
   };
 }
 
@@ -222,7 +224,9 @@ export const useRoom = () => {
             gold_pieces,
             platinum_pieces,
             current_hit_dice,
-            hit_dice
+            hit_dice,
+            experience_points,
+            experience_to_next_level
           )
         `)
         .eq('room_id', roomId);
@@ -522,6 +526,19 @@ export const useRoom = () => {
         },
         (payload) => {
           setRoom(payload.new as Room);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'characters'
+        },
+        () => {
+          // Atualiza os players quando qualquer personagem for atualizado
+          // Isso garante que mudanças de XP sejam refletidas em tempo real
+          loadPlayers(room.id);
         }
       )
       .subscribe();
