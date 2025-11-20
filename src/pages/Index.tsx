@@ -123,17 +123,11 @@ const Index = () => {
           const { data: { session } } = await supabase.auth.getSession();
           const authToken = session?.access_token;
 
-          // First insert a trigger message for the AI
-          await supabase.from("gm_messages").insert({
-            room_id: room.id,
-            player_id: user.id,
-            sender: "player",
-            character_name: character.name,
-            content: "[INÍCIO DA SESSÃO] Olá, Voz do Destino! Estamos prontos para começar nossa aventura.",
-            type: "gm",
-          });
+          // Get character summary with items
+          const characterSheet = await getCharacterSummary();
 
           // Call AI to generate welcome with full character context
+          // The character sheet is sent as context, not saved as a message
           const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
             method: 'POST',
             headers: {
@@ -142,10 +136,14 @@ const Index = () => {
               'apikey': supabaseAnonKey,
             },
             body: JSON.stringify({
-              messages: [{ role: 'user', content: '[INÍCIO DA SESSÃO] Apresente-se e dê as boas-vindas ao grupo, mencionando brevemente os personagens presentes.' }],
+              messages: [{ 
+                role: 'user', 
+                content: `[INÍCIO DA SESSÃO]\n\nFicha do Personagem:\n${characterSheet}\n\nApresente-se como "Voz do Destino" e dê as boas-vindas ao jogador. Inicie a aventura criando uma cena introdutória envolvente baseada no personagem e sua história.` 
+              }],
               roomId: room.id,
               characterName: character.name,
-              characterId: character.id, // Pass character ID for tool calls
+              characterId: character.id,
+              isSessionStart: true, // Flag to indicate this is session start
             }),
           });
 
