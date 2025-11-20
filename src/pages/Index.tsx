@@ -666,7 +666,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
         />
 
         {showCharacterSheet && character && (
-          <div className="mx-4 mb-4 p-6 bg-card/95 backdrop-blur rounded-lg border border-primary/20 shadow-2xl animate-in slide-in-from-top duration-300">
+          <div className="mx-2 md:mx-4 mb-4 p-4 md:p-6 bg-card/95 backdrop-blur rounded-lg border border-primary/20 shadow-2xl animate-in slide-in-from-top duration-300 max-w-full overflow-x-hidden">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <BookOpen className="w-6 h-6" />
@@ -749,7 +749,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           </div>
         )}
 
-        <div className="flex-1 flex flex-col md:flex-row gap-2 md:gap-4 px-2 md:px-4 pb-2 md:pb-4 min-h-0">
+        <div className="flex-1 flex flex-col md:flex-row gap-2 md:gap-4 px-2 md:px-4 pb-2 md:pb-4 min-h-0 overflow-x-hidden">
           {/* Quando há sala: Chat principal (narrativa) + Chat social + Dados */}
           {room && character ? (
             <>
@@ -807,7 +807,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
               </div>
 
               {/* Coluna direita - Balões de ação e dados */}
-              <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4">
+              <div className="flex-1 min-w-[280px] max-w-[400px] flex flex-col gap-4">
                 {/* Balões de ação */}
                 <div className="bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-4 flex flex-col gap-3">
                   <Sheet>
@@ -954,7 +954,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
             </>
           ) : (
             /* Quando não há sala: Chat individual */
-            <div className="flex flex-col flex-1 min-h-0 bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-3 md:p-4">
+            <div className="flex flex-col flex-1 min-h-0 bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-3 md:p-4 max-w-full overflow-x-hidden">
               <div className="mb-2 md:mb-3">
                 <h3 className="text-base md:text-lg font-semibold flex items-center gap-2">
                   <Scroll className="w-4 h-4 md:w-5 md:h-5" />
@@ -1006,7 +1006,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           {/* Mobile: Chat principal (narrativa) + Botões flutuantes */}
           {room && character && isMobile && (
             <>
-              <div className="flex-1 min-h-0 flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg">
+              <div className="flex-1 min-h-0 flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg overflow-x-hidden max-w-full">
                 <div className="mb-2 px-3 pt-3">
                   <h3 className="text-base font-semibold flex items-center gap-2">
                     <Scroll className="w-4 h-4" />
