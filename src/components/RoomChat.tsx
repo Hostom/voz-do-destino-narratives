@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCollection } from "@/hooks/useCollection";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
-interface ChatMessage {
+interface GMMessage {
   id: string;
-  user_id: string;
+  player_id: string;
+  sender: "player" | "GM";
+  content: string;
   character_name: string;
-  message: string;
   created_at: string;
-  is_narrative?: boolean;
+  type: "gm";
 }
 
 interface TypingUser {
@@ -31,7 +33,6 @@ interface RoomChatProps {
 }
 
 export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, isGM = false }: RoomChatProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -42,6 +43,13 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
 
+  // Use gm_messages as single source of truth - shows all GM narrations and player messages
+  const { data: gmMessages, loading: messagesLoading } = useCollection<GMMessage>("gm_messages", {
+    roomId,
+    orderBy: "created_at",
+    ascending: true,
+  });
+
   const isMyTurn = initiativeOrder[currentTurn]?.character_name === characterName;
 
   const scrollToBottom = () => {
@@ -50,49 +58,13 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [gmMessages]);
 
-  // Carregar mensagens existentes do grupo
+  // Configurar presence para typing indicators
   useEffect(() => {
-    const loadMessages = async () => {
-      const { data, error } = await supabase
-        .from("room_chat_messages")
-        .select("*")
-        .eq("room_id", roomId)
-        .order("created_at", { ascending: true });
+    const channel = supabase.channel(`room-chat-presence:${roomId}`);
 
-      if (error) {
-        console.error("Error loading messages:", error);
-        return;
-      }
-
-      if (data) {
-        setMessages(data as unknown as ChatMessage[]);
-      }
-    };
-
-    loadMessages();
-  }, [roomId]);
-
-  // Configurar realtime para mensagens e presence para typing indicators
-  useEffect(() => {
-    const channel = supabase.channel(`room-chat:${roomId}`);
-
-    // Subscrever a novas mensagens
     channel
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "room_chat_messages",
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          console.log("Nova mensagem recebida em tempo real:", payload.new);
-          setMessages((prev) => [...prev, payload.new as ChatMessage]);
-        }
-      )
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         const typing: TypingUser[] = [];
@@ -100,7 +72,7 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
         Object.keys(state).forEach((key) => {
           const presences = state[key] as any[];
           presences.forEach((presence) => {
-            if (presence.typing && presence.user_id !== supabase.auth.getUser().then(u => u.data.user?.id)) {
+            if (presence.typing) {
               typing.push({
                 character_name: presence.character_name,
                 user_id: presence.user_id,
@@ -179,34 +151,62 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
       return;
     }
 
-    const { error } = await supabase.from("room_chat_messages").insert({
-      room_id: roomId,
-      user_id: user.id,
-      character_name: characterName,
-      message: newMessage.trim(),
-      is_narrative: isNarrative,
-    });
+    const messageContent = newMessage.trim();
+    setNewMessage("");
 
-    if (error) {
-      console.error("Error sending message:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível enviar a mensagem",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Se for narrativa do GM, apenas salvar sem chamar IA
+    if (isNarrative && isGM) {
+      const { error } = await supabase.from("gm_messages" as any).insert({
+        room_id: roomId,
+        player_id: user.id,
+        sender: "GM",
+        character_name: characterName,
+        content: messageContent,
+        type: "gm",
+      } as any);
 
-    // Se não for narrativa do GM, chamar a IA para narrar
-    if (!isNarrative || !isGM) {
+      if (error) {
+        console.error("Error sending GM narrative:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível enviar a mensagem",
+          variant: "destructive",
+        });
+        setNewMessage(messageContent);
+        return;
+      }
+    } else {
+      // Para mensagens de players, salvar em gm_messages primeiro
+      const { error: insertError } = await supabase.from("gm_messages" as any).insert({
+        room_id: roomId,
+        player_id: user.id,
+        sender: "player",
+        character_name: characterName,
+        content: messageContent,
+        type: "gm",
+      } as any);
+
+      if (insertError) {
+        console.error("Error sending player message:", insertError);
+        toast({
+          title: "Erro",
+          description: "Não foi possível enviar a mensagem",
+          variant: "destructive",
+        });
+        setNewMessage(messageContent);
+        return;
+      }
+
+      // Then trigger masterNarrate (server-side action)
+      // The server will save the GM response to gm_messages, maintaining context
       setIsAIResponding(true);
       try {
         await supabase.functions.invoke('game-master', {
-          body: { 
-            messages: [{ role: 'user', content: newMessage.trim() }],
+          body: {
+            messages: [{ role: 'user', content: messageContent }],
             roomId,
-            characterName: 'Mestre do Jogo'
-          }
+            characterName: characterName,
+          },
         });
       } catch (error) {
         console.error('Error calling game master:', error);
@@ -220,7 +220,6 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
       }
     }
 
-    setNewMessage("");
     setIsNarrative(false);
     setIsTyping(false);
     
@@ -236,13 +235,13 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
 
   return (
     <Card className="h-full flex flex-col bg-card/80 backdrop-blur border-primary/20">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex-shrink-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <MessageSquare className="w-5 h-5" />
-          Chat do Grupo (Social)
+          Aventura em Grupo
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          {isGM ? "Chat Principal - Narrativa da IA visível para todos" : "Chat Principal - Narrativa e ações dos jogadores"}
+          A IA Mestre narra a história - Todos os jogadores interagem aqui em tempo real
         </p>
         {initiativeOrder.length > 0 && (
           <div className="mt-2 text-sm">
@@ -252,23 +251,28 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
           </div>
         )}
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-3 p-4 overflow-hidden">
-        <ScrollArea className="flex-1 pr-4 h-[400px]">
+      <CardContent className="flex-1 flex flex-col gap-3 p-4 overflow-hidden min-h-0">
+        <ScrollArea className="flex-1 pr-4">
           <div className="space-y-3">
-            {messages.map((msg) => (
+            {messagesLoading && gmMessages.length === 0 && (
+              <div className="text-center text-muted-foreground text-sm py-4">
+                Carregando mensagens...
+              </div>
+            )}
+            {gmMessages.map((msg) => (
               <div
                 key={msg.id}
                 className={`rounded-lg p-3 animate-in slide-in-from-bottom-2 ${
-                  msg.is_narrative
+                  msg.sender === "GM"
                     ? "bg-gradient-to-r from-primary/20 to-accent/20 border-l-4 border-primary"
                     : "bg-secondary/50"
                 }`}
               >
                 <div className="flex items-baseline gap-2 mb-1">
-                  {msg.is_narrative && (
-                    <span className="text-xs font-bold text-primary">📜 NARRAÇÃO</span>
+                  {msg.sender === "GM" && (
+                    <span className="text-xs font-bold text-primary">🎭 MESTRE</span>
                   )}
-                  <span className={`font-semibold text-sm ${msg.is_narrative ? "text-primary" : "text-primary"}`}>
+                  <span className={`font-semibold text-sm ${msg.sender === "GM" ? "text-primary" : "text-foreground"}`}>
                     {msg.character_name}
                   </span>
                   <span className="text-xs text-muted-foreground">
@@ -278,8 +282,8 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
                     })}
                   </span>
                 </div>
-                <p className={`text-sm ${msg.is_narrative ? "font-medium text-foreground" : "text-foreground"}`}>
-                  {msg.message}
+                <p className={`text-sm ${msg.sender === "GM" ? "font-medium text-foreground" : "text-foreground"}`}>
+                  {msg.content}
                 </p>
               </div>
             ))}
@@ -317,9 +321,9 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
                 handleTyping();
               }}
               placeholder={
-                isGM
-                  ? (isNarrative ? "Escreva uma narração épica..." : "Digite sua mensagem para a IA...")
-                  : "Digite sua ação..."
+                isGM && isNarrative
+                  ? "Escreva uma narração épica..."
+                  : "Digite sua ação ou pergunta para o Mestre..."
               }
               className="flex-1"
             />
