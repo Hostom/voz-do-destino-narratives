@@ -103,32 +103,67 @@ const Index = () => {
   // Initialize welcome message when character is ready and room is active
   useEffect(() => {
     if (character && room && room.session_active && view === 'game' && gmMessages.length === 0 && !messagesLoading) {
-      // Create welcome message in database for all players to see
+      // Create AI-generated welcome message that has access to all character sheets
       const createWelcomeMessage = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !room) return;
 
-        const welcomeContent = `Bem-vindos, aventureiros!
+        console.log('Creating AI welcome message with character context...');
+        setIsLoading(true);
 
-Eu sou a Voz do Destino, seu mestre de jogo. Vejo que vocês estão reunidos para uma aventura épica.
+        // Call game-master to generate welcome with character context
+        try {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          
+          if (!supabaseUrl || !supabaseAnonKey) {
+            throw new Error('Supabase configuration missing');
+          }
 
-Que tipo de aventura desejam viver?
+          const { data: { session } } = await supabase.auth.getSession();
+          const authToken = session?.access_token;
 
-• Uma jornada de fantasia medieval repleta de magia e dragões?
-• Um mistério sombrio em uma cidade steampunk?
-• Uma exploração espacial em galáxias desconhecidas?
-• Ou preferem que eu crie algo único para o grupo?
+          // First insert a trigger message for the AI
+          await supabase.from("gm_messages").insert({
+            room_id: room.id,
+            player_id: user.id,
+            sender: "player",
+            character_name: character.name,
+            content: "[INÍCIO DA SESSÃO] Olá, Voz do Destino! Estamos prontos para começar nossa aventura.",
+            type: "gm",
+          });
 
-Decidam juntos, e deixem o destino se desenrolar...`;
+          // Call AI to generate welcome with full character context
+          const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken || supabaseAnonKey}`,
+              'apikey': supabaseAnonKey,
+            },
+            body: JSON.stringify({
+              messages: [{ role: 'user', content: '[INÍCIO DA SESSÃO] Apresente-se e dê as boas-vindas ao grupo, mencionando brevemente os personagens presentes.' }],
+              roomId: room.id,
+              characterName: character.name,
+            }),
+          });
 
-        await supabase.from("gm_messages" as any).insert({
-          room_id: room.id,
-          player_id: room.gm_id,
-          sender: "GM",
-          character_name: "Voz do Destino",
-          content: welcomeContent,
-          type: "gm",
-        } as any);
+          if (response.ok) {
+            // Consume the stream
+            const reader = response.body?.getReader();
+            if (reader) {
+              while (true) {
+                const { done } = await reader.read();
+                if (done) break;
+              }
+            }
+            console.log('AI welcome message generated successfully');
+          }
+        } catch (error) {
+          console.error('Error generating welcome message:', error);
+        } finally {
+          setIsLoading(false);
+        }
       };
 
       createWelcomeMessage();
