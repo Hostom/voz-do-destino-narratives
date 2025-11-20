@@ -236,7 +236,7 @@ serve(async (req) => {
                       room_id: roomId,
                       player_id: room.gm_id,
                       sender: "GM",
-                      character_name: characterName || "Mestre do Jogo",
+                      character_name: "Voz do Destino",
                       content: fullResponse,
                       type: "gm",
                     });
