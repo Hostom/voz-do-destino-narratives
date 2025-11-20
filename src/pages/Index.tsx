@@ -14,6 +14,7 @@ import { RoomLobby } from "@/components/RoomLobby";
 import { RoomHistory } from "@/components/RoomHistory";
 import { CombatView } from "@/components/CombatView";
 import { ActionRoundPanel } from "@/components/ActionRoundPanel";
+import { RealtimeReactions } from "@/components/RealtimeReactions";
 import { useCharacter, Character } from "@/hooks/useCharacter";
 import { useRoom } from "@/hooks/useRoom";
 import { Button } from "@/components/ui/button";
@@ -965,6 +966,15 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                     <div ref={messagesEndRef} />
                   </div>
                   <div className="pt-2 md:pt-4 mt-4 border-t border-border/50 space-y-3">
+                    {/* Realtime Reactions */}
+                    {room && character && user && (
+                      <RealtimeReactions
+                        roomId={room.id}
+                        characterName={character.name}
+                        userId={user.id}
+                      />
+                    )}
+                    
                     {/* Action Round Panel */}
                     {room && character && (
                       <ActionRoundPanel
@@ -1189,6 +1199,15 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
               </div>
 
               <div className="pt-2 md:pt-4 mt-2 md:mt-4 border-t border-border/50 shrink-0 space-y-3">
+                {/* Realtime Reactions */}
+                {room && character && user && (
+                  <RealtimeReactions
+                    roomId={room.id}
+                    characterName={character.name}
+                    userId={user.id}
+                  />
+                )}
+                
                 {/* Action Round Panel */}
                 {room && character && (
                   <ActionRoundPanel
@@ -1270,6 +1289,15 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
               
               {/* Input fixo na parte inferior */}
               <div className="shrink-0 space-y-3">
+                {/* Realtime Reactions */}
+                {room && character && user && (
+                  <RealtimeReactions
+                    roomId={room.id}
+                    characterName={character.name}
+                    userId={user.id}
+                  />
+                )}
+                
                 {/* Action Round Panel */}
                 {room && character && (
                   <ActionRoundPanel

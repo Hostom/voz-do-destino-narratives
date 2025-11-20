@@ -628,6 +628,50 @@ export type Database = {
           },
         ]
       }
+      player_reactions: {
+        Row: {
+          character_name: string
+          created_at: string
+          expires_at: string
+          id: string
+          player_id: string
+          reaction_content: string
+          reaction_type: string
+          room_id: string
+          target_message_id: string | null
+        }
+        Insert: {
+          character_name: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          player_id: string
+          reaction_content: string
+          reaction_type: string
+          room_id: string
+          target_message_id?: string | null
+        }
+        Update: {
+          character_name?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          player_id?: string
+          reaction_content?: string
+          reaction_type?: string
+          room_id?: string
+          target_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_reactions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_chat_messages: {
         Row: {
           character_name: string
@@ -794,6 +838,7 @@ export type Database = {
     }
     Functions: {
       calculate_modifier: { Args: { ability_score: number }; Returns: number }
+      cleanup_expired_reactions: { Args: never; Returns: undefined }
       generate_room_code: { Args: never; Returns: string }
       user_is_in_room: {
         Args: { room_uuid: string; user_uuid: string }
