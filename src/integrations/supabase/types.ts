@@ -99,6 +99,50 @@ export type Database = {
           },
         ]
       }
+      action_rounds: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          prompt: string
+          room_id: string
+          round_number: number
+          use_initiative_order: boolean
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          prompt: string
+          room_id: string
+          round_number?: number
+          use_initiative_order?: boolean
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          prompt?: string
+          room_id?: string
+          round_number?: number
+          use_initiative_order?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_rounds_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       character_items: {
         Row: {
           character_id: string
@@ -535,6 +579,51 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_actions: {
+        Row: {
+          action_round_id: string
+          action_text: string
+          character_id: string
+          id: string
+          initiative: number | null
+          player_id: string
+          submitted_at: string
+        }
+        Insert: {
+          action_round_id: string
+          action_text: string
+          character_id: string
+          id?: string
+          initiative?: number | null
+          player_id: string
+          submitted_at?: string
+        }
+        Update: {
+          action_round_id?: string
+          action_text?: string
+          character_id?: string
+          id?: string
+          initiative?: number | null
+          player_id?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_actions_action_round_id_fkey"
+            columns: ["action_round_id"]
+            isOneToOne: false
+            referencedRelation: "action_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_actions_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
             referencedColumns: ["id"]
           },
         ]
