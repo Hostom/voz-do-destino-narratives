@@ -661,60 +661,78 @@ const Index = () => {
           {/* Quando há sala: Chat principal (narrativa) + Chat social + Dados */}
           {room && character ? (
             <>
-          {/* Desktop: Layout com chat principal, chat social e dados */}
+          {/* Desktop: Layout com chat principal e dados */}
           {!isMobile && (
             <>
               {/* Coluna principal - Narrativa da IA */}
-              <div className="flex-1 md:flex-[2] min-h-0">
-                <div className="h-full flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-4">
-                  <div className="mb-3">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Scroll className="w-5 h-5" />
-                      Aventura - Narração do Mestre
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      A IA Mestre narra a história - Interaja aqui para avançar a aventura
-                    </p>
-                  </div>
-            <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 pr-2 min-h-0">
-              {messagesLoading && gmMessages.length === 0 && (
-                <div className="flex justify-center py-8">
-                  <div className="text-muted-foreground text-sm">
-                    Carregando mensagens...
+              <div className="flex-1 md:flex-[2] min-h-0 flex flex-col gap-4">
+                <div className="flex-1 min-h-0">
+                  <div className="h-full flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-4">
+                    <div className="mb-3">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Scroll className="w-5 h-5" />
+                        Aventura - Narração do Mestre
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        A IA Mestre narra a história - Interaja aqui para avançar a aventura
+                      </p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 pr-2 min-h-0">
+                      {messagesLoading && gmMessages.length === 0 && (
+                        <div className="flex justify-center py-8">
+                          <div className="text-muted-foreground text-sm">
+                            Carregando mensagens...
+                          </div>
+                        </div>
+                      )}
+                      {gmMessages.map((msg, idx) => (
+                        <NarrativeMessage
+                          key={msg.id}
+                          role={msg.sender === "GM" ? "assistant" : "user"}
+                          content={msg.content ?? msg.message ?? ""}
+                          characterName={msg.sender === "player" ? msg.character_name : undefined}
+                          onSpeak={(content) => {
+                            setCurrentSpeakingIndex(idx);
+                          }}
+                          isSpeaking={currentSpeakingIndex === idx}
+                        />
+                      ))}
+                      {isLoading && (
+                        <div className="flex justify-center">
+                          <div className="animate-pulse text-muted-foreground text-sm">
+                            A Voz do Destino está narrando...
+                          </div>
+                        </div>
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
+                    <div className="pt-2 md:pt-4 mt-4 border-t border-border/50">
+                      <ChatInput 
+                        onSend={handleSend} 
+                        disabled={isLoading}
+                      />
+                    </div>
                   </div>
                 </div>
-              )}
-              {gmMessages.map((msg, idx) => (
-                <NarrativeMessage
-                  key={msg.id}
-                  role={msg.sender === "GM" ? "assistant" : "user"}
-                  content={msg.content ?? msg.message ?? ""}
-                  characterName={msg.sender === "player" ? msg.character_name : undefined}
-                  onSpeak={(content) => {
-                    setCurrentSpeakingIndex(idx);
-                  }}
-                  isSpeaking={currentSpeakingIndex === idx}
-                />
-              ))}
-              {isLoading && (
-                <div className="flex justify-center">
-                  <div className="animate-pulse text-muted-foreground text-sm">
-                    A Voz do Destino está narrando...
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-                  <div className="pt-2 md:pt-4 mt-4 border-t border-border/50">
-              <ChatInput 
-                onSend={handleSend} 
-                disabled={isLoading}
-              />
-                  </div>
-            </div>
-          </div>
 
-              {/* Botões flutuantes para desktop */}
+                {/* Painel de Dados sempre visível */}
+                <div className="max-h-[300px]">
+                  <DicePanel 
+                    roomId={room.id}
+                    characterName={character.name}
+                    characterStats={{
+                      strength: character.strength,
+                      dexterity: character.dexterity,
+                      constitution: character.constitution,
+                      intelligence: character.intelligence,
+                      wisdom: character.wisdom,
+                      charisma: character.charisma
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Botões flutuantes para desktop (Chat Social, Inventário e Ficha) */}
               <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
                 {/* Chat Social */}
                 <Sheet>
@@ -877,36 +895,6 @@ const Index = () => {
                     </div>
                   </SheetContent>
                 </Sheet>
-
-                {/* Dados */}
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button 
-                      size="icon" 
-                      className="h-14 w-14 rounded-full shadow-lg bg-primary/80 hover:scale-110 transition-transform"
-                      title="Rolar Dados"
-                    >
-                      <Dices className="h-6 w-6" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-full sm:w-[400px] h-full">
-                    <div className="h-full">
-                      <h2 className="text-xl font-semibold mb-4">Rolar Dados</h2>
-                      <DicePanel 
-                        roomId={room.id}
-                        characterName={character.name}
-                        characterStats={{
-                          strength: character.strength,
-                          dexterity: character.dexterity,
-                          constitution: character.constitution,
-                          intelligence: character.intelligence,
-                          wisdom: character.wisdom,
-                          charisma: character.charisma
-                        }}
-                      />
-                    </div>
-                  </SheetContent>
-                </Sheet>
               </div>
                 </>
               )}
@@ -953,57 +941,76 @@ const Index = () => {
             </div>
           )}
 
-          {/* Mobile: Chat principal (narrativa) + Botão para chat social */}
+          {/* Mobile: Chat principal (narrativa) + Dados + Botões flutuantes */}
           {room && character && isMobile && (
             <>
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="mb-3 px-2">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Scroll className="w-5 h-5" />
-                    Aventura - Narração do Mestre
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    A IA Mestre narra a história - Interaja aqui para avançar a aventura
-                  </p>
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 px-2 min-h-0">
-                  {messagesLoading && gmMessages.length === 0 && (
-                    <div className="flex justify-center py-8">
-                      <div className="text-muted-foreground text-sm">
-                        Carregando mensagens...
+              <div className="flex-1 min-h-0 flex flex-col gap-4">
+                {/* Narrativa */}
+                <div className="flex-1 min-h-0">
+                  <div className="mb-3 px-2">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Scroll className="w-5 h-5" />
+                      Aventura - Narração do Mestre
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      A IA Mestre narra a história - Interaja aqui para avançar a aventura
+                    </p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 px-2 min-h-0">
+                    {messagesLoading && gmMessages.length === 0 && (
+                      <div className="flex justify-center py-8">
+                        <div className="text-muted-foreground text-sm">
+                          Carregando mensagens...
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {gmMessages.map((msg, idx) => (
-                    <NarrativeMessage
-                      key={msg.id}
-                      role={msg.sender === "GM" ? "assistant" : "user"}
-                      content={msg.content ?? msg.message ?? ""}
-                      characterName={msg.sender === "player" ? msg.character_name : undefined}
-                      onSpeak={(content) => {
-                        setCurrentSpeakingIndex(idx);
-                      }}
-                      isSpeaking={currentSpeakingIndex === idx}
+                    )}
+                    {gmMessages.map((msg, idx) => (
+                      <NarrativeMessage
+                        key={msg.id}
+                        role={msg.sender === "GM" ? "assistant" : "user"}
+                        content={msg.content ?? msg.message ?? ""}
+                        characterName={msg.sender === "player" ? msg.character_name : undefined}
+                        onSpeak={(content) => {
+                          setCurrentSpeakingIndex(idx);
+                        }}
+                        isSpeaking={currentSpeakingIndex === idx}
+                      />
+                    ))}
+                    {isLoading && (
+                      <div className="flex justify-center">
+                        <div className="animate-pulse text-muted-foreground text-sm">
+                          A Voz do Destino está narrando...
+                        </div>
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+                  <div className="pt-2 md:pt-4 mt-4 border-t border-border/50 px-2">
+                    <ChatInput 
+                      onSend={handleSend} 
+                      disabled={isLoading}
                     />
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-center">
-                      <div className="animate-pulse text-muted-foreground text-sm">
-                        A Voz do Destino está narrando...
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
+                  </div>
                 </div>
-                <div className="pt-2 md:pt-4 mt-4 border-t border-border/50 px-2">
-                  <ChatInput 
-                    onSend={handleSend} 
-                    disabled={isLoading}
+
+                {/* Painel de Dados sempre visível no mobile */}
+                <div className="px-2">
+                  <DicePanel 
+                    roomId={room.id}
+                    characterName={character.name}
+                    characterStats={{
+                      strength: character.strength,
+                      dexterity: character.dexterity,
+                      constitution: character.constitution,
+                      intelligence: character.intelligence,
+                      wisdom: character.wisdom,
+                      charisma: character.charisma
+                    }}
                   />
                 </div>
               </div>
               
-              {/* Botões flutuantes para mobile */}
+              {/* Botões flutuantes para mobile (Chat Social, Inventário e Ficha) */}
               <div className="fixed bottom-20 right-4 z-50 flex flex-col gap-3">
                 {/* Chat Social */}
                 <Sheet>
@@ -1167,37 +1174,6 @@ const Index = () => {
                   </SheetContent>
                 </Sheet>
 
-                {/* Dados */}
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button 
-                      size="icon" 
-                      className="h-12 w-12 rounded-full shadow-lg bg-primary/80 hover:scale-110 transition-transform"
-                      title="Rolar Dados"
-                    >
-                      <Dices className="h-6 w-6" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="bottom" className="h-[85vh] rounded-t-xl">
-                    <div className="h-full flex flex-col">
-                      <h2 className="text-xl font-semibold mb-4">Rolar Dados</h2>
-                      <div className="flex-1 overflow-y-auto">
-                        <DicePanel 
-                          roomId={room.id}
-                          characterName={character.name}
-                          characterStats={{
-                            strength: character.strength,
-                            dexterity: character.dexterity,
-                            constitution: character.constitution,
-                            intelligence: character.intelligence,
-                            wisdom: character.wisdom,
-                            charisma: character.charisma
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </SheetContent>
-                </Sheet>
               </div>
             </>
           )}
