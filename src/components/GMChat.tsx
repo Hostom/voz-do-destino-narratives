@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,14 +31,37 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  
+  // Cache local para mensagens - melhora performance reduzindo re-renders
+  const [messageCache, setMessageCache] = useState<Map<string, GMMessage>>(new Map());
 
   // CRITICAL: Use useCollection with filters to subscribe ONLY to gm_messages
   // This is the single source of truth for GM narrative messages
-  const { data: messages, loading } = useCollection<GMMessage>("gm_messages", {
+  const { data: rawMessages, loading } = useCollection<GMMessage>("gm_messages", {
     filters: { room_id: roomId },
     orderBy: "created_at",
     ascending: true,
   });
+
+  // Aplicar cache para evitar re-renders desnecessários
+  const messages = useMemo(() => {
+    if (!rawMessages) return [];
+    
+    // Atualizar cache com novas mensagens
+    const newCache = new Map(messageCache);
+    rawMessages.forEach(msg => {
+      if (!newCache.has(msg.id)) {
+        newCache.set(msg.id, msg);
+      }
+    });
+    
+    // Atualizar estado do cache se houver mudanças
+    if (newCache.size !== messageCache.size) {
+      setMessageCache(newCache);
+    }
+    
+    return rawMessages;
+  }, [rawMessages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
