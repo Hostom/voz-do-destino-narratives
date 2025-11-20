@@ -17,6 +17,8 @@ interface GroupMessage {
   created_at: string;
   is_narrative?: boolean | null;
   room_id: string;
+  sender?: "player" | "GM" | string;
+  type?: "gm" | string;
 }
 
 interface TypingUser {
@@ -50,14 +52,14 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
   });
 
   // CRITICAL: Filter at render level to ensure NO GM messages appear
-  // Block ANY message that is narrative OR has sender === "GM"
+  // Block messages based on multiple criteria to catch all GM messages
   const messages = allMessages.filter((msg) => {
-    // Block narrative messages
-    if (msg.is_narrative === true) {
-      return false;
-    }
-    // Additional safety: block if message contains GM indicators
-    // This is a defensive filter in case backend logic changes
+    // Block if sender is GM
+    if (msg.sender === "GM") return false;
+    // Block if type is gm
+    if (msg.type === "gm") return false;
+    // Block if is_narrative is true (fallback)
+    if (msg.is_narrative === true) return false;
     return true;
   });
 
@@ -231,9 +233,9 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
               </div>
             )}
             {messages.map((msg) => {
-              // CRITICAL: Double-check at render level - block ANY narrative message
-              if (msg.is_narrative === true) {
-                console.warn("Blocked narrative message at render level:", msg);
+              // CRITICAL: Double-check at render level - block ANY GM message
+              if (msg.sender === "GM" || msg.type === "gm" || msg.is_narrative === true) {
+                console.warn("Blocked GM message at render level:", msg);
                 return null;
               }
               
