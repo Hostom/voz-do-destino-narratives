@@ -460,22 +460,73 @@ Decidam juntos, e deixem o destino se desenrolar...`;
         )}
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 px-2 md:px-4 pb-4 overflow-hidden">
-          {/* Quando há sala: RoomChat é o principal, quando não há: chat individual */}
+          {/* Quando há sala: Chat principal (narrativa) + Chat social + Dados */}
           {room && character ? (
             <>
-              {/* Desktop: Chat principal do grupo (RoomChat) + Dados */}
+              {/* Desktop: Layout com chat principal, chat social e dados */}
               {!isMobile && (
                 <>
-                  <div className="flex-1 md:flex-[3] min-h-0">
-                    <RoomChat 
-                      roomId={room.id} 
-                      characterName={character.name}
-                      currentTurn={room.current_turn ?? 0}
-                      initiativeOrder={(room.initiative_order as any[]) || []}
-                      isGM={room.gm_id === user?.id}
-                    />
+                  {/* Coluna principal - Narrativa da IA */}
+                  <div className="flex-1 md:flex-[2] min-h-0">
+                    <div className="h-full flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-4">
+                      <div className="mb-3">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                          <Scroll className="w-5 h-5" />
+                          Aventura - Narração do Mestre
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          A IA Mestre narra a história - Interaja aqui para avançar a aventura
+                        </p>
+                      </div>
+                      <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 pr-2 min-h-0">
+                        {messagesLoading && gmMessages.length === 0 && (
+                          <div className="flex justify-center py-8">
+                            <div className="text-muted-foreground text-sm">
+                              Carregando mensagens...
+                            </div>
+                          </div>
+                        )}
+                        {gmMessages.map((msg, idx) => (
+                          <NarrativeMessage
+                            key={msg.id}
+                            role={msg.sender === "GM" ? "assistant" : "user"}
+                            content={msg.content}
+                            characterName={msg.sender === "player" ? msg.character_name : undefined}
+                            onSpeak={(content) => {
+                              setCurrentSpeakingIndex(idx);
+                            }}
+                            isSpeaking={currentSpeakingIndex === idx}
+                          />
+                        ))}
+                        {isLoading && (
+                          <div className="flex justify-center">
+                            <div className="animate-pulse text-muted-foreground text-sm">
+                              A Voz do Destino está narrando...
+                            </div>
+                          </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                      </div>
+                      <div className="pt-2 md:pt-4 mt-4 border-t border-border/50">
+                        <ChatInput 
+                          onSend={handleSend} 
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </div>
                   </div>
+                  
+                  {/* Coluna direita - Chat social e dados */}
                   <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4">
+                    <div className="flex-1 min-h-0">
+                      <RoomChat 
+                        roomId={room.id} 
+                        characterName={character.name}
+                        currentTurn={room.current_turn ?? 0}
+                        initiativeOrder={(room.initiative_order as any[]) || []}
+                        isGM={room.gm_id === user?.id}
+                      />
+                    </div>
                     <DicePanel 
                       roomId={room.id}
                       characterName={character.name}
@@ -534,16 +585,53 @@ Decidam juntos, e deixem o destino se desenrolar...`;
             </div>
           )}
 
-          {/* Mobile: Chat principal do grupo em tela cheia */}
+          {/* Mobile: Chat principal (narrativa) em tela cheia */}
           {room && character && isMobile && (
-            <div className="flex-1 min-h-0">
-              <RoomChat 
-                roomId={room.id} 
-                characterName={character.name}
-                currentTurn={room.current_turn ?? 0}
-                initiativeOrder={(room.initiative_order as any[]) || []}
-                isGM={room.gm_id === user?.id}
-              />
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="mb-3 px-2">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Scroll className="w-5 h-5" />
+                  Aventura - Narração do Mestre
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  A IA Mestre narra a história - Interaja aqui para avançar a aventura
+                </p>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 px-2 min-h-0">
+                {messagesLoading && gmMessages.length === 0 && (
+                  <div className="flex justify-center py-8">
+                    <div className="text-muted-foreground text-sm">
+                      Carregando mensagens...
+                    </div>
+                  </div>
+                )}
+                {gmMessages.map((msg, idx) => (
+                  <NarrativeMessage
+                    key={msg.id}
+                    role={msg.sender === "GM" ? "assistant" : "user"}
+                    content={msg.content}
+                    characterName={msg.sender === "player" ? msg.character_name : undefined}
+                    onSpeak={(content) => {
+                      setCurrentSpeakingIndex(idx);
+                    }}
+                    isSpeaking={currentSpeakingIndex === idx}
+                  />
+                ))}
+                {isLoading && (
+                  <div className="flex justify-center">
+                    <div className="animate-pulse text-muted-foreground text-sm">
+                      A Voz do Destino está narrando...
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+              <div className="pt-2 md:pt-4 mt-4 border-t border-border/50 px-2">
+                <ChatInput 
+                  onSend={handleSend} 
+                  disabled={isLoading}
+                />
+              </div>
             </div>
           )}
         </div>
