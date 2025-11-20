@@ -53,6 +53,7 @@ export interface RoomPlayer {
     hit_dice: string;
     experience_points: number;
     experience_to_next_level: number;
+    inspiration: boolean;
   };
 }
 
@@ -226,7 +227,8 @@ export const useRoom = () => {
             current_hit_dice,
             hit_dice,
             experience_points,
-            experience_to_next_level
+            experience_to_next_level,
+            inspiration
           )
         `)
         .eq('room_id', roomId);

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Dices, TrendingUp, TrendingDown } from "lucide-react";
+import { Dices, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Character {
@@ -19,6 +19,7 @@ interface Character {
   charisma: number;
   proficiency_bonus: number;
   saving_throws: any;
+  inspiration: boolean;
 }
 
 interface CheckRequest {
@@ -38,6 +39,7 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
   const [checkType, setCheckType] = useState<"ability" | "saving_throw">("ability");
   const [ability, setAbility] = useState<string>("strength");
   const [rollMode, setRollMode] = useState<"normal" | "advantage" | "disadvantage">("normal");
+  const [useInspiration, setUseInspiration] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<CheckRequest[]>([]);
   const { toast } = useToast();
 
@@ -108,6 +110,10 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
     const finalAbility = requestedAbility || ability;
     const finalCheckType = requestedType || checkType;
     
+    // Check if using inspiration
+    const shouldUseInspiration = useInspiration && character.inspiration;
+    const finalRollMode = shouldUseInspiration ? "advantage" : rollMode;
+    
     const abilityScore = character[finalAbility as keyof Character] as number;
     let modifier = calculateModifier(abilityScore);
 
@@ -117,12 +123,12 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
     }
 
     let roll1 = rollDice(20);
-    let roll2 = rollMode !== "normal" ? rollDice(20) : roll1;
+    let roll2 = finalRollMode !== "normal" ? rollDice(20) : roll1;
     let finalRoll: number;
 
-    if (rollMode === "advantage") {
+    if (finalRollMode === "advantage") {
       finalRoll = Math.max(roll1, roll2);
-    } else if (rollMode === "disadvantage") {
+    } else if (finalRollMode === "disadvantage") {
       finalRoll = Math.min(roll1, roll2);
     } else {
       finalRoll = roll1;
@@ -130,6 +136,19 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
 
     const total = finalRoll + modifier;
     const success = dc ? total >= dc : undefined;
+
+    // Consume inspiration if used
+    if (shouldUseInspiration) {
+      await supabase
+        .from('characters')
+        .update({ inspiration: false })
+        .eq('id', character.id);
+        
+      toast({
+        title: "✨ Inspiração Usada!",
+        description: "Você ganhou vantagem neste teste",
+      });
+    }
 
     const { error } = await supabase
       .from('ability_checks')
@@ -143,8 +162,8 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
         roll_result: finalRoll,
         modifier,
         total,
-        advantage: rollMode === "advantage",
-        disadvantage: rollMode === "disadvantage",
+        advantage: finalRollMode === "advantage",
+        disadvantage: finalRollMode === "disadvantage",
         success,
         requested_by_gm: !!requestId,
       });
@@ -174,6 +193,9 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
       title: `${checkTypeLabels[finalCheckType as keyof typeof checkTypeLabels]} - ${abilityLabels[finalAbility]}`,
       description: `🎲 Rolagem: ${finalRoll} + ${modifier} = ${total}\n${resultText}`,
     });
+    
+    // Reset inspiration flag
+    setUseInspiration(false);
 
     // Envia resultado para o chat do GM E notifica os jogadores
     const { data: { user } } = await supabase.auth.getUser();
@@ -341,6 +363,24 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
               </Button>
             </div>
           </div>
+
+          {/* Inspiration Toggle */}
+          {character.inspiration && (
+            <div className="flex items-center gap-2 p-3 bg-accent/10 border border-accent/30 rounded-lg">
+              <input
+                type="checkbox"
+                id="use-inspiration"
+                checked={useInspiration}
+                onChange={(e) => setUseInspiration(e.target.checked)}
+                className="w-4 h-4"
+                disabled={rollMode === "advantage"}
+              />
+              <label htmlFor="use-inspiration" className="text-sm flex items-center gap-1 cursor-pointer">
+                <Sparkles className="h-4 w-4 text-accent" />
+                Usar Inspiração (ganha vantagem)
+              </label>
+            </div>
+          )}
 
           <Button onClick={() => makeCheck()} className="w-full" size="lg">
             <Dices className="h-4 w-4 mr-2" />
