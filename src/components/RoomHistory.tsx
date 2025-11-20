@@ -44,10 +44,13 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
   const { toast } = useToast();
 
   useEffect(() => {
-    loadCurrentUser();
-    if (character) {
-      loadSavedRooms();
-    }
+    const init = async () => {
+      await loadCurrentUser();
+      if (character) {
+        await loadSavedRooms();
+      }
+    };
+    init();
   }, [character]);
 
   const loadCurrentUser = async () => {
@@ -205,9 +208,10 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
     }
   };
 
-  const hasSelectableRooms = savedRooms.some(canDeleteRoom);
+  const selectableRooms = savedRooms.filter(canDeleteRoom);
+  const hasSelectableRooms = currentUserId && selectableRooms.length > 0;
   const allSelectableSelected = hasSelectableRooms && 
-    selectedRooms.size === savedRooms.filter(canDeleteRoom).length;
+    selectedRooms.size === selectableRooms.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-3 md:p-6 overflow-x-hidden landscape:p-2 landscape:items-start landscape:pt-4">
