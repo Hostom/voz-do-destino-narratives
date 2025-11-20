@@ -13,8 +13,6 @@ import { JoinRoom } from "@/components/JoinRoom";
 import { RoomLobby } from "@/components/RoomLobby";
 import { RoomHistory } from "@/components/RoomHistory";
 import { CombatView } from "@/components/CombatView";
-import { ActionRoundPanel } from "@/components/ActionRoundPanel";
-import { RealtimeReactions } from "@/components/RealtimeReactions";
 import { useCharacter, Character } from "@/hooks/useCharacter";
 import { useRoom } from "@/hooks/useRoom";
 import { Button } from "@/components/ui/button";
@@ -49,7 +47,6 @@ const Index = () => {
   const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
   const [view, setView] = useState<'menu' | 'create' | 'join' | 'history' | 'lobby' | 'combat' | 'game'>('menu');
   const [isGM, setIsGM] = useState(false);
-  const [requestingActions, setRequestingActions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, startSession, refreshPlayers } = useRoom();
   const { toast } = useToast();
@@ -476,98 +473,6 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
     loadCharactersData();
   };
 
-  // Solicitar ações de todos os jogadores
-  const handleRequestActions = async (prompt: string) => {
-    if (!room || !user || !isGM) return;
-
-    setRequestingActions(true);
-
-    try {
-      // Contar rodadas existentes
-      const { count } = await supabase
-        .from('action_rounds')
-        .select('*', { count: 'exact', head: true })
-        .eq('room_id', room.id);
-
-      const { error } = await supabase
-        .from('action_rounds')
-        .insert({
-          room_id: room.id,
-          created_by: user.id,
-          prompt,
-          round_number: (count || 0) + 1,
-          use_initiative_order: room.combat_active || false
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Ações Solicitadas",
-        description: "Aguardando todos os jogadores responderem...",
-      });
-    } catch (error) {
-      console.error('Error requesting actions:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível solicitar ações",
-        variant: "destructive",
-      });
-    } finally {
-      setRequestingActions(false);
-    }
-  };
-
-  // Processar ações quando todos responderem
-  const handleActionsComplete = async (actions: any[]) => {
-    if (!room || !character || !isGM) return;
-
-    // Ordenar ações por iniciativa se estiver usando ordem de iniciativa
-    const sortedActions = [...actions].sort((a, b) => {
-      const initiativeA = a.initiative || 0;
-      const initiativeB = b.initiative || 0;
-      return initiativeB - initiativeA;
-    });
-
-    // Criar resumo das ações para enviar ao GM
-    let actionsContext = '=== AÇÕES DOS JOGADORES (EM ORDEM DE INICIATIVA) ===\n\n';
-    
-    for (const action of sortedActions) {
-      const player = players.find(p => p.character_id === action.character_id);
-      const characterName = player?.characters?.name || 'Desconhecido';
-      const initiative = action.initiative !== null ? `(Iniciativa: ${action.initiative})` : '';
-      
-      actionsContext += `🎭 ${characterName} ${initiative}\n`;
-      actionsContext += `Ação: ${action.action_text}\n\n`;
-    }
-
-    actionsContext += '\nIMPORTANTE: Narre a resolução destas ações na ordem de iniciativa apresentada acima. ';
-    actionsContext += 'Integre ações que sejam conjuntas ou complementares. ';
-    actionsContext += 'Considere como ações de personagens mais lentos podem ser afetadas por ações de personagens mais rápidos.';
-
-    // Enviar para o GM processar
-    const message = `[RODADA DE AÇÕES]\n\n${actionsContext}`;
-    await handleSend(message);
-
-    // Marcar rodada como completa
-    const { data: activeRounds } = await supabase
-      .from('action_rounds')
-      .select('id')
-      .eq('room_id', room.id)
-      .eq('completed', false)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (activeRounds && activeRounds.length > 0) {
-      await supabase
-        .from('action_rounds')
-        .update({ 
-          completed: true,
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', activeRounds[0].id);
-    }
-  };
-
   const handleCharacterSelect = (selectedCharacter: Character) => {
     selectCharacter(selectedCharacter);
     setShowCharacterSelection(false);
@@ -966,43 +871,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                     <div ref={messagesEndRef} />
                   </div>
                   <div className="pt-2 md:pt-4 mt-4 border-t border-border/50 space-y-3">
-                    {/* Realtime Reactions */}
-                    {room && character && user && (
-                      <RealtimeReactions
-                        roomId={room.id}
-                        characterName={character.name}
-                        userId={user.id}
-                      />
-                    )}
-                    
-                    {/* Action Round Panel */}
-                    {room && character && (
-                      <ActionRoundPanel
-                        roomId={room.id}
-                        character={character}
-                        players={players}
-                        isGM={isGM}
-                        onActionsComplete={handleActionsComplete}
-                      />
-                    )}
-                    
-                    {/* GM Request Actions Button */}
-                    {isGM && (
-                      <Button
-                        onClick={() => {
-                          const prompt = window.prompt('Qual pergunta você quer fazer aos jogadores?', 'O que vocês fazem?');
-                          if (prompt) handleRequestActions(prompt);
-                        }}
-                        disabled={requestingActions}
-                        variant="outline"
-                        className="w-full gap-2"
-                      >
-                        <Users className="w-4 h-4" />
-                        {requestingActions ? 'Solicitando...' : 'Solicitar Ações de Todos'}
-                      </Button>
-                    )}
-                    
-                    <ChatInput 
+                    <ChatInput
                       onSend={handleSend} 
                       disabled={isLoading}
                     />
@@ -1199,43 +1068,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
               </div>
 
               <div className="pt-2 md:pt-4 mt-2 md:mt-4 border-t border-border/50 shrink-0 space-y-3">
-                {/* Realtime Reactions */}
-                {room && character && user && (
-                  <RealtimeReactions
-                    roomId={room.id}
-                    characterName={character.name}
-                    userId={user.id}
-                  />
-                )}
-                
-                {/* Action Round Panel */}
-                {room && character && (
-                  <ActionRoundPanel
-                    roomId={room.id}
-                    character={character}
-                    players={players}
-                    isGM={isGM}
-                    onActionsComplete={handleActionsComplete}
-                  />
-                )}
-                
-                {/* GM Request Actions Button */}
-                {isGM && (
-                  <Button
-                    onClick={() => {
-                      const prompt = window.prompt('Qual pergunta você quer fazer aos jogadores?', 'O que vocês fazem?');
-                      if (prompt) handleRequestActions(prompt);
-                    }}
-                    disabled={requestingActions}
-                    variant="outline"
-                    className="w-full gap-2"
-                  >
-                    <Users className="w-4 h-4" />
-                    {requestingActions ? 'Solicitando...' : 'Solicitar Ações de Todos'}
-                  </Button>
-                )}
-                
-                <ChatInput 
+                <ChatInput
                   onSend={handleSend} 
                   disabled={isLoading}
                 />
@@ -1289,43 +1122,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
               
               {/* Input fixo na parte inferior */}
               <div className="shrink-0 space-y-3">
-                {/* Realtime Reactions */}
-                {room && character && user && (
-                  <RealtimeReactions
-                    roomId={room.id}
-                    characterName={character.name}
-                    userId={user.id}
-                  />
-                )}
-                
-                {/* Action Round Panel */}
-                {room && character && (
-                  <ActionRoundPanel
-                    roomId={room.id}
-                    character={character}
-                    players={players}
-                    isGM={isGM}
-                    onActionsComplete={handleActionsComplete}
-                  />
-                )}
-                
-                {/* GM Request Actions Button */}
-                {isGM && (
-                  <Button
-                    onClick={() => {
-                      const prompt = window.prompt('Qual pergunta você quer fazer aos jogadores?', 'O que vocês fazem?');
-                      if (prompt) handleRequestActions(prompt);
-                    }}
-                    disabled={requestingActions}
-                    variant="outline"
-                    className="w-full gap-2"
-                  >
-                    <Users className="w-4 h-4" />
-                    {requestingActions ? 'Solicitando...' : 'Solicitar Ações de Todos'}
-                  </Button>
-                )}
-                
-                <ChatInput 
+                <ChatInput
                   onSend={handleSend} 
                   disabled={isLoading}
                 />
