@@ -12,6 +12,7 @@ import { GMCheckRequestPanel } from "@/components/GMCheckRequestPanel";
 import { AbilityCheckPanel } from "@/components/AbilityCheckPanel";
 import { TurnHistory } from "@/components/TurnHistory";
 import { useTurnNotification } from "@/hooks/useTurnNotification";
+import { useDiceNotifications } from "@/hooks/useDiceNotifications";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -37,6 +38,12 @@ export const CombatView = ({ room, players, onAdvanceTurn, onEndCombat }: Combat
     };
     checkGMStatus();
   }, [room.gm_id]);
+
+  // Ativa notificações de dados para todos os jogadores em combate
+  useDiceNotifications({ 
+    roomId: room.id, 
+    currentUserId: currentUserId || "" 
+  });
 
   // Load and subscribe to NPCs
   useEffect(() => {

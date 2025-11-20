@@ -14,6 +14,7 @@ import { GMCheckRequestPanel } from "@/components/GMCheckRequestPanel";
 import { LevelUpPanel } from "@/components/LevelUpPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { useDiceNotifications } from "@/hooks/useDiceNotifications";
 
 interface RoomLobbyProps {
   room: Room;
@@ -39,6 +40,12 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onStartSessio
     };
     checkGMStatus();
   }, [room.gm_id]);
+
+  // Ativa notificações de dados para todos os jogadores
+  useDiceNotifications({ 
+    roomId: room.id, 
+    currentUserId: currentUserId || "" 
+  });
 
   const copyRoomCode = () => {
     navigator.clipboard.writeText(room.room_code);
