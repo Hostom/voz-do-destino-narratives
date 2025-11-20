@@ -7,43 +7,41 @@ import { Swords, Check, Sword, CircleDot, Crosshair } from "lucide-react";
 import { DND_WEAPONS, Weapon, getWeaponsByCategory } from "@/lib/dnd-weapons";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
 interface WeaponSelectorProps {
   characterId: string;
   currentWeapon?: any;
   onWeaponChange?: () => void;
 }
-
-export const WeaponSelector = ({ characterId, currentWeapon, onWeaponChange }: WeaponSelectorProps) => {
+export const WeaponSelector = ({
+  characterId,
+  currentWeapon,
+  onWeaponChange
+}: WeaponSelectorProps) => {
   const [selectedWeapon, setSelectedWeapon] = useState<Weapon | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   const currentWeaponId = currentWeapon?.id || "unarmed";
-
   const handleEquipWeapon = async (weapon: Weapon) => {
     setIsUpdating(true);
     try {
-      const { error } = await supabase
-        .from("characters")
-        .update({
-          equipped_weapon: {
-            id: weapon.id,
-            name: weapon.name,
-            damage_dice: weapon.damage_dice,
-            damage_type: weapon.damage_type,
-            ability: weapon.ability,
-          },
-        })
-        .eq("id", characterId);
-
+      const {
+        error
+      } = await supabase.from("characters").update({
+        equipped_weapon: {
+          id: weapon.id,
+          name: weapon.name,
+          damage_dice: weapon.damage_dice,
+          damage_type: weapon.damage_type,
+          ability: weapon.ability
+        }
+      }).eq("id", characterId);
       if (error) throw error;
-
       toast({
         title: "Arma equipada!",
-        description: `${weapon.name} está agora equipada`,
+        description: `${weapon.name} está agora equipada`
       });
-
       onWeaponChange?.();
       setSelectedWeapon(null);
     } catch (error) {
@@ -51,39 +49,29 @@ export const WeaponSelector = ({ characterId, currentWeapon, onWeaponChange }: W
       toast({
         title: "Erro",
         description: "Não foi possível equipar a arma",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsUpdating(false);
     }
   };
-
-  const WeaponCard = ({ weapon }: { weapon: Weapon }) => {
+  const WeaponCard = ({
+    weapon
+  }: {
+    weapon: Weapon;
+  }) => {
     const isEquipped = weapon.id === currentWeaponId;
     const isSelected = selectedWeapon?.id === weapon.id;
-
-    return (
-      <Card
-        className={`cursor-pointer transition-all ${
-          isEquipped
-            ? "border-primary bg-primary/10"
-            : isSelected
-            ? "border-accent bg-accent/10"
-            : "border-border hover:border-primary/50"
-        }`}
-        onClick={() => setSelectedWeapon(weapon)}
-      >
+    return <Card className={`cursor-pointer transition-all ${isEquipped ? "border-primary bg-primary/10" : isSelected ? "border-accent bg-accent/10" : "border-border hover:border-primary/50"}`} onClick={() => setSelectedWeapon(weapon)}>
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-2">
             <div>
               <h4 className="font-semibold flex items-center gap-2">
                 {weapon.name}
-                {isEquipped && (
-                  <Badge variant="default" className="text-xs">
+                {isEquipped && <Badge variant="default" className="text-xs">
                     <Check className="w-3 h-3 mr-1" />
                     Equipada
-                  </Badge>
-                )}
+                  </Badge>}
               </h4>
               <p className="text-sm text-muted-foreground">
                 {weapon.damage_dice} {weapon.damage_type}
@@ -94,31 +82,21 @@ export const WeaponSelector = ({ characterId, currentWeapon, onWeaponChange }: W
             </Badge>
           </div>
 
-          {weapon.properties.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {weapon.properties.map((prop, idx) => (
-                <Badge key={idx} variant="secondary" className="text-xs">
+          {weapon.properties.length > 0 && <div className="flex flex-wrap gap-1 mt-2">
+              {weapon.properties.map((prop, idx) => <Badge key={idx} variant="secondary" className="text-xs">
                   {prop}
-                </Badge>
-              ))}
-            </div>
-          )}
+                </Badge>)}
+            </div>}
 
-          {weapon.range && (
-            <p className="text-xs text-muted-foreground mt-2">
+          {weapon.range && <p className="text-xs text-muted-foreground mt-2">
               Alcance: {weapon.range}
-            </p>
-          )}
+            </p>}
         </CardContent>
-      </Card>
-    );
+      </Card>;
   };
-
-  return (
-    <Card className="bg-card/80 backdrop-blur border-primary/20">
+  return <Card className="bg-card/80 backdrop-blur border-primary/20">
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-base sm:text-lg mb-2">
-          <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg mb-2">Arsenal de Armas      <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
           Arsenal de Armas D&D 5e
         </CardTitle>
       </CardHeader>
@@ -144,40 +122,25 @@ export const WeaponSelector = ({ characterId, currentWeapon, onWeaponChange }: W
           </TabsList>
 
           <TabsContent value="simple_melee" className="space-y-2 mt-4">
-            {getWeaponsByCategory("simple_melee").map((weapon) => (
-              <WeaponCard key={weapon.id} weapon={weapon} />
-            ))}
+            {getWeaponsByCategory("simple_melee").map(weapon => <WeaponCard key={weapon.id} weapon={weapon} />)}
           </TabsContent>
 
           <TabsContent value="simple_ranged" className="space-y-2 mt-4">
-            {getWeaponsByCategory("simple_ranged").map((weapon) => (
-              <WeaponCard key={weapon.id} weapon={weapon} />
-            ))}
+            {getWeaponsByCategory("simple_ranged").map(weapon => <WeaponCard key={weapon.id} weapon={weapon} />)}
           </TabsContent>
 
           <TabsContent value="martial_melee" className="space-y-2 mt-4">
-            {getWeaponsByCategory("martial_melee").map((weapon) => (
-              <WeaponCard key={weapon.id} weapon={weapon} />
-            ))}
+            {getWeaponsByCategory("martial_melee").map(weapon => <WeaponCard key={weapon.id} weapon={weapon} />)}
           </TabsContent>
 
           <TabsContent value="martial_ranged" className="space-y-2 mt-4">
-            {getWeaponsByCategory("martial_ranged").map((weapon) => (
-              <WeaponCard key={weapon.id} weapon={weapon} />
-            ))}
+            {getWeaponsByCategory("martial_ranged").map(weapon => <WeaponCard key={weapon.id} weapon={weapon} />)}
           </TabsContent>
         </Tabs>
 
-        {selectedWeapon && selectedWeapon.id !== currentWeaponId && (
-          <Button
-            onClick={() => handleEquipWeapon(selectedWeapon)}
-            disabled={isUpdating}
-            className="w-full"
-            size="lg"
-          >
+        {selectedWeapon && selectedWeapon.id !== currentWeaponId && <Button onClick={() => handleEquipWeapon(selectedWeapon)} disabled={isUpdating} className="w-full" size="lg">
             Equipar {selectedWeapon.name}
-          </Button>
-        )}
+          </Button>}
 
         <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
           <p className="font-semibold mb-1">Propriedades das Armas:</p>
@@ -190,6 +153,5 @@ export const WeaponSelector = ({ characterId, currentWeapon, onWeaponChange }: W
           </ul>
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
