@@ -23,10 +23,11 @@ interface GMMessage {
 interface GMChatProps {
   roomId: string;
   characterName: string;
+  characterId?: string; // Character ID for tool calls
   isGM?: boolean;
 }
 
-export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
+export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps) => {
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -137,39 +138,41 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
     // Then trigger game-master function using fetch directly for better SSE support
     // The function returns a stream (SSE), we need to consume it to ensure it completes
     // The server will save the GM response to gm_messages when the stream completes
-    console.log('Calling game-master function with:', {
-      roomId,
-      characterName,
-      message: messageContent
-    });
-    
-    try {
-      // Get the Supabase URL and anon key from environment
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Supabase configuration missing');
-      }
-
-      // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token;
-
-      // Call the function using fetch directly for better stream handling
-      const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken || supabaseAnonKey}`,
-          'apikey': supabaseAnonKey,
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: messageContent }],
-          roomId,
-          characterName: characterName,
-        }),
+      console.log('Calling game-master function with:', {
+        roomId,
+        characterName,
+        characterId: characterId,
+        message: messageContent
       });
+      
+      try {
+        // Get the Supabase URL and anon key from environment
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        
+        if (!supabaseUrl || !supabaseAnonKey) {
+          throw new Error('Supabase configuration missing');
+        }
+
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        const authToken = session?.access_token;
+
+        // Call the function using fetch directly for better stream handling
+        const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken || supabaseAnonKey}`,
+            'apikey': supabaseAnonKey,
+          },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: messageContent }],
+            roomId,
+            characterName: characterName,
+            characterId: characterId, // Pass character ID for tool calls
+          }),
+        });
 
       if (!response.ok) {
         const errorText = await response.text();

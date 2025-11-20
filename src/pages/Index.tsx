@@ -145,6 +145,7 @@ const Index = () => {
               messages: [{ role: 'user', content: '[INÍCIO DA SESSÃO] Apresente-se e dê as boas-vindas ao grupo, mencionando brevemente os personagens presentes.' }],
               roomId: room.id,
               characterName: character.name,
+              characterId: character.id, // Pass character ID for tool calls
             }),
           });
 
@@ -263,6 +264,7 @@ const Index = () => {
             messages: [{ role: 'user', content: message.trim() }],
             roomId: room.id,
             characterName: character.name,
+            characterId: character.id, // Pass character ID for tool calls
           }),
         });
 
