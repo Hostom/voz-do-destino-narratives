@@ -95,85 +95,30 @@ export const WeaponSelector = ({
       </Card>;
   };
   return <Card className="bg-card/80 backdrop-blur border-primary/20">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-base sm:text-lg mb-2"> 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
-Arsenal de Armas                                                                <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
-          Arsenal de Armas D&D 5e
+      <CardHeader className="pb-3 px-4 pt-4">
+        <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+          <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
+          Arsenal de Armas
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
         <Tabs defaultValue="simple_melee" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 h-auto bg-muted/50 p-1">
-            <TabsTrigger value="simple_melee" className="text-xs whitespace-nowrap px-2 flex items-center gap-1">
+          <TabsList className="grid w-full grid-cols-4 gap-1 h-auto bg-muted/50 p-1">
+            <TabsTrigger value="simple_melee" className="text-[10px] md:text-xs whitespace-nowrap px-2 flex flex-col md:flex-row items-center gap-0.5 md:gap-1">
               <Sword className="w-3 h-3" />
-              Simples C/C
+              <span>Simples<br className="md:hidden" /> C/C</span>
             </TabsTrigger>
-            <TabsTrigger value="simple_ranged" className="text-xs whitespace-nowrap px-2 flex items-center gap-1">
+            <TabsTrigger value="simple_ranged" className="text-[10px] md:text-xs whitespace-nowrap px-2 flex flex-col md:flex-row items-center gap-0.5 md:gap-1">
               <CircleDot className="w-3 h-3" />
-              Simples Dist.
+              <span>Simples<br className="md:hidden" /> Dist.</span>
             </TabsTrigger>
-            <TabsTrigger value="martial_melee" className="text-xs whitespace-nowrap px-2 flex items-center gap-1">
+            <TabsTrigger value="martial_melee" className="text-[10px] md:text-xs whitespace-nowrap px-2 flex flex-col md:flex-row items-center gap-0.5 md:gap-1">
               <Swords className="w-3 h-3" />
-              Marcial C/C
+              <span>Marcial<br className="md:hidden" /> C/C</span>
             </TabsTrigger>
-            <TabsTrigger value="martial_ranged" className="text-xs whitespace-nowrap px-2 flex items-center gap-1">
+            <TabsTrigger value="martial_ranged" className="text-[10px] md:text-xs whitespace-nowrap px-2 flex flex-col md:flex-row items-center gap-0.5 md:gap-1">
               <Crosshair className="w-3 h-3" />
-              Marcial Dist.
+              <span>Marcial<br className="md:hidden" /> Dist.</span>
             </TabsTrigger>
           </TabsList>
 
