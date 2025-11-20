@@ -11,6 +11,7 @@ import { NarrativeMessage } from "@/components/NarrativeMessage";
 import { CreateRoom } from "@/components/CreateRoom";
 import { JoinRoom } from "@/components/JoinRoom";
 import { RoomLobby } from "@/components/RoomLobby";
+import { RoomHistory } from "@/components/RoomHistory";
 import { CombatView } from "@/components/CombatView";
 import { useCharacter, Character } from "@/hooks/useCharacter";
 import { useRoom } from "@/hooks/useRoom";
@@ -44,7 +45,7 @@ const Index = () => {
   const [allCharacters, setAllCharacters] = useState<Character[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
-  const [view, setView] = useState<'menu' | 'create' | 'join' | 'lobby' | 'combat' | 'game'>('menu');
+  const [view, setView] = useState<'menu' | 'create' | 'join' | 'history' | 'lobby' | 'combat' | 'game'>('menu');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, startSession, refreshPlayers } = useRoom();
   const { toast } = useToast();
@@ -611,6 +612,9 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           <Button onClick={() => setView('create')} size="lg" className="w-full">
             Criar Sala
           </Button>
+          <Button onClick={() => setView('history')} size="lg" variant="default" className="w-full">
+            Minhas Salas
+          </Button>
           <Button onClick={() => setView('join')} size="lg" variant="secondary" className="w-full">
             Entrar em Sala
           </Button>
@@ -631,6 +635,10 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
 
   if (view === 'join') {
     return <JoinRoom onJoinRoom={handleJoinRoomWithCode} loading={roomLoading} character={character} onBack={() => setView('menu')} />;
+  }
+
+  if (view === 'history') {
+    return <RoomHistory onJoinRoom={handleJoinRoomWithCode} loading={roomLoading} character={character} onBack={() => setView('menu')} />;
   }
 
   if (view === 'lobby' && room) {
