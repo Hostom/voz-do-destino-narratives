@@ -12,7 +12,8 @@ interface GMMessage {
   id: string;
   player_id: string;
   sender: "player" | "GM";
-  content: string;
+  content?: string;
+  message?: string;
   character_name: string;
   created_at: string;
   type: "gm";
@@ -258,7 +259,7 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
                   </span>
                 </div>
                 <p className={`text-sm ${msg.sender === "GM" ? "font-medium text-foreground" : "text-foreground"}`}>
-                  {msg.content}
+                  {msg.content ?? msg.message ?? ""}
                 </p>
               </div>
             ))}

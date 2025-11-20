@@ -25,7 +25,8 @@ interface GMMessage {
   id: string;
   player_id: string;
   sender: "player" | "GM";
-  content: string;
+  content?: string;
+  message?: string;
   character_name: string;
   created_at: string;
   type: "gm";
@@ -630,7 +631,7 @@ Decidam juntos, e deixem o destino se desenrolar...`;
                 <NarrativeMessage
                             key={msg.id}
                             role={msg.sender === "GM" ? "assistant" : "user"}
-                  content={msg.content}
+                  content={msg.content ?? msg.message ?? ""}
                             characterName={msg.sender === "player" ? msg.character_name : undefined}
                   onSpeak={(content) => {
                     setCurrentSpeakingIndex(idx);
@@ -698,7 +699,7 @@ Decidam juntos, e deixem o destino se desenrolar...`;
                   <NarrativeMessage
                     key={msg.id}
                     role={msg.sender === "GM" ? "assistant" : "user"}
-                    content={msg.content}
+                    content={msg.content ?? msg.message ?? ""}
                     characterName={msg.sender === "player" ? msg.character_name : undefined}
                     onSpeak={(content) => {
                       setCurrentSpeakingIndex(idx);
@@ -750,7 +751,7 @@ Decidam juntos, e deixem o destino se desenrolar...`;
                     <NarrativeMessage
                       key={msg.id}
                       role={msg.sender === "GM" ? "assistant" : "user"}
-                      content={msg.content}
+                      content={msg.content ?? msg.message ?? ""}
                       characterName={msg.sender === "player" ? msg.character_name : undefined}
                       onSpeak={(content) => {
                         setCurrentSpeakingIndex(idx);
