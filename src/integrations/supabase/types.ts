@@ -661,6 +661,44 @@ export type Database = {
         }
         Relationships: []
       }
+      session_snapshots: {
+        Row: {
+          combat_round: number | null
+          created_at: string
+          id: string
+          message_count: number
+          notes: string | null
+          room_id: string
+          session_data: Json
+        }
+        Insert: {
+          combat_round?: number | null
+          created_at?: string
+          id?: string
+          message_count?: number
+          notes?: string | null
+          room_id: string
+          session_data: Json
+        }
+        Update: {
+          combat_round?: number | null
+          created_at?: string
+          id?: string
+          message_count?: number
+          notes?: string | null
+          room_id?: string
+          session_data?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_snapshots_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

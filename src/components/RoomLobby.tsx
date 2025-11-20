@@ -30,6 +30,8 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onStartSessio
   const { toast } = useToast();
   const [isGM, setIsGM] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [latestSnapshot, setLatestSnapshot] = useState<any>(null);
+  const [loadingSnapshot, setLoadingSnapshot] = useState(false);
 
   useEffect(() => {
     const checkGMStatus = async () => {
@@ -41,6 +43,25 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onStartSessio
     };
     checkGMStatus();
   }, [room.gm_id]);
+
+  // Buscar snapshot mais recente da sala
+  useEffect(() => {
+    const fetchLatestSnapshot = async () => {
+      const { data, error } = await supabase
+        .from('session_snapshots')
+        .select('*')
+        .eq('room_id', room.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data) {
+        setLatestSnapshot(data);
+      }
+    };
+
+    fetchLatestSnapshot();
+  }, [room.id]);
 
   // Ativa notificações de dados para todos os jogadores
   useDiceNotifications({ 
@@ -91,6 +112,40 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onStartSessio
             </div>
           </CardHeader>
         </Card>
+
+        {/* Saved Session Indicator */}
+        {latestSnapshot && latestSnapshot.message_count > 0 && (
+          <Card className="bg-primary/10 border-primary/30 backdrop-blur">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  <Swords className="w-8 h-8 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg mb-1">Sessão Salva Encontrada</h3>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Há uma sessão em andamento com {latestSnapshot.message_count} mensagens
+                    {latestSnapshot.combat_round !== null && ` (Rodada de combate ${latestSnapshot.combat_round + 1})`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Salvo em: {new Date(latestSnapshot.created_at).toLocaleString('pt-BR')}
+                  </p>
+                </div>
+                {isGM && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={onStartSession}
+                    className="flex-shrink-0"
+                  >
+                    Continuar Sessão
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
 
         {/* Players List */}
         <Card className="bg-card/80 backdrop-blur border-primary/20">
