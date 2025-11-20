@@ -62,11 +62,22 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Cinzel', serif;
     letter-spacing: 0.02em;
+  }
+
+  /* Mobile-specific improvements */
+  @media (max-width: 768px) {
+    body {
+      font-size: 14px;
+    }
   }
 }
 
@@ -94,6 +105,22 @@ All colors MUST be HSL.
 
   .backdrop-blur-epic {
     backdrop-filter: blur(12px) saturate(180%);
+  }
+
+  /* Mobile touch improvements */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Safe area for mobile devices (iPhone notch, etc) */
+  .safe-bottom {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 768px) {
+    .safe-bottom {
+      padding-bottom: 1.5rem;
+    }
   }
 }
 

@@ -109,38 +109,44 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking, character
 
   return (
     <div
-      className={`mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ${
-        role === "assistant" ? "pr-12" : "pl-12"
+      className={`mb-3 md:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500 ${
+        role === "assistant" ? "pr-2 md:pr-12" : "pl-2 md:pl-12"
       }`}
     >
-      <div className="relative">
+      <div 
+        className="relative"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onTouchStart={() => setIsHovered(true)}
+        onTouchEnd={() => setTimeout(() => setIsHovered(false), 2000)}
+      >
         <div
-          className={`relative p-6 rounded-2xl shadow-lg backdrop-blur-sm transition-all duration-300 ${
+          className={`relative p-3 md:p-6 rounded-xl md:rounded-2xl shadow-lg backdrop-blur-sm transition-all duration-300 active:scale-[0.98] md:active:scale-100 ${
             role === "user"
-              ? "bg-primary/10 border border-primary/20 ml-auto max-w-[85%]"
-              : "bg-card/80 border border-border/50 mr-auto max-w-[90%]"
+              ? "bg-primary/10 border border-primary/20 ml-auto max-w-[95%] md:max-w-[85%]"
+              : "bg-card/80 border border-border/50 mr-auto max-w-[95%] md:max-w-[90%]"
           }`}
         >
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-2 md:gap-3">
             {role === "assistant" && (
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
-                <span className="text-primary font-bold text-lg">🎲</span>
+              <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
+                <span className="text-primary font-bold text-base md:text-lg">🎲</span>
               </div>
             )}
             {role === "user" && characterName && (
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center border border-border">
-                <span className="text-foreground font-semibold text-sm">
+              <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary/50 flex items-center justify-center border border-border">
+                <span className="text-foreground font-semibold text-xs md:text-sm">
                   {characterName.charAt(0).toUpperCase()}
                 </span>
               </div>
             )}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               {role === "user" && characterName && (
-                <div className="mb-1 text-xs font-semibold text-muted-foreground">
+                <div className="mb-1 text-xs font-semibold text-muted-foreground truncate">
                   {characterName}
                 </div>
               )}
-              <p className="text-foreground leading-relaxed whitespace-pre-wrap text-base">
+              <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm md:text-base break-words">
                 {content}
               </p>
             </div>
@@ -149,28 +155,31 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking, character
 
         {/* Botão de narração visível apenas para mensagens do assistente */}
         {role === "assistant" && (
-          <div className="mt-3 flex justify-start">
+          <div className="mt-2 md:mt-3 flex justify-start">
             <Button
               onClick={handleSpeak}
               variant="outline"
               size="sm"
               disabled={isLoadingAudio}
-              className="gap-2 text-sm"
+              className="gap-1.5 md:gap-2 text-xs md:text-sm h-8 md:h-9 px-2 md:px-3 touch-manipulation"
             >
               {isLoadingAudio ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Gerando áudio...
+                  <Loader2 className="h-3.5 w-3.5 md:h-4 md:w-4 animate-spin" />
+                  <span className="hidden sm:inline">Gerando áudio...</span>
+                  <span className="sm:hidden">Gerando...</span>
                 </>
               ) : isSpeaking ? (
                 <>
-                  <VolumeX className="h-4 w-4" />
-                  Pausar Narração
+                  <VolumeX className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">Pausar Narração</span>
+                  <span className="sm:hidden">Pausar</span>
                 </>
               ) : (
                 <>
-                  <Volume2 className="h-4 w-4" />
-                  🔊 Ouvir Narração
+                  <Volume2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">🔊 Ouvir Narração</span>
+                  <span className="sm:hidden">🔊 Ouvir</span>
                 </>
               )}
             </Button>
