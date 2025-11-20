@@ -142,6 +142,67 @@ serve(async (req) => {
     if (roomId) {
       console.log("Fetching conversation history for room:", roomId);
       
+      // CRITICAL: Fetch ALL character sheets in the room to provide full context to AI
+      const { data: roomPlayers } = await supabase
+        .from("room_players")
+        .select(`
+          user_id,
+          character_id,
+          characters (
+            id,
+            name,
+            race,
+            class,
+            level,
+            current_hp,
+            max_hp,
+            armor_class,
+            strength,
+            dexterity,
+            constitution,
+            intelligence,
+            wisdom,
+            charisma,
+            proficiency_bonus,
+            experience_points,
+            equipped_weapon,
+            conditions
+          )
+        `)
+        .eq("room_id", roomId);
+
+      // Build character sheets context
+      let characterSheetsContext = "";
+      if (roomPlayers && roomPlayers.length > 0) {
+        characterSheetsContext = "\n\n=== FICHAS DOS PERSONAGENS NA SESSÃO ===\n";
+        roomPlayers.forEach((rp: any) => {
+          const char = rp.characters;
+          if (char) {
+            const strMod = Math.floor((char.strength - 10) / 2);
+            const dexMod = Math.floor((char.dexterity - 10) / 2);
+            const conMod = Math.floor((char.constitution - 10) / 2);
+            const intMod = Math.floor((char.intelligence - 10) / 2);
+            const wisMod = Math.floor((char.wisdom - 10) / 2);
+            const chaMod = Math.floor((char.charisma - 10) / 2);
+
+            characterSheetsContext += `
+PERSONAGEM: ${char.name}
+- Player ID: ${rp.user_id}
+- Character ID: ${char.id}
+- Raça/Classe: ${char.race} ${char.class} Nível ${char.level}
+- HP: ${char.current_hp}/${char.max_hp} | CA: ${char.armor_class}
+- Atributos: FOR ${char.strength}(${strMod>=0?'+':''}${strMod}) | DES ${char.dexterity}(${dexMod>=0?'+':''}${dexMod}) | CON ${char.constitution}(${conMod>=0?'+':''}${conMod}) | INT ${char.intelligence}(${intMod>=0?'+':''}${intMod}) | SAB ${char.wisdom}(${wisMod>=0?'+':''}${wisMod}) | CAR ${char.charisma}(${chaMod>=0?'+':''}${chaMod})
+- Bônus Proficiência: +${char.proficiency_bonus}
+- XP: ${char.experience_points}
+- Arma Equipada: ${char.equipped_weapon?.name || 'Desarmado'}
+- Condições: ${char.conditions && Array.isArray(char.conditions) && char.conditions.length > 0 ? char.conditions.join(', ') : 'Nenhuma'}
+`;
+          }
+        });
+        characterSheetsContext += "\n=== FIM DAS FICHAS ===\n";
+        console.log("Character sheets context prepared for", roomPlayers.length, "characters");
+      }
+      
       // Get the last player message to identify who sent it
       const { data: lastPlayerMsg } = await supabase
         .from("gm_messages")
@@ -154,17 +215,16 @@ serve(async (req) => {
       
       if (lastPlayerMsg?.player_id) {
         // Find the character_id for this player in this room
-        const { data: roomPlayer } = await supabase
-          .from("room_players")
-          .select("character_id")
-          .eq("room_id", roomId)
-          .eq("user_id", lastPlayerMsg.player_id)
-          .single();
-        
-        if (roomPlayer) {
-          activeCharacterId = roomPlayer.character_id;
+        const activePlayer = roomPlayers?.find((rp: any) => rp.user_id === lastPlayerMsg.player_id);
+        if (activePlayer) {
+          activeCharacterId = activePlayer.character_id;
           console.log("Active character ID:", activeCharacterId);
         }
+      }
+      
+      // Prepend character sheets to system prompt
+      if (characterSheetsContext) {
+        messageHistory[0].content = GAME_MASTER_PROMPT + characterSheetsContext;
       }
       
       // Fetch ONLY the most recent messages to optimize token usage
@@ -219,13 +279,13 @@ serve(async (req) => {
         type: "function",
             function: {
               name: "update_character_stats",
-              description: "Atualiza HP, cura ou XP de um personagem baseado em eventos da narrativa. Use quando: o personagem tomar dano, ser curado, ganhar XP, descansar, etc.",
+              description: "Atualiza HP, cura ou XP de um personagem baseado em eventos da narrativa. SEMPRE use esta ferramenta quando o personagem sofrer dano, ser curado ou ganhar XP. HP_CHANGE: Use VALORES NEGATIVOS para dano (ex: -8 para 8 de dano) e POSITIVOS para cura (ex: +10 para 10 de cura).",
               parameters: {
                 type: "object",
                 properties: {
                   hp_change: {
                     type: "number",
-                    description: "Mudança no HP (negativo para dano, positivo para cura). Ex: -5 para 5 de dano, +10 para 10 de cura"
+                    description: "Mudança no HP. CRÍTICO: Use valores NEGATIVOS para dano (ex: -8 para 'você sofre 8 de dano') e POSITIVOS para cura (ex: +10 para 'você recupera 10 HP'). Sempre baseie no que foi narrado."
                   },
                   xp_gain: {
                     type: "number",
@@ -378,13 +438,18 @@ serve(async (req) => {
                           .single();
 
                         if (char) {
+                          console.log(`[HP Update] Character: ${char.name}, Current HP: ${char.current_hp}/${char.max_hp}, Change: ${hp_change}`);
                           const newHP = Math.max(0, Math.min(char.max_hp, char.current_hp + hp_change));
+                          console.log(`[HP Update] Calculated new HP: ${newHP} (formula: max(0, min(${char.max_hp}, ${char.current_hp} + ${hp_change})))`);
+                          
                           await supabase
                             .from('characters')
                             .update({ current_hp: newHP })
                             .eq('id', activeCharacterId);
 
                           console.log(`✅ Updated ${char.name} HP: ${char.current_hp} -> ${newHP} (${hp_change > 0 ? '+' : ''}${hp_change}) - ${reason}`);
+                        } else {
+                          console.error(`❌ Character not found with ID: ${activeCharacterId}`);
                         }
                       }
 
