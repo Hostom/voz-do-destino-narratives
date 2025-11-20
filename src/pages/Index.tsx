@@ -15,9 +15,11 @@ import { CombatView } from "@/components/CombatView";
 import { useCharacter, Character } from "@/hooks/useCharacter";
 import { useRoom } from "@/hooks/useRoom";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Scroll, MessageSquare, Dices } from "lucide-react";
+import { BookOpen, Scroll, MessageSquare, Dices, Package, User } from "lucide-react";
 import { RoomChat } from "@/components/RoomChat";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { InventoryPanel } from "@/components/InventoryPanel";
+import { Separator } from "@/components/ui/separator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCollection } from "@/hooks/useCollection";
 
@@ -714,17 +716,136 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* Coluna direita - Chat social e dados */}
+              {/* Coluna direita - Balões de ação e dados */}
               <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4">
-                <div className="flex-1 min-h-0">
-                  <RoomChat 
-                    roomId={room.id} 
-                    characterName={character.name}
-                    currentTurn={room.current_turn ?? 0}
-                    initiativeOrder={(room.initiative_order as any[]) || []}
-                    isGM={room.gm_id === user?.id}
-                  />
+                {/* Balões de ação */}
+                <div className="bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-4 flex flex-col gap-3">
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button className="w-full gap-2" variant="outline">
+                        <MessageSquare className="h-5 w-5" />
+                        Chat Social
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                      <SheetHeader>
+                        <SheetTitle>Chat Social</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-4 h-[calc(100vh-8rem)]">
+                        <RoomChat 
+                          roomId={room.id} 
+                          characterName={character.name}
+                          currentTurn={room.current_turn ?? 0}
+                          initiativeOrder={(room.initiative_order as any[]) || []}
+                          isGM={room.gm_id === user?.id}
+                        />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button className="w-full gap-2" variant="outline">
+                        <Package className="h-5 w-5" />
+                        Inventário
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                      <SheetHeader>
+                        <SheetTitle>Inventário</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-4 h-[calc(100vh-8rem)]">
+                        <InventoryPanel 
+                          characterId={character.id} 
+                          carryingCapacity={150}
+                        />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button className="w-full gap-2" variant="outline">
+                        <User className="h-5 w-5" />
+                        Ficha do Personagem
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                      <SheetHeader>
+                        <SheetTitle>Ficha do Personagem</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-4 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Nível</p>
+                            <p className="text-lg font-semibold">{character.level}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Classe</p>
+                            <p className="text-lg font-semibold">{character.class}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Raça</p>
+                            <p className="text-lg font-semibold">{character.race}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Background</p>
+                            <p className="text-lg font-semibold">{character.background || "-"}</p>
+                          </div>
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="space-y-2">
+                          <h3 className="font-semibold">Atributos</h3>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { key: "strength", label: "FOR" },
+                              { key: "dexterity", label: "DES" },
+                              { key: "constitution", label: "CON" },
+                              { key: "intelligence", label: "INT" },
+                              { key: "wisdom", label: "SAB" },
+                              { key: "charisma", label: "CAR" }
+                            ].map(({ key, label }) => (
+                              <div key={key} className="bg-muted/50 rounded p-2 text-center">
+                                <p className="text-xs text-muted-foreground uppercase">{label}</p>
+                                <p className="text-lg font-bold">{character[key as keyof typeof character]}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">HP Atual / Máximo</p>
+                            <p className="text-lg font-semibold">{character.current_hp} / {character.max_hp}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Classe de Armadura</p>
+                            <p className="text-lg font-semibold">{character.armor_class}</p>
+                          </div>
+                        </div>
+
+                        {character.backstory && (
+                          <>
+                            <Separator />
+                            <div className="space-y-2">
+                              <h3 className="font-semibold flex items-center gap-2">
+                                <Scroll className="w-4 h-4" />
+                                História
+                              </h3>
+                              <p className="text-sm leading-relaxed text-muted-foreground">{character.backstory}</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </SheetContent>
+                  </Sheet>
                 </div>
+
+                {/* Painel de dados */}
                 <DicePanel 
                   roomId={room.id}
                   characterName={character.name}
