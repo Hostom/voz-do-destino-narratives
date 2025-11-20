@@ -48,6 +48,7 @@ const Index = () => {
   const isMobile = useIsMobile();
 
   // Use gm_messages as single source of truth for all players
+  // useCollection will handle empty roomId gracefully
   const { data: gmMessages, loading: messagesLoading } = useCollection<GMMessage>("gm_messages", {
     roomId: room?.id || "",
     orderBy: "created_at",

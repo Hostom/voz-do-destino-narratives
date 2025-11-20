@@ -18,6 +18,14 @@ export function useCollection<T extends Record<string, any>>(
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
+    // Don't load if roomId is missing
+    if (!options.roomId) {
+      console.warn(`useCollection: roomId is required for ${tableName}`);
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     const loadData = async () => {
@@ -36,7 +44,7 @@ export function useCollection<T extends Record<string, any>>(
         if (fetchError) throw fetchError;
 
         if (mounted) {
-          setData((fetchedData as T[]) || []);
+          setData((fetchedData as unknown as T[]) || []);
           setLoading(false);
         }
       } catch (err) {
@@ -77,7 +85,7 @@ export function useCollection<T extends Record<string, any>>(
 
             if (!reloadError && updatedData) {
               console.log(`Reloaded ${tableName}: ${updatedData.length} items`);
-              setData((updatedData as T[]) || []);
+              setData((updatedData as unknown as T[]) || []);
             } else if (reloadError) {
               console.error(`Error reloading ${tableName} after real-time update:`, reloadError);
             }
