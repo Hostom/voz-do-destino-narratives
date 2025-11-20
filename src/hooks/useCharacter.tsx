@@ -21,6 +21,10 @@ export interface Character {
   backstory: string;
   experience_points?: number;
   experience_to_next_level?: number;
+  gold_pieces?: number;
+  silver_pieces?: number;
+  copper_pieces?: number;
+  platinum_pieces?: number;
 }
 
 import { getSpellSlotsForLevel, CLASS_HIT_DICE } from "@/lib/dnd-progression";
