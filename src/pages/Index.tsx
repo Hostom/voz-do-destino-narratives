@@ -507,6 +507,9 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
   };
 
   const handleBackToLobby = async () => {
+    // Set view first to prevent useEffect from switching back
+    setView('lobby');
+    
     if (room?.session_active) {
       // End session when going back to lobby
       const { error } = await supabase
@@ -521,10 +524,11 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           description: "Não foi possível voltar ao lobby",
           variant: "destructive",
         });
+        // Revert view change on error
+        setView('game');
         return;
       }
     }
-    setView('lobby');
   };
 
   const handleStartSession = async () => {
@@ -545,19 +549,24 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
   useEffect(() => {
     if (!room) return;
 
-    // Switch to game view when session starts
-    if (room.session_active && view === 'lobby') {
-      setView('game');
-      // Welcome message will be created automatically by useEffect when gmMessages is empty
+    // Only auto-switch to game view when session starts from lobby
+    // Don't switch if user manually went back to lobby (session_active will be false)
+    if (room.session_active && view === 'lobby' && room.combat_active === false) {
+      // Additional check: only switch if there are no messages yet (initial start)
+      // This prevents switching back when user explicitly returns to lobby
+      if (gmMessages.length === 0) {
+        setView('game');
+      }
     }
 
     // Switch to combat view when combat becomes active
     if (room.combat_active && view !== 'combat') {
       setView('combat');
-    } else if (!room.combat_active && view === 'combat') {
+    } else if (!room.combat_active && room.session_active && view === 'combat') {
+      // Return to game view when combat ends (not lobby)
       setView('game');
     }
-  }, [room?.session_active, room?.combat_active, view]);
+  }, [room?.session_active, room?.combat_active, view, gmMessages.length]);
 
   if (authLoading || characterLoading) {
     return (
