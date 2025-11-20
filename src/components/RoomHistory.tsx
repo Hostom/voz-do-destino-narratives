@@ -192,9 +192,26 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
     return room.gm_id === currentUserId;
   };
 
+  const toggleSelectAll = () => {
+    if (selectedRooms.size === savedRooms.filter(canDeleteRoom).length) {
+      // Se todos estão selecionados, desseleciona todos
+      setSelectedRooms(new Set());
+    } else {
+      // Seleciona apenas as salas que podem ser apagadas
+      const allDeletableRooms = savedRooms
+        .filter(canDeleteRoom)
+        .map(r => r.id);
+      setSelectedRooms(new Set(allDeletableRooms));
+    }
+  };
+
+  const hasSelectableRooms = savedRooms.some(canDeleteRoom);
+  const allSelectableSelected = hasSelectableRooms && 
+    selectedRooms.size === savedRooms.filter(canDeleteRoom).length;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-3 md:p-6 overflow-x-hidden">
-      <Card className="w-full max-w-2xl bg-card/80 backdrop-blur border-primary/20 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-3 md:p-6 overflow-x-hidden landscape:p-2 landscape:items-start landscape:pt-4">
+      <Card className="w-full max-w-2xl bg-card/80 backdrop-blur border-primary/20 overflow-hidden landscape:max-h-[95vh]">
         <CardHeader className="text-center">
           {onBack && (
             <Button 
@@ -216,16 +233,31 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
           <CardDescription>
             Continue suas aventuras anteriores
           </CardDescription>
-          {selectedRooms.size > 0 && (
-            <div className="mt-4">
+          {hasSelectableRooms && (
+            <div className="mt-4 flex flex-col sm:flex-row gap-2">
               <Button
-                variant="destructive"
-                onClick={() => setShowDeleteDialog(true)}
-                className="w-full"
+                variant="outline"
+                onClick={toggleSelectAll}
+                className="w-full sm:w-auto"
+                size="sm"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Apagar {selectedRooms.size} sala(s) selecionada(s)
+                <Checkbox
+                  checked={allSelectableSelected}
+                  className="mr-2 pointer-events-none"
+                />
+                {allSelectableSelected ? "Desselecionar Todos" : "Selecionar Todos"}
               </Button>
+              {selectedRooms.size > 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="w-full sm:w-auto"
+                  size="sm"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Apagar {selectedRooms.size} sala(s)
+                </Button>
+              )}
             </div>
           )}
         </CardHeader>
@@ -247,7 +279,7 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
               </p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[500px] overflow-y-auto overflow-x-hidden">
+            <div className="space-y-3 max-h-[500px] overflow-y-auto overflow-x-hidden landscape:max-h-[60vh] landscape:space-y-2">
               {savedRooms.map((room) => (
                 <Card key={room.id} className="bg-background/50 hover:bg-background/70 transition-colors overflow-hidden">
                   <CardContent className="p-3 md:p-4">
