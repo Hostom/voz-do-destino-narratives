@@ -280,27 +280,29 @@ serve(async (req) => {
             const { done, value } = await reader.read();
             if (done) {
               // Process any remaining buffer
-              if (buffer) {
-                const lines = buffer.split('\n');
+              if (buffer.trim()) {
+                const lines = buffer.split('\n').filter(l => l.trim());
                 for (const line of lines) {
-                  if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-                    try {
-                      const data = JSON.parse(line.slice(6));
-                      const content = data.choices?.[0]?.delta?.content;
-                      if (content) {
-                        fullResponse += content;
+                  if (line.startsWith('data: ')) {
+                    const dataStr = line.slice(6).trim();
+                    if (dataStr && dataStr !== '[DONE]') {
+                      try {
+                        const data = JSON.parse(dataStr);
+                        const content = data.choices?.[0]?.delta?.content;
+                        if (content) {
+                          fullResponse += content;
+                        }
+                        // Collect tool calls
+                        const delta = data.choices?.[0]?.delta;
+                        if (delta?.tool_calls) {
+                          toolCalls.push(...delta.tool_calls);
+                        }
+                      } catch (e) {
+                        console.error("Error parsing final buffer line:", e, "Line:", dataStr);
                       }
-                      // Collect tool calls
-                      const delta = data.choices?.[0]?.delta;
-                      if (delta?.tool_calls) {
-                        toolCalls.push(...delta.tool_calls);
-                      }
-                    } catch (e) {
-                      // Skip parsing errors
                     }
                   }
                 }
-                buffer = '';
               }
               
               // Process tool calls BEFORE saving message
@@ -430,22 +432,32 @@ serve(async (req) => {
             }
             
             // Decode and collect the response
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
             
-            // Keep the last incomplete line in buffer
-            buffer = lines.pop() || '';
+            // Process complete lines
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
             
             for (const line of lines) {
-              if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-                try {
-                  const data = JSON.parse(line.slice(6));
-                  const content = data.choices?.[0]?.delta?.content;
-                  if (content) {
-                    fullResponse += content;
+              const trimmedLine = line.trim();
+              if (trimmedLine.startsWith('data: ')) {
+                const dataStr = trimmedLine.slice(6).trim();
+                if (dataStr && dataStr !== '[DONE]') {
+                  try {
+                    const data = JSON.parse(dataStr);
+                    const content = data.choices?.[0]?.delta?.content;
+                    if (content) {
+                      fullResponse += content;
+                    }
+                    // Collect tool calls
+                    const delta = data.choices?.[0]?.delta;
+                    if (delta?.tool_calls) {
+                      toolCalls.push(...delta.tool_calls);
+                    }
+                  } catch (e) {
+                    console.error("Error parsing SSE line:", e, "Line:", dataStr);
                   }
-                } catch (e) {
-                  // Skip parsing errors
                 }
               }
             }
