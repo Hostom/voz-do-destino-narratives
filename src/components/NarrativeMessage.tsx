@@ -9,9 +9,10 @@ interface NarrativeMessageProps {
   content: string;
   onSpeak?: (text: string) => void;
   isSpeaking?: boolean;
+  characterName?: string;
 }
 
-export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: NarrativeMessageProps) => {
+export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking, characterName }: NarrativeMessageProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [lastRequestTime, setLastRequestTime] = useState<number>(0);
@@ -126,7 +127,19 @@ export const NarrativeMessage = ({ role, content, onSpeak, isSpeaking }: Narrati
                 <span className="text-primary font-bold text-lg">🎲</span>
               </div>
             )}
+            {role === "user" && characterName && (
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center border border-border">
+                <span className="text-foreground font-semibold text-sm">
+                  {characterName.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
             <div className="flex-1">
+              {role === "user" && characterName && (
+                <div className="mb-1 text-xs font-semibold text-muted-foreground">
+                  {characterName}
+                </div>
+              )}
               <p className="text-foreground leading-relaxed whitespace-pre-wrap text-base">
                 {content}
               </p>

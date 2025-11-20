@@ -19,10 +19,16 @@ import { BookOpen, Scroll, MessageSquare, Dices } from "lucide-react";
 import { RoomChat } from "@/components/RoomChat";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useCollection } from "@/hooks/useCollection";
 
-interface Message {
-  role: "user" | "assistant";
+interface GMMessage {
+  id: string;
+  player_id: string;
+  sender: "player" | "GM";
   content: string;
+  character_name: string;
+  created_at: string;
+  type: "gm";
 }
 
 const Index = () => {
@@ -33,7 +39,6 @@ const Index = () => {
   const [showCharacterSelection, setShowCharacterSelection] = useState(false);
   const [showCreation, setShowCreation] = useState(false);
   const [allCharacters, setAllCharacters] = useState<Character[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
   const [view, setView] = useState<'menu' | 'create' | 'join' | 'lobby' | 'combat' | 'game'>('menu');
@@ -41,6 +46,13 @@ const Index = () => {
   const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, startSession, refreshPlayers } = useRoom();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  // Use gm_messages as single source of truth for all players
+  const { data: gmMessages, loading: messagesLoading } = useCollection<GMMessage>("gm_messages", {
+    roomId: room?.id || "",
+    orderBy: "created_at",
+    ascending: true,
+  });
 
   // Check auth status
   useEffect(() => {
@@ -73,26 +85,40 @@ const Index = () => {
     }
   };
 
-  // Initialize welcome message when character is ready
+  // Initialize welcome message when character is ready and room is active
   useEffect(() => {
-    if (character && messages.length === 0 && view === 'game') {
-      setMessages([{
-        role: "assistant",
-        content: `Bem-vindo, ${character.name}!
+    if (character && room && room.session_active && view === 'game' && gmMessages.length === 0 && !messagesLoading) {
+      // Create welcome message in database for all players to see
+      const createWelcomeMessage = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !room) return;
 
-Eu sou a Voz do Destino, seu mestre de jogo. Vejo que você é ${character.race === "human" ? "um humano" : `${character.race}`} ${character.class}.
+        const welcomeContent = `Bem-vindos, aventureiros!
 
-Sua jornada começa agora. Que tipo de aventura deseja viver?
+Eu sou a Voz do Destino, seu mestre de jogo. Vejo que vocês estão reunidos para uma aventura épica.
+
+Que tipo de aventura desejam viver?
 
 • Uma jornada de fantasia medieval repleta de magia e dragões?
 • Um mistério sombrio em uma cidade steampunk?
 • Uma exploração espacial em galáxias desconhecidas?
-• Ou prefere que eu crie algo único para você?
+• Ou preferem que eu crie algo único para o grupo?
 
-Diga-me, e deixe o destino se desenrolar...`,
-      }]);
+Decidam juntos, e deixem o destino se desenrolar...`;
+
+        await supabase.from("gm_messages" as any).insert({
+          room_id: room.id,
+          player_id: room.gm_id,
+          sender: "GM",
+          character_name: "Voz do Destino",
+          content: welcomeContent,
+          type: "gm",
+        } as any);
+      };
+
+      createWelcomeMessage();
     }
-  }, [character, view]);
+  }, [character, room, view, gmMessages.length, messagesLoading]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -100,206 +126,71 @@ Diga-me, e deixe o destino se desenrolar...`,
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [gmMessages]);
 
   const handleSend = async (message: string) => {
-    const userMessage: Message = { role: "user", content: message };
-    setMessages((prev) => [...prev, userMessage]);
+    if (!room || !character) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar em uma sala com um personagem selecionado",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar autenticado para enviar mensagens",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/game-master`;
-      
-      // Identificar o jogador atual
-      const currentPlayer = character ? players.find(p => p.character_id === character.id) : null;
-      const currentPlayerId = currentPlayer?.id || "";
-      const currentPlayerName = character?.name || "Jogador Desconhecido";
-      
-      // Contexto do personagem atual (quem está enviando a mensagem)
-      const systemContext = character ? `\n\nJOGADOR ATIVO: ${currentPlayerName} (ID: ${currentPlayerId})\nFICHA DO JOGADOR ATIVO:\n${getCharacterSummary()}` : "";
-      
-      // Adicionar fichas completas de TODOS os jogadores na sala
-      let roomContext = "";
-      if (room && players.length > 0) {
-        roomContext = `\n\n🎮 SISTEMA MULTIPLAYER - ${players.length} JOGADOR(ES) NA SALA:\n`;
-        roomContext += `📍 Sala ID: ${room.id}\n`;
-        roomContext += `📍 Código da Sala: ${room.room_code}\n\n`;
-        
-        roomContext += `⚠️ REGRAS CRÍTICAS DE ISOLAMENTO:\n`;
-        roomContext += `- NUNCA misture atributos entre jogadores\n`;
-        roomContext += `- SEMPRE use a ficha do jogador correto ao narrar ações\n`;
-        roomContext += `- Cada ficha pertence SOMENTE ao seu jogador (identificado por ID único)\n`;
-        roomContext += `- Quando um jogador perguntar "meus atributos" ou "minha ficha", use APENAS a ficha dele\n\n`;
-        
-        roomContext += `═══════════════════════════════════════\n`;
-        roomContext += `📋 FICHAS COMPLETAS DE TODOS OS JOGADORES:\n`;
-        roomContext += `═══════════════════════════════════════\n\n`;
-        
-        players.forEach((player, index) => {
-          const char = player.characters;
-          if (char) {
-            const isActivePlayer = player.id === currentPlayerId;
-            roomContext += `${isActivePlayer ? "👉 " : ""}JOGADOR ${index + 1}${isActivePlayer ? " (ATIVO - ENVIOU ESTA MENSAGEM)" : ""}:\n`;
-            roomContext += `🆔 Player ID: ${player.id}\n`;
-            roomContext += `🆔 Character ID: ${char.id}\n`;
-            roomContext += `👤 Nome: ${char.name}\n`;
-            roomContext += `🧬 Raça: ${char.race}\n`;
-            roomContext += `⚔️ Classe: ${char.class}\n`;
-            roomContext += `📊 Nível: ${char.level}\n`;
-            roomContext += `❤️ HP: ${char.current_hp}/${char.max_hp}\n`;
-            roomContext += `🛡️ CA (Armor Class): ${char.armor_class}\n`;
-            roomContext += `🎲 Bônus de Proficiência: +${char.proficiency_bonus}\n\n`;
-            
-            roomContext += `📊 ATRIBUTOS:\n`;
-            roomContext += `- Força (STR): ${char.strength} (mod: ${Math.floor((char.strength - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.strength - 10) / 2)})\n`;
-            roomContext += `- Destreza (DEX): ${char.dexterity} (mod: ${Math.floor((char.dexterity - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.dexterity - 10) / 2)})\n`;
-            roomContext += `- Constituição (CON): ${char.constitution} (mod: ${Math.floor((char.constitution - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.constitution - 10) / 2)})\n`;
-            roomContext += `- Inteligência (INT): ${char.intelligence} (mod: ${Math.floor((char.intelligence - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.intelligence - 10) / 2)})\n`;
-            roomContext += `- Sabedoria (WIS): ${char.wisdom} (mod: ${Math.floor((char.wisdom - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.wisdom - 10) / 2)})\n`;
-            roomContext += `- Carisma (CHA): ${char.charisma} (mod: ${Math.floor((char.charisma - 10) / 2) >= 0 ? '+' : ''}${Math.floor((char.charisma - 10) / 2)})\n\n`;
-            
-            if (char.equipped_weapon && typeof char.equipped_weapon === 'object') {
-              const weapon = char.equipped_weapon as any;
-              roomContext += `⚔️ ARMA EQUIPADA: ${weapon.name || 'Desconhecida'}\n`;
-              roomContext += `  - Dano: ${weapon.damage_dice || '1d4'}\n`;
-              roomContext += `  - Tipo: ${weapon.damage_type || 'contundente'}\n`;
-              roomContext += `  - Atributo: ${weapon.ability || 'strength'}\n\n`;
-            }
-            
-            if (char.spell_slots && typeof char.spell_slots === 'object') {
-              const spellSlots = char.spell_slots as Record<string, number>;
-              const hasSpells = Object.values(spellSlots).some(val => val > 0);
-              if (hasSpells) {
-                roomContext += `✨ ESPAÇOS DE MAGIA:\n`;
-                Object.entries(spellSlots).forEach(([level, slots]) => {
-                  if (slots > 0) {
-                    roomContext += `  - Nível ${level}: ${slots} espaços\n`;
-                  }
-                });
-                roomContext += `\n`;
-              }
-            }
-            
-            if (player.conditions && Array.isArray(player.conditions) && player.conditions.length > 0) {
-              roomContext += `⚠️ CONDIÇÕES ATIVAS: ${player.conditions.join(', ')}\n\n`;
-            }
-            
-            roomContext += `───────────────────────────────────────\n\n`;
-          }
-        });
-        
-        roomContext += `\n⚔️ COMBATE: Quando houver um confronto, você DEVE incluir [INICIAR_COMBATE] no início da resposta.\n\n`;
-        roomContext += `🎯 INSTRUÇÕES DE NARRATIVA:\n`;
-        roomContext += `1. Use a ficha do JOGADOR ATIVO ao responder perguntas pessoais\n`;
-        roomContext += `2. Ao narrar ações, sempre verifique os atributos do jogador correto\n`;
-        roomContext += `3. NUNCA invente ou adivinhe estatísticas\n`;
-        roomContext += `4. Em cenas de grupo, use cada ficha apropriadamente\n`;
-        roomContext += `5. Mantenha a coerência dos dados de cada personagem\n`;
-      }
-      
-      const contextualMessages = messages.length === 0 && character
-        ? [{ role: "system" as const, content: `Você é o mestre de jogo. ${systemContext}${roomContext}` }, userMessage]
-        : [...messages, userMessage];
+      // ALWAYS save player message to gm_messages first (visible to all players in real-time)
+      const { error: insertError } = await supabase.from("gm_messages" as any).insert({
+        room_id: room.id,
+        player_id: user.id,
+        sender: "player",
+        character_name: character.name,
+        content: message.trim(),
+        type: "gm",
+      } as any);
 
-      const resp = await fetch(CHAT_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      if (insertError) {
+        console.error("Error saving player message:", insertError);
+        toast({
+          title: "Erro",
+          description: "Não foi possível enviar a mensagem",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Then trigger masterNarrate (server-side action)
+      // The server will save the GM response to gm_messages, visible to all players
+      await supabase.functions.invoke('game-master', {
+        body: {
+          messages: [{ role: 'user', content: message.trim() }],
+          roomId: room.id,
+          characterName: character.name,
         },
-        body: JSON.stringify({ 
-          messages: contextualMessages,
-          roomId: room?.id,
-          playerId: user?.id,
-          characterName: character?.name,
-        }),
       });
-
-      if (!resp.ok) {
-        const errorData = await resp.json();
-        throw new Error(errorData.error || "Failed to start stream");
-      }
-
-      if (!resp.body) throw new Error("No response body");
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
-      let streamDone = false;
-      let assistantContent = "";
-
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
-      while (!streamDone) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") {
-            streamDone = true;
-            break;
-          }
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) {
-              assistantContent += content;
-              setMessages((prev) => {
-                const updated = [...prev];
-                updated[updated.length - 1] = { role: "assistant", content: assistantContent };
-                return updated;
-              });
-            }
-          } catch {
-            textBuffer = line + "\n" + textBuffer;
-            break;
-          }
-        }
-      }
-
-      // Detectar se a IA quer iniciar combate
-      if (assistantContent.includes("[INICIAR_COMBATE]")) {
-        // Remove o marcador da mensagem
-        assistantContent = assistantContent.replace("[INICIAR_COMBATE]", "").trim();
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { role: "assistant", content: assistantContent };
-          return updated;
-        });
-        
-        // Inicia o combate após um breve delay para o usuário ler a mensagem
-        setTimeout(async () => {
-          if (room) {
-            await handleRollInitiative();
-            toast({
-              title: "Combate Iniciado!",
-              description: "Rolando iniciativa para todos os participantes...",
-            });
-          }
-        }, 2000);
-      }
 
       setIsLoading(false);
     } catch (error) {
-      console.error("Error:", error);
+      console.error('Error calling game master:', error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao enviar mensagem",
+        description: "Falha ao obter resposta da IA",
         variant: "destructive",
       });
       setIsLoading(false);
-      setMessages((prev) => prev.slice(0, -1));
     }
   };
 
@@ -375,20 +266,7 @@ Diga-me, e deixe o destino se desenrolar...`,
     // Switch to game view when session starts
     if (room.session_active && view === 'lobby') {
       setView('game');
-      // Limpa mensagens anteriores e começa nova sessão
-      setMessages([{
-        role: "assistant",
-        content: `Bem-vindos, aventureiros! A sessão está começando.
-
-Todos os jogadores estão reunidos e prontos para começar. Que tipo de aventura vocês desejam embarcar?
-
-• Uma jornada de fantasia medieval repleta de magia e dragões?
-• Um mistério sombrio em uma cidade steampunk?
-• Uma exploração espacial em galáxias desconhecidas?
-• Ou preferem que eu crie algo único para o grupo?
-
-Decidam juntos, e deixem o destino se desenrolar...`,
-      }]);
+      // Welcome message will be created automatically by useEffect when gmMessages is empty
     }
 
     // Switch to combat view when combat becomes active
@@ -585,11 +463,19 @@ Decidam juntos, e deixem o destino se desenrolar...`,
           {/* Coluna principal - Narrativa */}
           <div className={`flex flex-col ${room ? 'flex-1 md:flex-[2]' : 'flex-1'}`}>
             <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 pr-2">
-              {messages.map((msg, idx) => (
+              {messagesLoading && gmMessages.length === 0 && (
+                <div className="flex justify-center py-8">
+                  <div className="text-muted-foreground text-sm">
+                    Carregando mensagens...
+                  </div>
+                </div>
+              )}
+              {gmMessages.map((msg, idx) => (
                 <NarrativeMessage
-                  key={idx}
-                  role={msg.role}
+                  key={msg.id}
+                  role={msg.sender === "GM" ? "assistant" : "user"}
                   content={msg.content}
+                  characterName={msg.sender === "player" ? msg.character_name : undefined}
                   onSpeak={(content) => {
                     setCurrentSpeakingIndex(idx);
                   }}
