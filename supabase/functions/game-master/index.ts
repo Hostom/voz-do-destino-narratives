@@ -273,6 +273,8 @@ serve(async (req) => {
     // Create a custom stream that both passes through and collects the response
     let buffer = '';
     let toolCalls: any[] = [];
+    let toolCallsById = new Map(); // Track tool calls by index and id
+    
     const stream = new ReadableStream({
       async start(controller) {
         try {
@@ -292,10 +294,32 @@ serve(async (req) => {
                         if (content) {
                           fullResponse += content;
                         }
-                        // Collect tool calls
+                        // Collect tool calls progressively
                         const delta = data.choices?.[0]?.delta;
                         if (delta?.tool_calls) {
-                          toolCalls.push(...delta.tool_calls);
+                          for (const tc of delta.tool_calls) {
+                            const key = `${tc.index || 0}_${tc.id || 'default'}`;
+                            if (!toolCallsById.has(key)) {
+                              toolCallsById.set(key, {
+                                index: tc.index || 0,
+                                id: tc.id || null,
+                                type: tc.type || 'function',
+                                function: {
+                                  name: tc.function?.name || '',
+                                  arguments: tc.function?.arguments || ''
+                                }
+                              });
+                            } else {
+                              // Append to existing tool call (streaming chunks)
+                              const existing = toolCallsById.get(key);
+                              if (tc.function?.name) {
+                                existing.function.name += tc.function.name;
+                              }
+                              if (tc.function?.arguments) {
+                                existing.function.arguments += tc.function.arguments;
+                              }
+                            }
+                          }
                         }
                       } catch (e) {
                         console.error("Error parsing final buffer line:", e, "Line:", dataStr);
@@ -304,6 +328,9 @@ serve(async (req) => {
                   }
                 }
               }
+              
+              // Convert map to array
+              toolCalls = Array.from(toolCallsById.values());
               
               // Process tool calls BEFORE saving message
               if (toolCalls.length > 0) {
@@ -450,10 +477,32 @@ serve(async (req) => {
                     if (content) {
                       fullResponse += content;
                     }
-                    // Collect tool calls
+                    // Collect tool calls progressively
                     const delta = data.choices?.[0]?.delta;
                     if (delta?.tool_calls) {
-                      toolCalls.push(...delta.tool_calls);
+                      for (const tc of delta.tool_calls) {
+                        const key = `${tc.index || 0}_${tc.id || 'default'}`;
+                        if (!toolCallsById.has(key)) {
+                          toolCallsById.set(key, {
+                            index: tc.index || 0,
+                            id: tc.id || null,
+                            type: tc.type || 'function',
+                            function: {
+                              name: tc.function?.name || '',
+                              arguments: tc.function?.arguments || ''
+                            }
+                          });
+                        } else {
+                          // Append to existing tool call (streaming chunks)
+                          const existing = toolCallsById.get(key);
+                          if (tc.function?.name) {
+                            existing.function.name += tc.function.name;
+                          }
+                          if (tc.function?.arguments) {
+                            existing.function.arguments += tc.function.arguments;
+                          }
+                        }
+                      }
                     }
                   } catch (e) {
                     console.error("Error parsing SSE line:", e, "Line:", dataStr);
