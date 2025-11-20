@@ -105,15 +105,14 @@ const Index = () => {
   // Initialize welcome message when character is ready and room is active
   useEffect(() => {
     if (character && room && room.session_active && view === 'game' && gmMessages.length === 0 && !messagesLoading) {
-      // Create AI-generated welcome message that has access to all character sheets
+      // Create AI-generated welcome message that has access to ALL character sheets in the room
       const createWelcomeMessage = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !room) return;
 
-        console.log('Creating AI welcome message with character context...');
+        console.log('Creating AI welcome message with ALL characters context...');
         setIsLoading(true);
 
-        // Call game-master to generate welcome with character context
         try {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -125,11 +124,61 @@ const Index = () => {
           const { data: { session } } = await supabase.auth.getSession();
           const authToken = session?.access_token;
 
-          // Get character summary with items
-          const characterSheet = await getCharacterSummary();
+          // Buscar TODOS os personagens da sala
+          const { data: roomPlayers, error: playersError } = await supabase
+            .from('room_players')
+            .select(`
+              *,
+              characters (
+                id, name, race, class, level, background, backstory,
+                strength, dexterity, constitution, intelligence, wisdom, charisma,
+                current_hp, max_hp, armor_class, proficiency_bonus,
+                equipped_weapon, spell_slots, current_spell_slots
+              )
+            `)
+            .eq('room_id', room.id);
 
-          // Call AI to generate welcome with full character context
-          // The character sheet is sent as context, not saved as a message
+          if (playersError) {
+            console.error('Error fetching room players:', playersError);
+            throw playersError;
+          }
+
+          // Criar resumo de TODOS os personagens
+          let allCharactersSheet = '=== GRUPO DE AVENTUREIROS ===\n\n';
+          
+          if (roomPlayers && roomPlayers.length > 0) {
+            for (const player of roomPlayers) {
+              const char = player.characters as any;
+              if (!char) continue;
+
+              allCharactersSheet += `📜 ${char.name}\n`;
+              allCharactersSheet += `Raça: ${char.race} | Classe: ${char.class} | Nível: ${char.level}\n`;
+              
+              if (char.background) {
+                allCharactersSheet += `Background: ${char.background}\n`;
+              }
+              
+              if (char.backstory && char.backstory.trim()) {
+                allCharactersSheet += `História: ${char.backstory}\n`;
+              }
+
+              allCharactersSheet += `HP: ${char.current_hp}/${char.max_hp} | CA: ${char.armor_class}\n`;
+              allCharactersSheet += `Atributos: FOR ${char.strength} | DES ${char.dexterity} | CON ${char.constitution} | INT ${char.intelligence} | SAB ${char.wisdom} | CAR ${char.charisma}\n`;
+              
+              if (char.equipped_weapon) {
+                const weapon = char.equipped_weapon as any;
+                allCharactersSheet += `Arma Equipada: ${weapon.name} (${weapon.damage_dice} ${weapon.damage_type})\n`;
+              }
+
+              allCharactersSheet += '\n---\n\n';
+            }
+          } else {
+            allCharactersSheet += 'Nenhum personagem encontrado na sala.\n';
+          }
+
+          console.log('Sending character sheets to GM:', allCharactersSheet);
+
+          // Enviar para o GM com o contexto de TODOS os personagens
           const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
             method: 'POST',
             headers: {
@@ -140,12 +189,12 @@ const Index = () => {
             body: JSON.stringify({
               messages: [{ 
                 role: 'user', 
-                content: `[INÍCIO DA SESSÃO]\n\nFicha do Personagem:\n${characterSheet}\n\nApresente-se como "Voz do Destino" e dê as boas-vindas ao jogador. Inicie a aventura criando uma cena introdutória envolvente baseada no personagem e sua história.` 
+                content: `[INÍCIO DA SESSÃO]\n\n${allCharactersSheet}\n\nApresente-se como "Voz do Destino" e dê as boas-vindas aos aventureiros. Crie uma cena introdutória envolvente e personalizada que considere as características, backgrounds e histórias de TODOS os personagens presentes. Use os detalhes de cada personagem para criar uma narrativa rica e imersiva que conecte suas histórias individuais em uma aventura épica.` 
               }],
               roomId: room.id,
               characterName: character.name,
               characterId: character.id,
-              isSessionStart: true, // Flag to indicate this is session start
+              isSessionStart: true,
             }),
           });
 
@@ -158,7 +207,7 @@ const Index = () => {
                 if (done) break;
               }
             }
-            console.log('AI welcome message generated successfully');
+            console.log('AI welcome message generated successfully with all characters context');
           }
         } catch (error) {
           console.error('Error generating welcome message:', error);
