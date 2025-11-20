@@ -183,6 +183,41 @@ serve(async (req) => {
     }
 
     console.log("Calling Lovable AI Gateway with", messageHistory.length, "messages...");
+    
+    // Define tool for structured extraction of game events
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "update_character_stats",
+          description: "Atualiza HP, cura ou XP de um personagem baseado em eventos da narrativa. Use quando: o personagem tomar dano, ser curado, ganhar XP, descansar, etc.",
+          parameters: {
+            type: "object",
+            properties: {
+              character_id: {
+                type: "string",
+                description: "ID do personagem afetado (use o character_id do JOGADOR ATIVO)"
+              },
+              hp_change: {
+                type: "number",
+                description: "Mudança no HP (negativo para dano, positivo para cura). Ex: -5 para 5 de dano, +10 para 10 de cura"
+              },
+              xp_gain: {
+                type: "number",
+                description: "Quantidade de XP ganho (sempre positivo ou 0). Ex: 50 para derrotar inimigos, 25 para resolver puzzle"
+              },
+              reason: {
+                type: "string",
+                description: "Razão da mudança (ex: 'ataque de orc', 'descanso completo', 'derrotou bandidos')"
+              }
+            },
+            required: ["character_id"],
+            additionalProperties: false
+          }
+        }
+      }
+    ];
+    
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -192,6 +227,8 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: messageHistory,
+        tools: tools,
+        tool_choice: "auto",
         stream: true,
       }),
     });
@@ -235,6 +272,7 @@ serve(async (req) => {
 
     // Create a custom stream that both passes through and collects the response
     let buffer = '';
+    let toolCalls: any[] = [];
     const stream = new ReadableStream({
       async start(controller) {
         try {
@@ -252,12 +290,72 @@ serve(async (req) => {
                       if (content) {
                         fullResponse += content;
                       }
+                      // Collect tool calls
+                      const delta = data.choices?.[0]?.delta;
+                      if (delta?.tool_calls) {
+                        toolCalls.push(...delta.tool_calls);
+                      }
                     } catch (e) {
                       // Skip parsing errors
                     }
                   }
                 }
                 buffer = '';
+              }
+              
+              // Process tool calls BEFORE saving message
+              if (toolCalls.length > 0) {
+                console.log("Processing tool calls:", toolCalls.length);
+                for (const toolCall of toolCalls) {
+                  if (toolCall.function?.name === "update_character_stats") {
+                    try {
+                      const args = JSON.parse(toolCall.function.arguments);
+                      const { character_id, hp_change, xp_gain, reason } = args;
+                      
+                      console.log("Tool call args:", args);
+
+                      // Update HP if specified
+                      if (hp_change !== undefined && hp_change !== 0) {
+                        const { data: char } = await supabase
+                          .from('characters')
+                          .select('current_hp, max_hp, name')
+                          .eq('id', character_id)
+                          .single();
+
+                        if (char) {
+                          const newHP = Math.max(0, Math.min(char.max_hp, char.current_hp + hp_change));
+                          await supabase
+                            .from('characters')
+                            .update({ current_hp: newHP })
+                            .eq('id', character_id);
+
+                          console.log(`✅ Updated ${char.name} HP: ${char.current_hp} -> ${newHP} (${hp_change > 0 ? '+' : ''}${hp_change}) - ${reason}`);
+                        }
+                      }
+
+                      // Update XP if specified
+                      if (xp_gain !== undefined && xp_gain > 0) {
+                        const { data: char } = await supabase
+                          .from('characters')
+                          .select('experience_points, level, name')
+                          .eq('id', character_id)
+                          .single();
+
+                        if (char) {
+                          const newXP = (char.experience_points || 0) + xp_gain;
+                          await supabase
+                            .from('characters')
+                            .update({ experience_points: newXP })
+                            .eq('id', character_id);
+
+                          console.log(`✅ Updated ${char.name} XP: +${xp_gain} (Total: ${newXP}) - ${reason}`);
+                        }
+                      }
+                    } catch (toolError) {
+                      console.error("❌ Error processing tool call:", toolError);
+                    }
+                  }
+                }
               }
               
               // CRITICAL: ALWAYS save the complete GM response ONLY to gm_messages table

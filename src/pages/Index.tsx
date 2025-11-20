@@ -514,6 +514,7 @@ Decidam juntos, e deixem o destino se desenrolar...`;
           onBackToCharacterSelect={room ? undefined : handleBackToCharacterSelect}
           onBackToLobby={room ? () => setView('lobby') : undefined}
           roomCode={room?.room_code}
+          characterId={character?.id}
         />
 
         {showCharacterSheet && character && (

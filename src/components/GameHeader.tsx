@@ -1,14 +1,71 @@
-import { Scroll, Sparkles, LogOut, Users, ArrowLeft } from "lucide-react";
+import { Scroll, Sparkles, LogOut, Users, ArrowLeft, Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { getXPForLevel, getXPProgressPercentage } from "@/lib/dnd-xp-progression";
 
 interface GameHeaderProps {
   onLogout?: () => void;
   onBackToCharacterSelect?: () => void;
   onBackToLobby?: () => void;
   roomCode?: string;
+  characterId?: string;
 }
 
-export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, roomCode }: GameHeaderProps) => {
+interface CharacterStats {
+  current_hp: number;
+  max_hp: number;
+  experience_points: number;
+  level: number;
+}
+
+export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, roomCode, characterId }: GameHeaderProps) => {
+  const [stats, setStats] = useState<CharacterStats | null>(null);
+
+  useEffect(() => {
+    if (!characterId) return;
+
+    // Load initial stats
+    const loadStats = async () => {
+      const { data } = await supabase
+        .from('characters')
+        .select('current_hp, max_hp, experience_points, level')
+        .eq('id', characterId)
+        .single();
+      
+      if (data) setStats(data);
+    };
+
+    loadStats();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel(`character-stats-${characterId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'characters',
+          filter: `id=eq.${characterId}`
+        },
+        (payload) => {
+          const newData = payload.new as CharacterStats;
+          setStats(newData);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [characterId]);
+
+  const hpPercentage = stats ? (stats.current_hp / stats.max_hp) * 100 : 0;
+  const xpPercentage = stats ? getXPProgressPercentage(stats.experience_points, stats.level) : 0;
+  const xpToNextLevel = stats ? getXPForLevel(stats.level) - stats.experience_points : 0;
+
   return (
     <header className="relative border-b border-border/50 backdrop-blur-epic bg-card/30">
       <div className="container mx-auto px-3 md:px-6 py-3 md:py-6">
@@ -27,6 +84,41 @@ export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, r
           </div>
           
           <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
+            {/* Character Stats */}
+            {stats && (
+              <div className="hidden lg:flex flex-col gap-1.5 mr-4 min-w-[200px]">
+                {/* HP Bar */}
+                <div className="flex items-center gap-2">
+                  <Heart className="h-3.5 w-3.5 text-destructive" />
+                  <div className="flex-1">
+                    <Progress 
+                      value={hpPercentage} 
+                      className="h-2 bg-muted"
+                      indicatorClassName={hpPercentage > 50 ? "bg-green-500" : hpPercentage > 25 ? "bg-yellow-500" : "bg-destructive"}
+                    />
+                  </div>
+                  <span className="text-xs font-medium min-w-[45px] text-right">
+                    {stats.current_hp}/{stats.max_hp}
+                  </span>
+                </div>
+                
+                {/* XP Bar */}
+                <div className="flex items-center gap-2">
+                  <Star className="h-3.5 w-3.5 text-primary" />
+                  <div className="flex-1">
+                    <Progress 
+                      value={xpPercentage} 
+                      className="h-2 bg-muted"
+                      indicatorClassName="bg-primary"
+                    />
+                  </div>
+                  <span className="text-xs font-medium min-w-[45px] text-right">
+                    Nv {stats.level}
+                  </span>
+                </div>
+              </div>
+            )}
+            
             <div className="hidden lg:flex items-center gap-2 mr-2 md:mr-4">
               <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
               <span className="text-muted-foreground text-xs md:text-sm whitespace-nowrap">
