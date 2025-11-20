@@ -254,6 +254,11 @@ serve(async (req) => {
                 if (roomError) {
                   console.error("Error fetching room:", roomError);
                 } else if (room) {
+                  console.log("Room found. GM ID:", room.gm_id);
+                  console.log("Attempting to insert GM response to gm_messages...");
+                  console.log("Response length:", fullResponse.length);
+                  console.log("Response preview (first 200 chars):", fullResponse.substring(0, 200));
+                  
                   // Insert ONLY into gm_messages - this is the single source of truth for GM narrations
                   const { data: insertedData, error: insertError } = await supabase
                     .from("gm_messages")
@@ -268,9 +273,19 @@ serve(async (req) => {
                     .select();
                   
                   if (insertError) {
-                    console.error("Error saving GM message to gm_messages:", insertError);
+                    console.error("❌ Error saving GM message to gm_messages:", insertError);
+                    console.error("Error details:", JSON.stringify(insertError, null, 2));
+                    console.error("Attempted insert data:", {
+                      room_id: roomId,
+                      player_id: room.gm_id,
+                      sender: "GM",
+                      character_name: "Voz do Destino",
+                      content_length: fullResponse.trim().length,
+                      type: "gm",
+                    });
                   } else {
                     console.log("✅ GM response saved to gm_messages successfully. ID:", insertedData?.[0]?.id);
+                    console.log("Inserted data:", JSON.stringify(insertedData?.[0], null, 2));
                     console.log("Response preview:", fullResponse.substring(0, 100) + "...");
                   }
                 } else {
