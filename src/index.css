@@ -85,6 +85,45 @@ All colors MUST be HSL.
       max-width: 100%;
     }
   }
+
+  /* Landscape mode optimizations for mobile and tablets */
+  @media (max-height: 600px) and (orientation: landscape) {
+    body {
+      font-size: 13px;
+    }
+
+    /* Reduce padding and margins in landscape */
+    .landscape\:p-2 {
+      padding: 0.5rem;
+    }
+
+    .landscape\:py-1 {
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+    }
+
+    .landscape\:gap-2 {
+      gap: 0.5rem;
+    }
+
+    /* Make headers more compact */
+    h1, h2, h3 {
+      line-height: 1.2;
+    }
+
+    /* Optimize button sizes */
+    button {
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+  }
+
+  /* Tablet landscape optimizations */
+  @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+    .container {
+      max-width: 95%;
+    }
+  }
 }
 
 @layer utilities {

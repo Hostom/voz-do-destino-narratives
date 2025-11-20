@@ -666,8 +666,8 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
         />
 
         {showCharacterSheet && character && (
-          <div className="mx-2 md:mx-4 mb-4 p-4 md:p-6 bg-card/95 backdrop-blur rounded-lg border border-primary/20 shadow-2xl animate-in slide-in-from-top duration-300 max-w-full overflow-x-hidden">
-            <div className="flex items-center justify-between mb-4">
+          <div className="mx-2 md:mx-4 mb-4 p-4 md:p-6 bg-card/95 backdrop-blur rounded-lg border border-primary/20 shadow-2xl animate-in slide-in-from-top duration-300 max-w-full overflow-x-hidden landscape:p-3 landscape:mb-2">
+            <div className="flex items-center justify-between mb-4 landscape:mb-2">
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <BookOpen className="w-6 h-6" />
                 Ficha do Personagem
@@ -749,7 +749,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           </div>
         )}
 
-        <div className="flex-1 flex flex-col md:flex-row gap-2 md:gap-4 px-2 md:px-4 pb-2 md:pb-4 min-h-0 overflow-x-hidden">
+        <div className="flex-1 flex flex-col md:flex-row gap-2 md:gap-4 px-2 md:px-4 pb-2 md:pb-4 min-h-0 overflow-x-hidden landscape:gap-2 landscape:px-2 landscape:pb-2">
           {/* Quando há sala: Chat principal (narrativa) + Chat social + Dados */}
           {room && character ? (
             <>
@@ -1006,8 +1006,8 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           {/* Mobile: Chat principal (narrativa) + Botões flutuantes */}
           {room && character && isMobile && (
             <>
-              <div className="flex-1 min-h-0 flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg overflow-x-hidden max-w-full">
-                <div className="mb-2 px-3 pt-3">
+              <div className="flex-1 min-h-0 flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg overflow-x-hidden max-w-full landscape:rounded-md">
+                <div className="mb-2 px-3 pt-3 landscape:mb-1 landscape:px-2 landscape:pt-2">
                   <h3 className="text-base font-semibold flex items-center gap-2">
                     <Scroll className="w-4 h-4" />
                     Aventura - Narração do Mestre
@@ -1056,10 +1056,10 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
               </div>
               
               {/* Botões flutuantes para mobile */}
-              <div className="fixed bottom-24 right-4 z-50 flex flex-col gap-2 md:gap-3">
+              <div className="fixed bottom-24 right-4 z-50 flex flex-col gap-2 md:gap-3 landscape:bottom-20 landscape:right-2 landscape:gap-1">
                 <Sheet>
                   <SheetTrigger asChild>
-                    <Button size="icon" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation">
+                    <Button size="icon" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation landscape:h-10 landscape:w-10">
                       <MessageSquare className="h-5 w-5 md:h-6 md:w-6" />
                     </Button>
                   </SheetTrigger>
