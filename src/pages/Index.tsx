@@ -718,7 +718,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           </div>
         )}
 
-        <div className="flex-1 flex flex-col md:flex-row gap-4 px-2 md:px-4 pb-4 overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row gap-2 md:gap-4 px-2 md:px-4 pb-2 md:pb-4 min-h-0">
           {/* Quando há sala: Chat principal (narrativa) + Chat social + Dados */}
           {room && character ? (
             <>
@@ -923,8 +923,17 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
             </>
           ) : (
             /* Quando não há sala: Chat individual */
-            <div className="flex flex-col flex-1">
-              <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 pr-2">
+            <div className="flex flex-col flex-1 min-h-0 bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-3 md:p-4">
+              <div className="mb-2 md:mb-3">
+                <h3 className="text-base md:text-lg font-semibold flex items-center gap-2">
+                  <Scroll className="w-4 h-4 md:w-5 md:h-5" />
+                  Chat com o Mestre
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Converse com a IA para preparar sua aventura
+                </p>
+              </div>
+              <div className="flex-1 overflow-y-auto pr-1 md:pr-2 min-h-0">
                 {messagesLoading && gmMessages.length === 0 && (
                   <div className="flex justify-center py-8">
                     <div className="text-muted-foreground text-sm">
@@ -945,7 +954,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                   />
                 ))}
                 {isLoading && (
-                  <div className="flex justify-center">
+                  <div className="flex justify-center py-4">
                     <div className="animate-pulse text-muted-foreground text-sm">
                       A Voz do Destino está narrando...
                     </div>
@@ -954,7 +963,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="pt-2 md:pt-4">
+              <div className="pt-2 md:pt-4 mt-2 md:mt-4 border-t border-border/50 shrink-0">
                 <ChatInput 
                   onSend={handleSend} 
                   disabled={isLoading}
@@ -966,17 +975,17 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           {/* Mobile: Chat principal (narrativa) + Botões flutuantes */}
           {room && character && isMobile && (
             <>
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="mb-3 px-2">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Scroll className="w-5 h-5" />
+              <div className="flex-1 min-h-0 flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg">
+                <div className="mb-2 px-3 pt-3">
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    <Scroll className="w-4 h-4" />
                     Aventura - Narração do Mestre
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    A IA Mestre narra a história - Interaja aqui para avançar a aventura
+                    A IA Mestre narra a história
                   </p>
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 px-2 min-h-0">
+                <div className="flex-1 overflow-y-auto px-3 pb-3 min-h-0">
                   {messagesLoading && gmMessages.length === 0 && (
                     <div className="flex justify-center py-8">
                       <div className="text-muted-foreground text-sm">
@@ -997,7 +1006,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                     />
                   ))}
                   {isLoading && (
-                    <div className="flex justify-center">
+                    <div className="flex justify-center py-4">
                       <div className="animate-pulse text-muted-foreground text-sm">
                         A Voz do Destino está narrando...
                       </div>
@@ -1005,16 +1014,148 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                   )}
                   <div ref={messagesEndRef} />
                 </div>
-                <div className="pt-2 md:pt-4 mt-4 border-t border-border/50 px-2">
-                  <ChatInput 
-                    onSend={handleSend} 
-                    disabled={isLoading}
-                  />
-                </div>
+              </div>
+              
+              {/* Input fixo na parte inferior */}
+              <div className="shrink-0">
+                <ChatInput 
+                  onSend={handleSend} 
+                  disabled={isLoading}
+                />
               </div>
               
               {/* Botões flutuantes para mobile */}
-              <div className="fixed bottom-20 right-4 z-50 flex flex-col gap-3">
+              <div className="fixed bottom-24 right-4 z-50 flex flex-col gap-2 md:gap-3">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button size="icon" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation">
+                      <MessageSquare className="h-5 w-5 md:h-6 md:w-6" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Chat Social</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4 h-[calc(100vh-8rem)]">
+                      <RoomChat 
+                        roomId={room.id} 
+                        characterName={character.name}
+                        currentTurn={room.current_turn ?? 0}
+                        initiativeOrder={(room.initiative_order as any[]) || []}
+                        isGM={room.gm_id === user?.id}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button size="icon" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation">
+                      <Dices className="h-5 w-5 md:h-6 md:w-6" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Painel de Dados</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4">
+                      <DicePanel 
+                        roomId={room.id}
+                        characterName={character.name}
+                        characterStats={{
+                          strength: character.strength,
+                          dexterity: character.dexterity,
+                          constitution: character.constitution,
+                          intelligence: character.intelligence,
+                          wisdom: character.wisdom,
+                          charisma: character.charisma
+                        }}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button size="icon" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation">
+                      <Package className="h-5 w-5 md:h-6 md:w-6" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Inventário</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4 h-[calc(100vh-8rem)]">
+                      <InventoryPanel 
+                        characterId={character.id} 
+                        carryingCapacity={150}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button size="icon" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation">
+                      <User className="h-5 w-5 md:h-6 md:w-6" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Ficha do Personagem</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm text-muted-foreground">Nível</p>
+                          <p className="text-lg font-semibold">{character.level}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm text-muted-foreground">Classe</p>
+                          <p className="text-lg font-semibold">{character.class}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm text-muted-foreground">HP</p>
+                          <p className="text-lg font-semibold">{character.current_hp}/{character.max_hp}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm text-muted-foreground">AC</p>
+                          <p className="text-lg font-semibold">{character.armor_class}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground font-semibold">Atributos</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="flex justify-between p-2 rounded bg-background/50">
+                            <span className="text-sm">FOR</span>
+                            <span className="font-bold">{character.strength}</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded bg-background/50">
+                            <span className="text-sm">DES</span>
+                            <span className="font-bold">{character.dexterity}</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded bg-background/50">
+                            <span className="text-sm">CON</span>
+                            <span className="font-bold">{character.constitution}</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded bg-background/50">
+                            <span className="text-sm">INT</span>
+                            <span className="font-bold">{character.intelligence}</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded bg-background/50">
+                            <span className="text-sm">SAB</span>
+                            <span className="font-bold">{character.wisdom}</span>
+                          </div>
+                          <div className="flex justify-between p-2 rounded bg-background/50">
+                            <span className="text-sm">CAR</span>
+                            <span className="font-bold">{character.charisma}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
               </div>
             </>
           )}
