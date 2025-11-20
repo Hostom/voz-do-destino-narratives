@@ -26,6 +26,7 @@ interface GMChatProps {
 
 export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
   const [newMessage, setNewMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -44,6 +45,28 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
     scrollToBottom();
   }, [messages]);
 
+  // Clear loading state when we receive a GM response
+  useEffect(() => {
+    if (isLoading && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.sender === "GM") {
+        console.log('GM response received, clearing loading state');
+        setIsLoading(false);
+      }
+    }
+  }, [messages, isLoading]);
+
+  // Safety timeout: clear loading after 30 seconds if no response
+  useEffect(() => {
+    if (isLoading) {
+      const timeout = setTimeout(() => {
+        console.warn('Loading timeout - no GM response received after 30 seconds');
+        setIsLoading(false);
+      }, 30000);
+      return () => clearTimeout(timeout);
+    }
+  }, [isLoading]);
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -61,6 +84,7 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
 
     const messageContent = newMessage.trim();
     setNewMessage("");
+    setIsLoading(true);
 
     // ALWAYS save player message to gm_messages first
     const { error: insertError } = await supabase.from("gm_messages" as any).insert({
@@ -80,26 +104,73 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
         variant: "destructive",
       });
       setNewMessage(messageContent); // Restore message on error
+      setIsLoading(false);
       return;
     }
 
-    // Then trigger masterNarrate (server-side action)
-    // The server will save the GM response to gm_messages
+    // Then trigger game-master function
+    // The function returns a stream (SSE), we need to consume it to ensure it completes
+    // The server will save the GM response to gm_messages when the stream completes
+    console.log('Calling game-master function with:', {
+      roomId,
+      characterName,
+      message: messageContent
+    });
+    
     try {
-      await supabase.functions.invoke('game-master', {
+      const { data, error: invokeError } = await supabase.functions.invoke('game-master', {
         body: {
           messages: [{ role: 'user', content: messageContent }],
           roomId,
           characterName: characterName,
         },
       });
+
+      if (invokeError) {
+        console.error('Error calling game master:', invokeError);
+        toast({
+          title: "Erro",
+          description: invokeError.message || "Falha ao chamar a IA",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // If data is a ReadableStream, consume it to ensure the function completes
+      if (data && typeof data.getReader === 'function') {
+        const reader = data.getReader();
+        const decoder = new TextDecoder();
+        
+        // Consume the stream to ensure it completes
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              console.log('Stream consumed completely');
+              break;
+            }
+            // Decode but don't process - we're just consuming the stream
+            // The server will save the response to gm_messages when the stream completes
+            decoder.decode(value, { stream: true });
+          }
+        } catch (streamError) {
+          console.error('Error consuming stream:', streamError);
+        }
+      } else {
+        console.log('No stream to consume, data:', data);
+      }
+      
+      // Don't set loading to false here - wait for real-time update
+      console.log('Game-master function invoked successfully. Response will appear in gm_messages via real-time.');
     } catch (error) {
-      console.error('Error calling game master:', error);
+      console.error('Exception calling game master:', error);
       toast({
         title: "Erro",
-        description: "Falha ao obter resposta da IA",
+        description: error instanceof Error ? error.message : "Falha ao obter resposta da IA",
         variant: "destructive",
       });
+      setIsLoading(false);
     }
   };
 
@@ -120,6 +191,11 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
             {loading && messages.length === 0 && (
               <div className="text-center text-muted-foreground text-sm">
                 Carregando mensagens...
+              </div>
+            )}
+            {isLoading && (
+              <div className="text-center text-muted-foreground text-sm italic">
+                Aguardando resposta do Mestre...
               </div>
             )}
             {messages.map((msg) => (
@@ -166,7 +242,7 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
             <Button 
               type="submit" 
               size="icon" 
-              disabled={!newMessage.trim()}
+              disabled={!newMessage.trim() || isLoading}
             >
               <Send className="w-4 h-4" />
             </Button>
