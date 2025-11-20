@@ -193,8 +193,8 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-6">
-      <Card className="w-full max-w-2xl bg-card/80 backdrop-blur border-primary/20">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-3 md:p-6 overflow-x-hidden">
+      <Card className="w-full max-w-2xl bg-card/80 backdrop-blur border-primary/20 overflow-hidden">
         <CardHeader className="text-center">
           {onBack && (
             <Button 
@@ -212,7 +212,7 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
               <History className="w-12 h-12 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-3xl">Minhas Salas</CardTitle>
+          <CardTitle className="text-2xl md:text-3xl">Minhas Salas</CardTitle>
           <CardDescription>
             Continue suas aventuras anteriores
           </CardDescription>
@@ -229,7 +229,7 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
             </div>
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 md:px-6">
           {!character ? (
             <div className="text-center p-6 bg-destructive/10 rounded-lg">
               <p className="text-destructive">
@@ -247,39 +247,41 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
               </p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+            <div className="space-y-3 max-h-[500px] overflow-y-auto overflow-x-hidden">
               {savedRooms.map((room) => (
-                <Card key={room.id} className="bg-background/50 hover:bg-background/70 transition-colors">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
+                <Card key={room.id} className="bg-background/50 hover:bg-background/70 transition-colors overflow-hidden">
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex items-start md:items-center gap-2 md:gap-3 flex-col md:flex-row">
                       {canDeleteRoom(room) && (
-                        <Checkbox
-                          checked={selectedRooms.has(room.id)}
-                          onCheckedChange={() => toggleRoomSelection(room.id)}
-                        />
+                        <div className="self-start md:self-center">
+                          <Checkbox
+                            checked={selectedRooms.has(room.id)}
+                            onCheckedChange={() => toggleRoomSelection(room.id)}
+                          />
+                        </div>
                       )}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-mono text-2xl font-bold">
+                      <div className="flex-1 min-w-0 w-full">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="font-mono text-xl md:text-2xl font-bold break-all">
                             {room.room_code}
                           </h3>
                           {room.session_active && (
-                            <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
+                            <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30 text-xs whitespace-nowrap">
                               Ativa
                             </Badge>
                           )}
                           {room.combat_active && (
-                            <Badge variant="destructive">
+                            <Badge variant="destructive" className="text-xs whitespace-nowrap">
                               Em Combate
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs md:text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Users className="w-4 h-4" />
-                            <span>{room.player_count} jogador{room.player_count !== 1 ? 'es' : ''}</span>
+                            <span className="whitespace-nowrap">{room.player_count} jogador{room.player_count !== 1 ? 'es' : ''}</span>
                           </div>
-                          <span>
+                          <span className="whitespace-nowrap truncate">
                             Criada em {new Date(room.created_at).toLocaleDateString('pt-BR')}
                           </span>
                         </div>
@@ -287,7 +289,8 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
                       <Button
                         onClick={() => handleJoinSavedRoom(room.room_code)}
                         disabled={loading}
-                        className="ml-4"
+                        className="w-full md:w-auto md:ml-4 shrink-0"
+                        size="sm"
                       >
                         {loading ? "Entrando..." : "Entrar"}
                         <ArrowRight className="w-4 h-4 ml-2" />
