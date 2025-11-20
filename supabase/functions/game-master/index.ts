@@ -303,6 +303,14 @@ PERSONAGEM: ${char.name}
       }
     ];
     
+    console.log("🔄 Calling Lovable AI Gateway...");
+    console.log("📊 Request details:", {
+      model: "google/gemini-2.5-flash",
+      messageCount: messageHistory.length,
+      hasTools: true,
+      streaming: true
+    });
+    
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -318,9 +326,12 @@ PERSONAGEM: ${char.name}
       }),
     });
 
+    console.log("📡 Response status:", response.status);
+    console.log("📡 Response headers:", Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
+      console.error("❌ AI Gateway error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -341,10 +352,10 @@ PERSONAGEM: ${char.name}
         );
       }
       
-      throw new Error(`AI Gateway error: ${response.status}`);
+      throw new Error(`AI Gateway error: ${response.status} - ${errorText}`);
     }
 
-    console.log("Streaming response from AI Gateway");
+    console.log("✅ AI Gateway responded successfully, starting stream...");
     
     // Collect the full response to save to database
     let fullResponse = "";
@@ -360,12 +371,29 @@ PERSONAGEM: ${char.name}
     let toolCalls: any[] = [];
     let toolCallsById = new Map(); // Track tool calls by index and id
     
+    let chunkCount = 0;
+    let lastChunkTime = Date.now();
+    
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          console.log("📖 Starting to read stream...");
           while (true) {
             const { done, value } = await reader.read();
+            chunkCount++;
+            
+            if (chunkCount === 1) {
+              console.log("✅ First chunk received!");
+            }
+            
+            const now = Date.now();
+            if (now - lastChunkTime > 5000) {
+              console.log(`⏱️ Stream still active (${chunkCount} chunks, ${fullResponse.length} chars)`);
+              lastChunkTime = now;
+            }
+            
             if (done) {
+              console.log(`🏁 Stream finished. Total chunks: ${chunkCount}, Response length: ${fullResponse.length}`);
               // Process any remaining buffer
               if (buffer.trim()) {
                 const lines = buffer.split('\n').filter(l => l.trim());
@@ -537,14 +565,20 @@ PERSONAGEM: ${char.name}
                 } else {
                   console.error("Room not found for roomId:", roomId);
                 }
-              } else {
-                if (!fullResponse) {
-                  console.warn("No fullResponse to save. Buffer was:", buffer);
+                } else {
+                  if (!fullResponse) {
+                    console.error("❌ CRITICAL: No fullResponse collected from stream!");
+                    console.error("Stream stats:", {
+                      chunkCount,
+                      bufferLength: buffer.length,
+                      bufferContent: buffer,
+                      toolCallsCount: toolCalls.length
+                    });
+                  }
+                  if (!roomId) {
+                    console.error("❌ No roomId provided");
+                  }
                 }
-                if (!roomId) {
-                  console.warn("No roomId provided");
-                }
-              }
               controller.close();
               break;
             }
