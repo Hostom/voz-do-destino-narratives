@@ -151,9 +151,9 @@ serve(async (req) => {
   }
 
   try {
-    const { messages: clientMessages, roomId, characterName = 'Mestre do Jogo' } = await req.json();
+    const { messages: clientMessages, roomId, characterName = 'Mestre do Jogo', characterId } = await req.json();
     console.log("Received client messages:", clientMessages?.length || 0);
-    console.log("Room ID:", roomId, "Character:", characterName);
+    console.log("Room ID:", roomId, "Character:", characterName, "Character ID:", characterId);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -177,7 +177,8 @@ serve(async (req) => {
 
     // Get the character_id of the active player (who sent the current message)
     // This is critical for tool calling to update the correct character's stats
-    let activeCharacterId: string | null = null;
+    // PREFER characterId from request if provided, otherwise try to find it
+    let activeCharacterId: string | null = characterId || null;
 
     if (roomId) {
       console.log("Fetching conversation history for room:", roomId);
@@ -256,10 +257,16 @@ PERSONAGEM: ${char.name}
       if (lastPlayerMsg?.player_id) {
         // Find the character_id for this player in this room
         const activePlayer = roomPlayers?.find((rp: any) => rp.user_id === lastPlayerMsg.player_id);
-        if (activePlayer) {
+        if (activePlayer && !activeCharacterId) {
           activeCharacterId = activePlayer.character_id;
-          console.log("Active character ID:", activeCharacterId);
+          console.log("Active character ID from last message:", activeCharacterId);
         }
+      }
+      
+      if (activeCharacterId) {
+        console.log("✅ Active character ID confirmed:", activeCharacterId);
+      } else {
+        console.warn("⚠️ No active character ID found - tool calls will not work");
       }
       
       // Prepend character sheets to system prompt
