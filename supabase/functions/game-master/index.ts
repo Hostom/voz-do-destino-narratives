@@ -135,8 +135,37 @@ serve(async (req) => {
       { role: "system", content: GAME_MASTER_PROMPT },
     ];
 
+    // Get the character_id of the active player (who sent the current message)
+    // This is critical for tool calling to update the correct character's stats
+    let activeCharacterId: string | null = null;
+
     if (roomId) {
       console.log("Fetching conversation history for room:", roomId);
+      
+      // Get the last player message to identify who sent it
+      const { data: lastPlayerMsg } = await supabase
+        .from("gm_messages")
+        .select("player_id")
+        .eq("room_id", roomId)
+        .eq("sender", "player")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (lastPlayerMsg?.player_id) {
+        // Find the character_id for this player in this room
+        const { data: roomPlayer } = await supabase
+          .from("room_players")
+          .select("character_id")
+          .eq("room_id", roomId)
+          .eq("user_id", lastPlayerMsg.player_id)
+          .single();
+        
+        if (roomPlayer) {
+          activeCharacterId = roomPlayer.character_id;
+          console.log("Active character ID:", activeCharacterId);
+        }
+      }
       
       // Fetch ONLY the most recent messages to optimize token usage
       const { data: gmMessages, error: gmError } = await supabase
@@ -188,33 +217,29 @@ serve(async (req) => {
     const tools = [
       {
         type: "function",
-        function: {
-          name: "update_character_stats",
-          description: "Atualiza HP, cura ou XP de um personagem baseado em eventos da narrativa. Use quando: o personagem tomar dano, ser curado, ganhar XP, descansar, etc.",
-          parameters: {
-            type: "object",
-            properties: {
-              character_id: {
-                type: "string",
-                description: "ID do personagem afetado (use o character_id do JOGADOR ATIVO)"
-              },
-              hp_change: {
-                type: "number",
-                description: "Mudança no HP (negativo para dano, positivo para cura). Ex: -5 para 5 de dano, +10 para 10 de cura"
-              },
-              xp_gain: {
-                type: "number",
-                description: "Quantidade de XP ganho (sempre positivo ou 0). Ex: 50 para derrotar inimigos, 25 para resolver puzzle"
-              },
-              reason: {
-                type: "string",
-                description: "Razão da mudança (ex: 'ataque de orc', 'descanso completo', 'derrotou bandidos')"
+            function: {
+              name: "update_character_stats",
+              description: "Atualiza HP, cura ou XP de um personagem baseado em eventos da narrativa. Use quando: o personagem tomar dano, ser curado, ganhar XP, descansar, etc.",
+              parameters: {
+                type: "object",
+                properties: {
+                  hp_change: {
+                    type: "number",
+                    description: "Mudança no HP (negativo para dano, positivo para cura). Ex: -5 para 5 de dano, +10 para 10 de cura"
+                  },
+                  xp_gain: {
+                    type: "number",
+                    description: "Quantidade de XP ganho (sempre positivo ou 0). Ex: 50 para derrotar inimigos, 25 para resolver puzzle"
+                  },
+                  reason: {
+                    type: "string",
+                    description: "Razão da mudança (ex: 'ataque de orc', 'descanso completo', 'derrotou bandidos')"
+                  }
+                },
+                required: [],
+                additionalProperties: false
               }
-            },
-            required: ["character_id"],
-            additionalProperties: false
-          }
-        }
+            }
       }
     ];
     
@@ -333,22 +358,23 @@ serve(async (req) => {
               toolCalls = Array.from(toolCallsById.values());
               
               // Process tool calls BEFORE saving message
-              if (toolCalls.length > 0) {
+              if (toolCalls.length > 0 && activeCharacterId) {
                 console.log("Processing tool calls:", toolCalls.length);
                 for (const toolCall of toolCalls) {
                   if (toolCall.function?.name === "update_character_stats") {
                     try {
                       const args = JSON.parse(toolCall.function.arguments);
-                      const { character_id, hp_change, xp_gain, reason } = args;
+                      const { hp_change, xp_gain, reason } = args;
                       
                       console.log("Tool call args:", args);
+                      console.log("Using active character ID:", activeCharacterId);
 
                       // Update HP if specified
                       if (hp_change !== undefined && hp_change !== 0) {
                         const { data: char } = await supabase
                           .from('characters')
                           .select('current_hp, max_hp, name')
-                          .eq('id', character_id)
+                          .eq('id', activeCharacterId)
                           .single();
 
                         if (char) {
@@ -356,7 +382,7 @@ serve(async (req) => {
                           await supabase
                             .from('characters')
                             .update({ current_hp: newHP })
-                            .eq('id', character_id);
+                            .eq('id', activeCharacterId);
 
                           console.log(`✅ Updated ${char.name} HP: ${char.current_hp} -> ${newHP} (${hp_change > 0 ? '+' : ''}${hp_change}) - ${reason}`);
                         }
@@ -367,7 +393,7 @@ serve(async (req) => {
                         const { data: char } = await supabase
                           .from('characters')
                           .select('experience_points, level, name')
-                          .eq('id', character_id)
+                          .eq('id', activeCharacterId)
                           .single();
 
                         if (char) {
@@ -375,7 +401,7 @@ serve(async (req) => {
                           await supabase
                             .from('characters')
                             .update({ experience_points: newXP })
-                            .eq('id', character_id);
+                            .eq('id', activeCharacterId);
 
                           console.log(`✅ Updated ${char.name} XP: +${xp_gain} (Total: ${newXP}) - ${reason}`);
                         }

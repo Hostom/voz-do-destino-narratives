@@ -201,6 +201,40 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
         content: message,
         type: "gm",
       });
+
+      // 3. Chama a IA para processar a rolagem e responder
+      console.log('Calling game-master for ability check:', { roomId, characterName: character.name, message });
+      
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/game-master`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: message }],
+            roomId: roomId,
+            characterName: character.name,
+          }),
+        });
+
+        if (!response.ok) {
+          console.error('Game master response error:', response.status);
+        } else {
+          // Consome o stream para garantir que a função execute completamente
+          const reader = response.body?.getReader();
+          if (reader) {
+            while (true) {
+              const { done } = await reader.read();
+              if (done) break;
+            }
+          }
+          console.log('Game-master function invoked successfully for ability check');
+        }
+      } catch (error) {
+        console.error('Error calling game-master:', error);
+      }
     }
 
     setRollMode("normal");
