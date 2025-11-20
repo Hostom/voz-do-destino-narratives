@@ -223,50 +223,55 @@ export const InventoryPanel = ({ characterId, carryingCapacity }: InventoryPanel
             <Coins className="h-4 w-4" />
             Moedas
           </div>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-5 gap-1.5">
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">PC</Label>
+              <Label className="text-[10px] text-muted-foreground block text-center">PC</Label>
               <Input
                 type="number"
                 value={currency.copper_pieces}
                 onChange={(e) => updateCurrency('copper_pieces', parseInt(e.target.value) || 0)}
-                className="h-8 text-sm"
+                className="h-8 text-xs p-1 text-center"
+                min="0"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">PP</Label>
+              <Label className="text-[10px] text-muted-foreground block text-center">PP</Label>
               <Input
                 type="number"
                 value={currency.silver_pieces}
                 onChange={(e) => updateCurrency('silver_pieces', parseInt(e.target.value) || 0)}
-                className="h-8 text-sm"
+                className="h-8 text-xs p-1 text-center"
+                min="0"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">PE</Label>
+              <Label className="text-[10px] text-muted-foreground block text-center">PE</Label>
               <Input
                 type="number"
                 value={currency.electrum_pieces}
                 onChange={(e) => updateCurrency('electrum_pieces', parseInt(e.target.value) || 0)}
-                className="h-8 text-sm"
+                className="h-8 text-xs p-1 text-center"
+                min="0"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">PO</Label>
+              <Label className="text-[10px] text-muted-foreground block text-center">PO</Label>
               <Input
                 type="number"
                 value={currency.gold_pieces}
                 onChange={(e) => updateCurrency('gold_pieces', parseInt(e.target.value) || 0)}
-                className="h-8 text-sm"
+                className="h-8 text-xs p-1 text-center"
+                min="0"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">PL</Label>
+              <Label className="text-[10px] text-muted-foreground block text-center">PL</Label>
               <Input
                 type="number"
                 value={currency.platinum_pieces}
                 onChange={(e) => updateCurrency('platinum_pieces', parseInt(e.target.value) || 0)}
-                className="h-8 text-sm"
+                className="h-8 text-xs p-1 text-center"
+                min="0"
               />
             </div>
           </div>
