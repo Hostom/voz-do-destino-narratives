@@ -26,6 +26,8 @@ export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, r
   useEffect(() => {
     if (!characterId) return;
 
+    console.log('[GameHeader] Setting up for character:', characterId);
+
     // Load initial stats
     const loadStats = async () => {
       const { data } = await supabase
@@ -34,7 +36,10 @@ export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, r
         .eq('id', characterId)
         .single();
       
-      if (data) setStats(data);
+      if (data) {
+        console.log('[GameHeader] Initial stats loaded:', data);
+        setStats(data);
+      }
     };
 
     loadStats();
@@ -51,13 +56,18 @@ export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, r
           filter: `id=eq.${characterId}`
         },
         (payload) => {
+          console.log('[GameHeader] Realtime update received:', payload);
           const newData = payload.new as CharacterStats;
+          console.log('[GameHeader] Updating stats to:', newData);
           setStats(newData);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[GameHeader] Subscription status:', status);
+      });
 
     return () => {
+      console.log('[GameHeader] Cleaning up subscription for:', characterId);
       supabase.removeChannel(channel);
     };
   }, [characterId]);
