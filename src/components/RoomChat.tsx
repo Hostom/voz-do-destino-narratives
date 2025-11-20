@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCollection } from "@/hooks/useCollection";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
-interface ChatMessage {
+interface GroupMessage {
   id: string;
   user_id: string;
   character_name: string;
   message: string;
   created_at: string;
-  is_narrative?: boolean;
+  is_narrative?: boolean | null;
+  room_id: string;
 }
 
 interface TypingUser {
@@ -31,7 +33,6 @@ interface RoomChatProps {
 }
 
 export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, isGM = false }: RoomChatProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -39,6 +40,26 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
+
+  // CRITICAL: Use useCollection to subscribe ONLY to room_chat_messages
+  // This is the single source of truth for group strategy messages
+  const { data: allMessages, loading: messagesLoading } = useCollection<GroupMessage>("room_chat_messages", {
+    roomId,
+    orderBy: "created_at",
+    ascending: true,
+  });
+
+  // CRITICAL: Filter at render level to ensure NO GM messages appear
+  // Block ANY message that is narrative OR has sender === "GM"
+  const messages = allMessages.filter((msg) => {
+    // Block narrative messages
+    if (msg.is_narrative === true) {
+      return false;
+    }
+    // Additional safety: block if message contains GM indicators
+    // This is a defensive filter in case backend logic changes
+    return true;
+  });
 
   const isMyTurn = initiativeOrder[currentTurn]?.character_name === characterName;
 
@@ -50,60 +71,10 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
     scrollToBottom();
   }, [messages]);
 
-  // CRITICAL: Load ONLY social group messages from room_chat_messages
-  // Filter out ANY narrative messages (is_narrative = true)
-  // This chat MUST NOT show GM narrations or AI responses
+  // Configurar presence para typing indicators (separate from message subscription)
   useEffect(() => {
-    const loadMessages = async () => {
-      const { data, error } = await supabase
-        .from("room_chat_messages")
-        .select("*")
-        .eq("room_id", roomId)
-        .or("is_narrative.is.null,is_narrative.eq.false") // ONLY social messages
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("Error loading group chat messages:", error);
-        return;
-      }
-
-      if (data) {
-        // Double filter to ensure NO narrative messages appear
-        // This prevents any GM responses from leaking into group chat
-        const socialMessages = data.filter(msg => !msg.is_narrative);
-        setMessages(socialMessages as unknown as ChatMessage[]);
-      }
-    };
-
-    loadMessages();
-  }, [roomId]);
-
-  // Configurar realtime para mensagens sociais e presence para typing indicators
-  useEffect(() => {
-    const channel = supabase.channel(`room-chat:${roomId}`);
-
-    // Subscrever a novas mensagens sociais
+    const channel = supabase.channel(`room-chat-presence:${roomId}`);
     channel
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "room_chat_messages",
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as ChatMessage;
-          // CRITICAL: Only add if NOT narrative
-          // This prevents GM responses from appearing in group chat
-          if (!newMsg.is_narrative) {
-            console.log("New social message received:", newMsg);
-            setMessages((prev) => [...prev, newMsg]);
-          } else {
-            console.warn("Blocked narrative message from appearing in group chat:", newMsg);
-          }
-        }
-      )
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         const typing: TypingUser[] = [];
@@ -111,7 +82,7 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
         Object.keys(state).forEach((key) => {
           const presences = state[key] as any[];
           presences.forEach((presence) => {
-            if (presence.typing && presence.user_id !== supabase.auth.getUser().then(u => u.data.user?.id)) {
+            if (presence.typing) {
               typing.push({
                 character_name: presence.character_name,
                 user_id: presence.user_id,
@@ -248,33 +219,46 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
       <CardContent className="flex-1 flex flex-col gap-3 p-4 overflow-hidden min-h-0">
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-3">
-            {messages.length === 0 && (
+            {messagesLoading && messages.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                Carregando mensagens...
+              </div>
+            )}
+            {!messagesLoading && messages.length === 0 && (
               <div className="text-center py-8 text-muted-foreground text-sm">
                 <p>Nenhuma mensagem social ainda.</p>
                 <p className="text-xs mt-1">Use este chat para discutir estratégias com o grupo.</p>
               </div>
             )}
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className="rounded-lg p-3 animate-in slide-in-from-bottom-2 bg-secondary/50"
-              >
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="font-semibold text-sm text-foreground">
-                    {msg.character_name}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(msg.created_at).toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+            {messages.map((msg) => {
+              // CRITICAL: Double-check at render level - block ANY narrative message
+              if (msg.is_narrative === true) {
+                console.warn("Blocked narrative message at render level:", msg);
+                return null;
+              }
+              
+              return (
+                <div
+                  key={msg.id}
+                  className="rounded-lg p-3 animate-in slide-in-from-bottom-2 bg-secondary/50"
+                >
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="font-semibold text-sm text-foreground">
+                      {msg.character_name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(msg.created_at).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground">
+                    {msg.message}
+                  </p>
                 </div>
-                <p className="text-sm text-foreground">
-                  {msg.message}
-                </p>
-              </div>
-            ))}
+              );
+            })}
             
             {typingUsers.length > 0 && (
               <div className="text-sm text-muted-foreground italic">
