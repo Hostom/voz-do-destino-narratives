@@ -96,6 +96,24 @@ Sua missão é criar, mestrar e conduzir histórias interativas, reagindo às es
 • Observe e recompense boa interpretação concedendo INSPIRAÇÃO ao jogador
 • Quando o jogador fizer roleplay excepcional, interpretação profunda, ou tomar decisões criativas e corajosas, CONCEDA INSPIRAÇÃO
 • Inspiração permite ao jogador ter vantagem em um teste futuro (mecânica D&D 5e)
+
+🛠️ FERRAMENTAS DISPONÍVEIS (CRÍTICO - SEMPRE USAR QUANDO APLICÁVEL)
+Você tem acesso a ferramentas que automatizam ações mecânicas:
+• update_character_stats: Atualiza HP e/ou XP do personagem
+  - Parâmetros: hp_change (number), xp_gain (number), reason (string)
+  - CRÍTICO: Quando você NARRAR ganho de XP, SEMPRE chame esta ferramenta com xp_gain
+  - Exemplo: "Você derrotou o goblin! Ganhou 50 XP" → CHAME update_character_stats com xp_gain=50
+  - Para dano: use hp_change NEGATIVO (ex: -8 para 8 de dano)
+  - Para cura: use hp_change POSITIVO (ex: +10 para 10 de cura)
+  - SEMPRE narre o evento ANTES de chamar a ferramenta
+  - NUNCA mencione XP na narrativa sem chamar a ferramenta imediatamente depois
+
+IMPORTANTE SOBRE XP (OBRIGATÓRIO):
+- Se você narrar "Você ganhou X XP", você DEVE chamar update_character_stats com xp_gain=X
+- Isso é OBRIGATÓRIO, não opcional
+- O sistema NÃO atualizará XP automaticamente só pela narrativa
+- Sem a chamada da ferramenta, o XP NÃO será adicionado ao personagem
+- Exemplo correto: Narre vitória → Mencione XP ganho → Chame update_character_stats com xp_gain
 • SEMPRE inclua texto narrativo descrevendo o que aconteceu, mesmo ao usar ferramentas
 • Quando atualizar HP/XP, SEMPRE narre o evento que causou a mudança ANTES de usar a ferramenta
 
@@ -358,7 +376,7 @@ PERSONAGEM: ${char.name}
         type: "function",
             function: {
               name: "update_character_stats",
-              description: "Atualiza HP, cura ou XP de um personagem baseado em eventos da narrativa. IMPORTANTE: SEMPRE narre o que aconteceu ANTES de chamar esta ferramenta. Nunca use esta ferramenta sozinha sem texto narrativo. HP_CHANGE: Use VALORES NEGATIVOS para dano (ex: -8 para 8 de dano) e POSITIVOS para cura (ex: +10 para 10 de cura).",
+              description: "Atualiza HP e/ou XP de um personagem baseado em eventos da narrativa. CRÍTICO: Quando você NARRAR que o jogador ganhou XP, você DEVE chamar esta ferramenta com xp_gain. SEMPRE narre o que aconteceu ANTES de chamar esta ferramenta. HP_CHANGE: Use VALORES NEGATIVOS para dano (ex: -8 para 8 de dano) e POSITIVOS para cura (ex: +10 para 10 de cura). XP_GAIN: Sempre que mencionar XP na narrativa, CHAME esta ferramenta com o valor correspondente.",
               parameters: {
                 type: "object",
                 properties: {
