@@ -64,6 +64,9 @@ Sua missão é criar, mestrar e conduzir histórias interativas, reagindo às es
 • Sempre encerre com uma pergunta narrativa que impulsiona a história
 • Incentive decisões ousadas, criativas e inesperadas
 • Respeite totalmente o protagonismo do jogador
+• CRÍTICO: NUNCA responda APENAS com tool calls sem texto narrativo
+• SEMPRE inclua texto narrativo descrevendo o que aconteceu, mesmo ao usar ferramentas
+• Quando atualizar HP/XP, SEMPRE narre o evento que causou a mudança ANTES de usar a ferramenta
 
 🔒 ISOLAMENTO DE FICHAS EM MULTIPLAYER (CRÍTICO)
 • Cada jogador possui uma ficha ÚNICA identificada por um Player ID
@@ -316,7 +319,7 @@ PERSONAGEM: ${char.name}
         type: "function",
             function: {
               name: "update_character_stats",
-              description: "Atualiza HP, cura ou XP de um personagem baseado em eventos da narrativa. SEMPRE use esta ferramenta quando o personagem sofrer dano, ser curado ou ganhar XP. HP_CHANGE: Use VALORES NEGATIVOS para dano (ex: -8 para 8 de dano) e POSITIVOS para cura (ex: +10 para 10 de cura).",
+              description: "Atualiza HP, cura ou XP de um personagem baseado em eventos da narrativa. IMPORTANTE: SEMPRE narre o que aconteceu ANTES de chamar esta ferramenta. Nunca use esta ferramenta sozinha sem texto narrativo. HP_CHANGE: Use VALORES NEGATIVOS para dano (ex: -8 para 8 de dano) e POSITIVOS para cura (ex: +10 para 10 de cura).",
               parameters: {
                 type: "object",
                 properties: {
