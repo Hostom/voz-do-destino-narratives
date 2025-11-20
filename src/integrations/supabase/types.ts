@@ -171,6 +171,7 @@ export type Database = {
           gold_pieces: number | null
           hit_dice: string | null
           id: string
+          inspiration: boolean
           intelligence: number
           level: number
           max_hp: number
@@ -207,6 +208,7 @@ export type Database = {
           gold_pieces?: number | null
           hit_dice?: string | null
           id?: string
+          inspiration?: boolean
           intelligence: number
           level?: number
           max_hp: number
@@ -243,6 +245,7 @@ export type Database = {
           gold_pieces?: number | null
           hit_dice?: string | null
           id?: string
+          inspiration?: boolean
           intelligence?: number
           level?: number
           max_hp?: number

@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Crown, Plus, Trash2, Heart, Shield, Swords, Users } from "lucide-react";
+import { Crown, Plus, Trash2, Heart, Shield, Swords, Users, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { GMXPDistribution } from "./GMXPDistribution";
@@ -185,6 +185,31 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar HP",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleInspiration = async (characterId: string, currentValue: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('characters')
+        .update({ inspiration: !currentValue })
+        .eq('id', characterId);
+
+      if (error) throw error;
+
+      toast({
+        title: currentValue ? "Inspiração removida" : "✨ Inspiração concedida!",
+        description: currentValue 
+          ? "A inspiração foi removida do jogador" 
+          : "Jogador pode usar inspiração em um teste",
+      });
+    } catch (error) {
+      console.error("Error toggling inspiration:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar inspiração",
         variant: "destructive",
       });
     }
@@ -448,7 +473,46 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
 
       {/* XP Distribution Panel */}
       {players.length > 0 && (
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 space-y-6">
+          {/* Inspiration Management */}
+          <Card className="border-accent/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-accent" />
+                Gerenciar Inspiração
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {players.map((player) => player.characters && (
+                <div key={player.id} className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{player.characters.name}</span>
+                    {player.characters.inspiration && (
+                      <Badge variant="default" className="text-xs bg-accent text-accent-foreground">
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Ativa
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant={player.characters.inspiration ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => toggleInspiration(player.characters!.id, player.characters!.inspiration)}
+                  >
+                    {player.characters.inspiration ? (
+                      "Remover"
+                    ) : (
+                      <>
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Conceder
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           <GMXPDistribution roomId={roomId} players={players} />
         </div>
       )}

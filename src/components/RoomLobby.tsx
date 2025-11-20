@@ -12,6 +12,7 @@ import { AbilityCheckPanel } from "@/components/AbilityCheckPanel";
 import { CheckHistoryPanel } from "@/components/CheckHistoryPanel";
 import { GMCheckRequestPanel } from "@/components/GMCheckRequestPanel";
 import { LevelUpPanel } from "@/components/LevelUpPanel";
+import { InspirationPanel } from "@/components/InspirationPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { useDiceNotifications } from "@/hooks/useDiceNotifications";
@@ -171,12 +172,17 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onStartSessio
               />
               
               {/* Ability Checks Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {currentPlayer.characters && (
-                  <AbilityCheckPanel 
-                    roomId={room.id}
-                    character={currentPlayer.characters}
-                  />
+                  <>
+                    <AbilityCheckPanel 
+                      roomId={room.id}
+                      character={currentPlayer.characters}
+                    />
+                    <InspirationPanel 
+                      hasInspiration={currentPlayer.characters.inspiration}
+                    />
+                  </>
                 )}
                 <CheckHistoryPanel roomId={room.id} />
               </div>
