@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Swords, Check, Sword, CircleDot, Crosshair } from "lucide-react";
 import { DND_WEAPONS, Weapon, getWeaponsByCategory } from "@/lib/dnd-weapons";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,7 @@ export const WeaponSelector = ({
   onWeaponChange
 }: WeaponSelectorProps) => {
   const [selectedWeapon, setSelectedWeapon] = useState<Weapon | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Weapon["category"]>("simple_melee");
   const [isUpdating, setIsUpdating] = useState(false);
   const {
     toast
@@ -102,42 +103,41 @@ export const WeaponSelector = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
-        <Tabs defaultValue="simple_melee" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 gap-1 h-auto bg-muted/50 p-1">
-            <TabsTrigger value="simple_melee" className="text-[10px] md:text-xs whitespace-nowrap px-2 flex flex-col md:flex-row items-center gap-0.5 md:gap-1">
-              <Sword className="w-3 h-3" />
-              <span>Simples<br className="md:hidden" /> C/C</span>
-            </TabsTrigger>
-            <TabsTrigger value="simple_ranged" className="text-[10px] md:text-xs whitespace-nowrap px-2 flex flex-col md:flex-row items-center gap-0.5 md:gap-1">
-              <CircleDot className="w-3 h-3" />
-              <span>Simples<br className="md:hidden" /> Dist.</span>
-            </TabsTrigger>
-            <TabsTrigger value="martial_melee" className="text-[10px] md:text-xs whitespace-nowrap px-2 flex flex-col md:flex-row items-center gap-0.5 md:gap-1">
-              <Swords className="w-3 h-3" />
-              <span>Marcial<br className="md:hidden" /> C/C</span>
-            </TabsTrigger>
-            <TabsTrigger value="martial_ranged" className="text-[10px] md:text-xs whitespace-nowrap px-2 flex flex-col md:flex-row items-center gap-0.5 md:gap-1">
-              <Crosshair className="w-3 h-3" />
-              <span>Marcial<br className="md:hidden" /> Dist.</span>
-            </TabsTrigger>
-          </TabsList>
+        <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as Weapon["category"])}>
+          <SelectTrigger className="w-full bg-background">
+            <SelectValue placeholder="Selecione a categoria de arma" />
+          </SelectTrigger>
+          <SelectContent className="bg-background z-50">
+            <SelectItem value="simple_melee">
+              <div className="flex items-center gap-2">
+                <Sword className="w-4 h-4" />
+                <span>Armas Simples Corpo a Corpo</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="simple_ranged">
+              <div className="flex items-center gap-2">
+                <CircleDot className="w-4 h-4" />
+                <span>Armas Simples à Distância</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="martial_melee">
+              <div className="flex items-center gap-2">
+                <Swords className="w-4 h-4" />
+                <span>Armas Marciais Corpo a Corpo</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="martial_ranged">
+              <div className="flex items-center gap-2">
+                <Crosshair className="w-4 h-4" />
+                <span>Armas Marciais à Distância</span>
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
 
-          <TabsContent value="simple_melee" className="space-y-2 mt-4">
-            {getWeaponsByCategory("simple_melee").map(weapon => <WeaponCard key={weapon.id} weapon={weapon} />)}
-          </TabsContent>
-
-          <TabsContent value="simple_ranged" className="space-y-2 mt-4">
-            {getWeaponsByCategory("simple_ranged").map(weapon => <WeaponCard key={weapon.id} weapon={weapon} />)}
-          </TabsContent>
-
-          <TabsContent value="martial_melee" className="space-y-2 mt-4">
-            {getWeaponsByCategory("martial_melee").map(weapon => <WeaponCard key={weapon.id} weapon={weapon} />)}
-          </TabsContent>
-
-          <TabsContent value="martial_ranged" className="space-y-2 mt-4">
-            {getWeaponsByCategory("martial_ranged").map(weapon => <WeaponCard key={weapon.id} weapon={weapon} />)}
-          </TabsContent>
-        </Tabs>
+        <div className="space-y-2 mt-4">
+          {getWeaponsByCategory(selectedCategory).map(weapon => <WeaponCard key={weapon.id} weapon={weapon} />)}
+        </div>
 
         {selectedWeapon && selectedWeapon.id !== currentWeaponId && <Button onClick={() => handleEquipWeapon(selectedWeapon)} disabled={isUpdating} className="w-full" size="lg">
             Equipar {selectedWeapon.name}
