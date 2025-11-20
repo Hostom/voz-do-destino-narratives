@@ -212,12 +212,32 @@ serve(async (req) => {
     }
 
     // Create a custom stream that both passes through and collects the response
+    let buffer = '';
     const stream = new ReadableStream({
       async start(controller) {
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
+              // Process any remaining buffer
+              if (buffer) {
+                const lines = buffer.split('\n');
+                for (const line of lines) {
+                  if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                    try {
+                      const data = JSON.parse(line.slice(6));
+                      const content = data.choices?.[0]?.delta?.content;
+                      if (content) {
+                        fullResponse += content;
+                      }
+                    } catch (e) {
+                      // Skip parsing errors
+                    }
+                  }
+                }
+                buffer = '';
+              }
+              
               // CRITICAL: ALWAYS save the complete GM response ONLY to gm_messages table
               // NEVER save to room_chat_messages or any other collection
               if (fullResponse && roomId) {
@@ -258,7 +278,7 @@ serve(async (req) => {
                 }
               } else {
                 if (!fullResponse) {
-                  console.warn("No fullResponse to save");
+                  console.warn("No fullResponse to save. Buffer was:", buffer);
                 }
                 if (!roomId) {
                   console.warn("No roomId provided");
@@ -269,8 +289,11 @@ serve(async (req) => {
             }
             
             // Decode and collect the response
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            
+            // Keep the last incomplete line in buffer
+            buffer = lines.pop() || '';
             
             for (const line of lines) {
               if (line.startsWith('data: ') && line !== 'data: [DONE]') {

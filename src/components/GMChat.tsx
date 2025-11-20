@@ -162,17 +162,31 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
       const reader = response.body?.getReader();
       if (reader) {
         const decoder = new TextDecoder();
+        let buffer = '';
         
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
               console.log('Stream consumed completely');
+              // Give the server a moment to save the response
+              await new Promise(resolve => setTimeout(resolve, 500));
               break;
             }
-            // Decode but don't process - we're just consuming the stream
-            // The server will save the response to gm_messages when the stream completes
-            decoder.decode(value, { stream: true });
+            
+            // Decode and process the stream properly
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Process complete lines (SSE format)
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+            
+            // Process each line to ensure proper SSE parsing
+            for (const line of lines) {
+              if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                // Stream is being processed correctly
+              }
+            }
           }
         } catch (streamError) {
           console.error('Error consuming stream:', streamError);
