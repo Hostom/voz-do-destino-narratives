@@ -122,6 +122,16 @@ All colors MUST be HSL.
       padding-bottom: 1.5rem;
     }
   }
+
+  /* Prevent overscroll bounce on iOS */
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  /* Optimize scrolling on mobile */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @layer base {
