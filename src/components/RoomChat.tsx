@@ -51,12 +51,14 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
   }, [messages]);
 
   // Carregar mensagens sociais do grupo (room_chat_messages)
+  // IMPORTANTE: Apenas mensagens sociais (is_narrative = false ou null)
   useEffect(() => {
     const loadMessages = async () => {
       const { data, error } = await supabase
         .from("room_chat_messages")
         .select("*")
         .eq("room_id", roomId)
+        .or("is_narrative.is.null,is_narrative.eq.false") // Apenas mensagens sociais
         .order("created_at", { ascending: true });
 
       if (error) {
@@ -65,7 +67,9 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
       }
 
       if (data) {
-        setMessages(data as unknown as ChatMessage[]);
+        // Filtrar novamente para garantir que não há narrativas
+        const socialMessages = data.filter(msg => !msg.is_narrative);
+        setMessages(socialMessages as unknown as ChatMessage[]);
       }
     };
 
@@ -87,8 +91,12 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
-          console.log("Nova mensagem social recebida em tempo real:", payload.new);
-          setMessages((prev) => [...prev, payload.new as ChatMessage]);
+          const newMsg = payload.new as ChatMessage;
+          // Apenas adicionar se não for narrativa
+          if (!newMsg.is_narrative) {
+            console.log("Nova mensagem social recebida em tempo real:", newMsg);
+            setMessages((prev) => [...prev, newMsg]);
+          }
         }
       )
       .on("presence", { event: "sync" }, () => {
@@ -230,6 +238,12 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
       <CardContent className="flex-1 flex flex-col gap-3 p-4 overflow-hidden min-h-0">
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-3">
+            {messages.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                <p>Nenhuma mensagem social ainda.</p>
+                <p className="text-xs mt-1">Use este chat para discutir estratégias com o grupo.</p>
+              </div>
+            )}
             {messages.map((msg) => (
               <div
                 key={msg.id}
