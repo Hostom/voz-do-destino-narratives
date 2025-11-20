@@ -117,6 +117,9 @@ export const RoomLobby = ({ room, players, onLeave, onToggleReady, onStartSessio
                       <p className="text-sm text-muted-foreground">
                         {player.characters?.race} {player.characters?.class} - Nível {player.characters?.level}
                       </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        XP: {player.characters?.experience_points || 0} / {player.characters?.experience_to_next_level || 300}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
