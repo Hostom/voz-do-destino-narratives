@@ -96,7 +96,63 @@ export const WeaponSelector = ({
   };
   return <Card className="bg-card/80 backdrop-blur border-primary/20">
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-base sm:text-lg mb-2">Arsenal de Armas      <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
+        <CardTitle className="flex items-center gap-2 text-base sm:text-lg mb-2"> 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Arsenal de Armas                                                                <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
           Arsenal de Armas D&D 5e
         </CardTitle>
       </CardHeader>
