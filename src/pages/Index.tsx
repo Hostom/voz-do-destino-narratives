@@ -511,20 +511,71 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
     setView('lobby');
     
     if (room?.session_active) {
-      // End session when going back to lobby
-      const { error } = await supabase
-        .from('rooms')
-        .update({ session_active: false, combat_active: false })
-        .eq('id', room.id);
-      
-      if (error) {
-        console.error('Error ending session:', error);
+      try {
+        // 1. Salvar snapshot da sessão antes de desativar
+        const { count: messageCount } = await supabase
+          .from('gm_messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('room_id', room.id);
+
+        const snapshotData = {
+          combat_active: room.combat_active,
+          current_turn: room.current_turn,
+          initiative_order: room.initiative_order,
+          message_count: messageCount || 0,
+          players_state: players.map(p => ({
+            character_id: p.character_id,
+            initiative: p.initiative,
+            conditions: p.conditions,
+            temp_hp: p.temp_hp,
+            current_hp: p.characters?.current_hp,
+            current_spell_slots: p.characters?.current_spell_slots
+          }))
+        };
+
+        const { error: snapshotError } = await supabase
+          .from('session_snapshots')
+          .insert([{
+            room_id: room.id,
+            session_data: snapshotData as any,
+            message_count: messageCount || 0,
+            combat_round: room.combat_active ? room.current_turn : null,
+            notes: 'Salvamento automático ao voltar ao lobby'
+          }]);
+
+        if (snapshotError) {
+          console.error('Error saving session snapshot:', snapshotError);
+        } else {
+          console.log('Session snapshot saved successfully');
+          toast({
+            title: "Progresso Salvo",
+            description: "O progresso da sessão foi salvo automaticamente",
+          });
+        }
+
+        // 2. Desativar sessão
+        const { error } = await supabase
+          .from('rooms')
+          .update({ session_active: false, combat_active: false })
+          .eq('id', room.id);
+        
+        if (error) {
+          console.error('Error ending session:', error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível voltar ao lobby",
+            variant: "destructive",
+          });
+          setView('game');
+          return;
+        }
+      } catch (error) {
+        console.error('Error in handleBackToLobby:', error);
         toast({
           title: "Erro",
-          description: "Não foi possível voltar ao lobby",
+          description: "Erro ao salvar progresso da sessão",
           variant: "destructive",
         });
-        // Revert view change on error
         setView('game');
         return;
       }
