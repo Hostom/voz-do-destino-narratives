@@ -175,6 +175,34 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
       description: `🎲 Rolagem: ${finalRoll} + ${modifier} = ${total}\n${resultText}`,
     });
 
+    // Envia resultado para o chat do GM E notifica os jogadores
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const rollDetails = rollMode !== "normal" 
+        ? ` (${rollMode === "advantage" ? "Vantagem" : "Desvantagem"}: ${roll1}, ${roll2})`
+        : "";
+      
+      const message = `🎲 ${checkTypeLabels[finalCheckType as keyof typeof checkTypeLabels]} de ${abilityLabels[finalAbility]}: ${finalRoll} + ${modifier} = **${total}**${rollDetails}${dc ? ` - ${resultText}` : ""}`;
+      
+      // 1. Envia para o chat dos jogadores (notificação pública)
+      await supabase.from("room_chat_messages").insert({
+        room_id: roomId,
+        user_id: user.id,
+        character_name: character.name,
+        message: message,
+      });
+
+      // 2. Envia para o chat do GM (para o mestre ter contexto)
+      await supabase.from("gm_messages").insert({
+        room_id: roomId,
+        player_id: user.id,
+        character_name: character.name,
+        sender: "player",
+        content: message,
+        type: "gm",
+      });
+    }
+
     setRollMode("normal");
   };
 
