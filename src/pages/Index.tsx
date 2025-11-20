@@ -189,7 +189,17 @@ const Index = () => {
             body: JSON.stringify({
               messages: [{ 
                 role: 'user', 
-                content: `[INÍCIO DA SESSÃO]\n\n${allCharactersSheet}\n\nApresente-se como "Voz do Destino" e dê as boas-vindas aos aventureiros. Crie uma cena introdutória envolvente e personalizada que considere as características, backgrounds e histórias de TODOS os personagens presentes. Use os detalhes de cada personagem para criar uma narrativa rica e imersiva que conecte suas histórias individuais em uma aventura épica.` 
+                content: `[INÍCIO DA SESSÃO]\n\n${allCharactersSheet}\n\nApresente-se como "Voz do Destino" e dê as boas-vindas aos aventureiros. 
+
+IMPORTANTE: Após se apresentar, você DEVE perguntar aos jogadores que tipo de aventura eles gostariam de experimentar. Ofereça 4-5 opções interessantes, por exemplo:
+
+• Uma exploração épica por masmorras antigas repletas de tesouros e perigos
+• Um mistério sombrio em uma cidade corrupta onde nada é o que parece
+• Uma jornada heróica para salvar o reino de uma ameaça devastadora
+• Uma investigação sobrenatural envolvendo cultos, rituais e forças além da compreensão
+• Uma aventura de sobrevivência em terras selvagens e hostis
+
+Use as características, backgrounds e classes dos personagens para sugerir aventuras que se encaixem perfis deles. Depois de apresentar as opções, pergunte qual tipo de história os aventureiros preferem e aguarde a resposta deles antes de iniciar a narrativa.` 
               }],
               roomId: room.id,
               characterName: character.name,
