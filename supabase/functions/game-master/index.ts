@@ -240,9 +240,11 @@ serve(async (req) => {
               
               // CRITICAL: ALWAYS save the complete GM response ONLY to gm_messages table
               // NEVER save to room_chat_messages or any other collection
+              // This function MUST NEVER insert into room_chat_messages
               if (fullResponse && roomId) {
                 console.log("Stream complete. Full response length:", fullResponse.length);
                 console.log("Saving GM response to gm_messages ONLY...");
+                console.log("⚠️ CRITICAL: This function will NEVER save to room_chat_messages");
                 
                 // Get the GM user id from the room
                 const { data: room, error: roomError } = await supabase
@@ -259,7 +261,8 @@ serve(async (req) => {
                   console.log("Response length:", fullResponse.length);
                   console.log("Response preview (first 200 chars):", fullResponse.substring(0, 200));
                   
-                  // Insert ONLY into gm_messages - this is the single source of truth for GM narrations
+                  // CRITICAL: Insert ONLY into gm_messages - this is the single source of truth for GM narrations
+                  // NEVER insert into room_chat_messages from this function
                   const { data: insertedData, error: insertError } = await supabase
                     .from("gm_messages")
                     .insert({
@@ -283,10 +286,13 @@ serve(async (req) => {
                       content_length: fullResponse.trim().length,
                       type: "gm",
                     });
+                    // CRITICAL: Do NOT fallback to room_chat_messages - fail instead
+                    console.error("⚠️ CRITICAL: Will NOT save to room_chat_messages as fallback");
                   } else {
                     console.log("✅ GM response saved to gm_messages successfully. ID:", insertedData?.[0]?.id);
                     console.log("Inserted data:", JSON.stringify(insertedData?.[0], null, 2));
                     console.log("Response preview:", fullResponse.substring(0, 100) + "...");
+                    console.log("✅ Confirmed: Message saved ONLY to gm_messages, NOT to room_chat_messages");
                   }
                 } else {
                   console.error("Room not found for roomId:", roomId);
