@@ -154,13 +154,13 @@ export const RestPanel = ({ roomId, players, currentUserId }: RestPanelProps) =>
 
   return (
     <Card className="bg-card/80 backdrop-blur border-primary/20">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Moon className="w-5 h-5" />
-          Sistema de Descanso
+      <CardHeader className="pb-3 px-4 pt-4">
+        <CardTitle className="text-base md:text-lg flex items-center gap-2">
+          <Moon className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+          <span className="truncate">Sistema de Descanso</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 px-4 pb-4">
         {/* Character Status */}
         <div className="p-4 bg-background/50 rounded-lg border border-border space-y-3">
           <div className="flex items-center justify-between">

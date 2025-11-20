@@ -264,13 +264,13 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Dices className="h-5 w-5" />
-          Testes de Habilidade
+      <CardHeader className="pb-3 px-4 pt-4">
+        <CardTitle className="text-base md:text-lg flex items-center gap-2">
+          <Dices className="h-4 w-4 md:h-5 md:h-5 flex-shrink-0" />
+          <span className="truncate">Testes de Habilidade</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 px-4 pb-4">
         {/* Pending Requests */}
         {pendingRequests.length > 0 && (
           <div className="space-y-2">
