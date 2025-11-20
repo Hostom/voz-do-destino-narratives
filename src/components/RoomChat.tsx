@@ -43,10 +43,10 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
 
-  // CRITICAL: Use useCollection to subscribe ONLY to room_chat_messages
+  // CRITICAL: Use useCollection with filters to subscribe ONLY to room_chat_messages
   // This is the single source of truth for group strategy messages
   const { data: allMessages, loading: messagesLoading } = useCollection<GroupMessage>("room_chat_messages", {
-    roomId,
+    filters: { room_id: roomId },
     orderBy: "created_at",
     ascending: true,
   });
@@ -233,8 +233,14 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
               </div>
             )}
             {messages.map((msg) => {
-              // CRITICAL: Double-check at render level - block ANY GM message
-              if (msg.sender === "GM" || msg.type === "gm" || msg.is_narrative === true) {
+              // CRITICAL: Double-check at render level - block ANY narrative message
+              if (msg.is_narrative === true) {
+                console.warn("Blocked narrative message at render level:", msg);
+                return null;
+              }
+              
+              // Additional safety checks
+              if (msg.sender === "GM" || msg.type === "gm") {
                 console.warn("Blocked GM message at render level:", msg);
                 return null;
               }

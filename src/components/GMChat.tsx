@@ -17,6 +17,7 @@ interface GMMessage {
   character_name: string;
   created_at: string;
   type: "gm";
+  room_id: string;
 }
 
 interface GMChatProps {
@@ -31,9 +32,10 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Use useCollection hook - single source of truth for gm_messages
+  // CRITICAL: Use useCollection with filters to subscribe ONLY to gm_messages
+  // This is the single source of truth for GM narrative messages
   const { data: messages, loading } = useCollection<GMMessage>("gm_messages", {
-    roomId,
+    filters: { room_id: roomId },
     orderBy: "created_at",
     ascending: true,
   });

@@ -51,7 +51,7 @@ const Index = () => {
   // Use gm_messages as single source of truth for all players
   // useCollection will handle empty roomId gracefully
   const { data: gmMessages, loading: messagesLoading } = useCollection<GMMessage>("gm_messages", {
-    roomId: room?.id || "",
+    filters: room?.id ? { room_id: room.id } : undefined,
     orderBy: "created_at",
     ascending: true,
   });

@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface UseCollectionOptions {
-  roomId: string;
+  roomId?: string;
+  filters?: Record<string, any>;
   orderBy?: string;
   ascending?: boolean;
 }
@@ -18,9 +19,9 @@ export function useCollection<T extends Record<string, any>>(
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    // Don't load if roomId is missing
-    if (!options.roomId) {
-      console.warn(`useCollection: roomId is required for ${tableName}`);
+    // Don't load if neither roomId nor filters are provided
+    if (!options.roomId && !options.filters) {
+      console.warn(`useCollection: roomId or filters required for ${tableName}`);
       setData([]);
       setLoading(false);
       return;
@@ -33,11 +34,23 @@ export function useCollection<T extends Record<string, any>>(
         setLoading(true);
         setError(null);
 
-        const query = supabase
-          .from(tableName as any)
-          .select("*")
-          .eq("room_id", options.roomId)
-          .order(options.orderBy || "created_at", { ascending: options.ascending !== false });
+        // Build query
+        let query = supabase.from(tableName as any).select("*");
+
+        // Apply filters if provided
+        if (options.filters) {
+          Object.entries(options.filters).forEach(([key, value]) => {
+            query = query.eq(key, value);
+          });
+        } else if (options.roomId) {
+          // Fallback to roomId if no filters
+          query = query.eq("room_id", options.roomId);
+        }
+
+        // Apply ordering
+        query = query.order(options.orderBy || "created_at", { 
+          ascending: options.ascending !== false 
+        });
 
         const { data: fetchedData, error: fetchError } = await query;
 
@@ -57,8 +70,20 @@ export function useCollection<T extends Record<string, any>>(
 
     loadData();
 
+    // Build real-time filter
+    let realtimeFilter = "";
+    if (options.filters) {
+      const filterParts = Object.entries(options.filters).map(
+        ([key, value]) => `${key}=eq.${value}`
+      );
+      realtimeFilter = filterParts.join(",");
+    } else if (options.roomId) {
+      realtimeFilter = `room_id=eq.${options.roomId}`;
+    }
+
     // Setup real-time subscription
-    const channel = supabase.channel(`${tableName}-${options.roomId}-${Date.now()}`);
+    const channelName = `${tableName}-${realtimeFilter || "default"}-${Date.now()}`;
+    const channel = supabase.channel(channelName);
 
     channel
       .on(
@@ -67,7 +92,7 @@ export function useCollection<T extends Record<string, any>>(
           event: "*",
           schema: "public",
           table: tableName as any,
-          filter: `room_id=eq.${options.roomId}`,
+          filter: realtimeFilter || undefined,
         },
         async (payload) => {
           if (!mounted) return;
@@ -75,13 +100,23 @@ export function useCollection<T extends Record<string, any>>(
           console.log(`Real-time update for ${tableName}:`, payload.eventType, payload.new || payload.old);
 
           // Reload all data to ensure consistency
-          // This ensures we always have the correct sorted order and no duplicates
           try {
-            const { data: updatedData, error: reloadError } = await supabase
-              .from(tableName as any)
-              .select("*")
-              .eq("room_id", options.roomId)
-              .order(options.orderBy || "created_at", { ascending: options.ascending !== false });
+            let reloadQuery = supabase.from(tableName as any).select("*");
+
+            // Apply same filters
+            if (options.filters) {
+              Object.entries(options.filters).forEach(([key, value]) => {
+                reloadQuery = reloadQuery.eq(key, value);
+              });
+            } else if (options.roomId) {
+              reloadQuery = reloadQuery.eq("room_id", options.roomId);
+            }
+
+            reloadQuery = reloadQuery.order(options.orderBy || "created_at", { 
+              ascending: options.ascending !== false 
+            });
+
+            const { data: updatedData, error: reloadError } = await reloadQuery;
 
             if (!reloadError && updatedData) {
               console.log(`Reloaded ${tableName}: ${updatedData.length} items`);
@@ -96,9 +131,9 @@ export function useCollection<T extends Record<string, any>>(
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          console.log(`✅ Subscribed to ${tableName} for room ${options.roomId}`);
+          console.log(`✅ Subscribed to ${tableName} with filter: ${realtimeFilter || "none"}`);
         } else if (status === "CHANNEL_ERROR") {
-          console.error(`❌ Error subscribing to ${tableName} for room ${options.roomId}`);
+          console.error(`❌ Error subscribing to ${tableName}`);
         }
       });
 
@@ -110,8 +145,7 @@ export function useCollection<T extends Record<string, any>>(
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [tableName, options.roomId, options.orderBy, options.ascending]);
+  }, [tableName, options.roomId, JSON.stringify(options.filters), options.orderBy, options.ascending]);
 
   return { data, loading, error };
 }
-
