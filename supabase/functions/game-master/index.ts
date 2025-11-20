@@ -450,9 +450,11 @@ PERSONAGEM: ${char.name}
                         // Collect tool calls progressively
                         const delta = data.choices?.[0]?.delta;
                         if (delta?.tool_calls) {
+                          console.log("🔧 Tool call detected in stream:", JSON.stringify(delta.tool_calls));
                           for (const tc of delta.tool_calls) {
                             const key = `${tc.index || 0}_${tc.id || 'default'}`;
                             if (!toolCallsById.has(key)) {
+                              console.log(`🆕 New tool call: ${key} - ${tc.function?.name}`);
                               toolCallsById.set(key, {
                                 index: tc.index || 0,
                                 id: tc.id || null,
@@ -484,11 +486,16 @@ PERSONAGEM: ${char.name}
               
               // Convert map to array
               toolCalls = Array.from(toolCallsById.values());
+              console.log(`📋 Total tool calls collected: ${toolCalls.length}`);
+              if (toolCalls.length > 0) {
+                console.log("Tool calls details:", JSON.stringify(toolCalls, null, 2));
+              }
               
               // Process tool calls BEFORE saving message
               if (toolCalls.length > 0 && activeCharacterId) {
-                console.log("Processing tool calls:", toolCalls.length);
+                console.log("🔄 Processing tool calls:", toolCalls.length);
                 for (const toolCall of toolCalls) {
+                  console.log(`Processing tool: ${toolCall.function?.name}`);
                   if (toolCall.function?.name === "update_character_stats") {
                     try {
                       const args = JSON.parse(toolCall.function.arguments);
@@ -541,8 +548,16 @@ PERSONAGEM: ${char.name}
                       }
                     } catch (toolError) {
                       console.error("❌ Error processing tool call:", toolError);
+                      console.error("Tool call details:", JSON.stringify(toolCall, null, 2));
                     }
                   }
+                }
+              } else {
+                if (toolCalls.length === 0) {
+                  console.log("⚠️ No tool calls received from AI");
+                }
+                if (!activeCharacterId) {
+                  console.log("⚠️ No active character ID found");
                 }
               }
               
