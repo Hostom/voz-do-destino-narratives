@@ -301,6 +301,11 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
                           <h3 className="font-mono text-xl md:text-2xl font-bold break-all">
                             {room.room_code}
                           </h3>
+                          {room.gm_id === currentUserId && (
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-xs whitespace-nowrap">
+                              GM
+                            </Badge>
+                          )}
                           {room.session_active && (
                             <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30 text-xs whitespace-nowrap">
                               Ativa
