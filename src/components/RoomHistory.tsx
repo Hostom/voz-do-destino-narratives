@@ -64,6 +64,8 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      console.log('Current user ID:', user.id);
+
       // Get all rooms where the user has been a player
       const { data: playerRooms, error: playerError } = await supabase
         .from('room_players')
@@ -92,6 +94,9 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
 
       if (gmError) throw gmError;
 
+      console.log('GM Rooms:', gmRooms);
+      console.log('Player Rooms:', playerRooms);
+
       // Combine and deduplicate rooms
       const allRooms = [
         ...(playerRooms?.map(pr => pr.rooms) || []),
@@ -99,6 +104,8 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
       ].filter((room, index, self) => 
         index === self.findIndex(r => r.id === room.id)
       );
+
+      console.log('All Rooms combined:', allRooms);
 
       // Get player count for each room
       const roomsWithCounts = await Promise.all(
@@ -108,10 +115,14 @@ export const RoomHistory = ({ onJoinRoom, loading, character, onBack }: RoomHist
             .select('*', { count: 'exact', head: true })
             .eq('room_id', room.id);
 
-          return {
+          const roomWithCount = {
             ...room,
             player_count: count || 0
           };
+          
+          console.log('Room:', room.room_code, 'GM:', room.gm_id, 'Current User:', user.id, 'Can Delete:', room.gm_id === user.id);
+          
+          return roomWithCount;
         })
       );
 
