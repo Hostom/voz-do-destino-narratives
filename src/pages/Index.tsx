@@ -386,6 +386,27 @@ Decidam juntos, e deixem o destino se desenrolar...`;
     setView('menu');
   };
 
+  const handleBackToLobby = async () => {
+    if (room?.session_active) {
+      // End session when going back to lobby
+      const { error } = await supabase
+        .from('rooms')
+        .update({ session_active: false, combat_active: false })
+        .eq('id', room.id);
+      
+      if (error) {
+        console.error('Error ending session:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível voltar ao lobby",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    setView('lobby');
+  };
+
   const handleStartSession = async () => {
     await startSession();
   };
@@ -512,7 +533,7 @@ Decidam juntos, e deixem o destino se desenrolar...`;
         <GameHeader 
           onLogout={handleLogout}
           onBackToCharacterSelect={room ? undefined : handleBackToCharacterSelect}
-          onBackToLobby={room ? () => setView('lobby') : undefined}
+          onBackToLobby={room ? handleBackToLobby : undefined}
           roomCode={room?.room_code}
           characterId={character?.id}
         />
