@@ -579,8 +579,7 @@ PERSONAGEM: ${char.name}
               // CRITICAL: ALWAYS save the complete GM response ONLY to gm_messages table
               // NEVER save to room_chat_messages or any other collection
               // This function MUST NEVER insert into room_chat_messages
-              // Skip saving if this is a session start (the message is only for context, not for history)
-              if (fullResponse && roomId && !isSessionStart) {
+              if (fullResponse && roomId) {
                 console.log("Stream complete. Full response length:", fullResponse.length);
                 console.log("Saving GM response to gm_messages ONLY...");
                 console.log("⚠️ CRITICAL: This function will NEVER save to room_chat_messages");
