@@ -218,9 +218,10 @@ serve(async (req) => {
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
-              // ALWAYS save the complete GM response to gm_messages table
+              // CRITICAL: ALWAYS save the complete GM response ONLY to gm_messages table
+              // NEVER save to room_chat_messages or any other collection
               if (fullResponse && roomId) {
-                console.log("Saving GM response to gm_messages...");
+                console.log("Saving GM response to gm_messages ONLY...");
                 
                 // Get the GM user id from the room
                 const { data: room } = await supabase
@@ -230,6 +231,7 @@ serve(async (req) => {
                   .single();
 
                 if (room) {
+                  // Insert ONLY into gm_messages - this is the single source of truth for GM narrations
                   const { error: insertError } = await supabase
                     .from("gm_messages")
                     .insert({
@@ -244,7 +246,7 @@ serve(async (req) => {
                   if (insertError) {
                     console.error("Error saving GM message to gm_messages:", insertError);
                   } else {
-                    console.log("GM response saved to gm_messages successfully");
+                    console.log("GM response saved to gm_messages successfully - NOT saved to room_chat_messages");
                   }
                 }
               }

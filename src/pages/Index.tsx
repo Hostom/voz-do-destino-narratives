@@ -128,6 +128,9 @@ Decidam juntos, e deixem o destino se desenrolar...`;
     scrollToBottom();
   }, [gmMessages]);
 
+  // CRITICAL: This function handles ONLY GM chat (narrative with AI)
+  // It saves to gm_messages ONLY and triggers game-master
+  // DO NOT use this for group chat messages
   const handleSend = async (message: string) => {
     if (!room || !character) {
       toast({
@@ -151,7 +154,8 @@ Decidam juntos, e deixem o destino se desenrolar...`;
     setIsLoading(true);
 
     try {
-      // ALWAYS save player message to gm_messages first (visible to all players in real-time)
+      // CRITICAL: Save player message ONLY to gm_messages (NOT room_chat_messages)
+      // This is for narrative interaction with the AI Game Master
       const { error: insertError } = await supabase.from("gm_messages" as any).insert({
         room_id: room.id,
         player_id: user.id,
@@ -162,7 +166,7 @@ Decidam juntos, e deixem o destino se desenrolar...`;
       } as any);
 
       if (insertError) {
-        console.error("Error saving player message:", insertError);
+        console.error("Error saving player message to gm_messages:", insertError);
         toast({
           title: "Erro",
           description: "Não foi possível enviar a mensagem",
@@ -172,8 +176,8 @@ Decidam juntos, e deixem o destino se desenrolar...`;
         return;
       }
 
-      // Then trigger masterNarrate (server-side action)
-      // The server will save the GM response to gm_messages, visible to all players
+      // Trigger game-master function
+      // The server will save the GM response ONLY to gm_messages (NOT room_chat_messages)
       try {
         await supabase.functions.invoke('game-master', {
           body: {
@@ -190,7 +194,7 @@ Decidam juntos, e deixem o destino se desenrolar...`;
 
       setIsLoading(false);
     } catch (error) {
-      console.error('Error in handleSend:', error);
+      console.error('Error in handleSend (GM chat):', error);
       toast({
         title: "Erro",
         description: "Falha ao enviar mensagem",
@@ -643,25 +647,25 @@ Decidam juntos, e deixem o destino se desenrolar...`;
               
               {/* Botão flutuante para abrir chat social no mobile */}
               <div className="fixed bottom-20 right-4 z-50">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button size="icon" className="h-12 w-12 rounded-full shadow-lg bg-primary">
-                      <MessageSquare className="h-6 w-6" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="bottom" className="h-[80vh]">
-                    <div className="h-full">
-                      <RoomChat 
-                        roomId={room.id} 
-                        characterName={character.name}
-                        currentTurn={room.current_turn ?? 0}
-                        initiativeOrder={(room.initiative_order as any[]) || []}
-                        isGM={room.gm_id === user?.id}
-                      />
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button size="icon" className="h-12 w-12 rounded-full shadow-lg bg-primary">
+                    <MessageSquare className="h-6 w-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[80vh]">
+                  <div className="h-full">
+                    <RoomChat 
+                      roomId={room.id} 
+                      characterName={character.name}
+                      currentTurn={room.current_turn ?? 0}
+                      initiativeOrder={(room.initiative_order as any[]) || []}
+                      isGM={room.gm_id === user?.id}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+                  </div>
             </>
           )}
         </div>

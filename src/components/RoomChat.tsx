@@ -50,24 +50,26 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
     scrollToBottom();
   }, [messages]);
 
-  // Carregar mensagens sociais do grupo (room_chat_messages)
-  // IMPORTANTE: Apenas mensagens sociais (is_narrative = false ou null)
+  // CRITICAL: Load ONLY social group messages from room_chat_messages
+  // Filter out ANY narrative messages (is_narrative = true)
+  // This chat MUST NOT show GM narrations or AI responses
   useEffect(() => {
     const loadMessages = async () => {
       const { data, error } = await supabase
         .from("room_chat_messages")
         .select("*")
         .eq("room_id", roomId)
-        .or("is_narrative.is.null,is_narrative.eq.false") // Apenas mensagens sociais
+        .or("is_narrative.is.null,is_narrative.eq.false") // ONLY social messages
         .order("created_at", { ascending: true });
 
       if (error) {
-        console.error("Error loading messages:", error);
+        console.error("Error loading group chat messages:", error);
         return;
       }
 
       if (data) {
-        // Filtrar novamente para garantir que não há narrativas
+        // Double filter to ensure NO narrative messages appear
+        // This prevents any GM responses from leaking into group chat
         const socialMessages = data.filter(msg => !msg.is_narrative);
         setMessages(socialMessages as unknown as ChatMessage[]);
       }
@@ -92,10 +94,13 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
         },
         (payload) => {
           const newMsg = payload.new as ChatMessage;
-          // Apenas adicionar se não for narrativa
+          // CRITICAL: Only add if NOT narrative
+          // This prevents GM responses from appearing in group chat
           if (!newMsg.is_narrative) {
-            console.log("Nova mensagem social recebida em tempo real:", newMsg);
+            console.log("New social message received:", newMsg);
             setMessages((prev) => [...prev, newMsg]);
+          } else {
+            console.warn("Blocked narrative message from appearing in group chat:", newMsg);
           }
         }
       )
@@ -170,6 +175,9 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
     }, 2000);
   };
 
+  // CRITICAL: This function handles ONLY group social chat
+  // It saves to room_chat_messages ONLY (NOT gm_messages)
+  // It does NOT trigger game-master or any AI interaction
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -185,17 +193,19 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
       return;
     }
 
-    // Salvar apenas em room_chat_messages (chat social, sem IA)
+    // CRITICAL: Save ONLY to room_chat_messages (NOT gm_messages)
+    // This is for player-to-player strategy discussions
+    // NEVER trigger game-master from here
     const { error } = await supabase.from("room_chat_messages").insert({
       room_id: roomId,
       user_id: user.id,
       character_name: characterName,
       message: newMessage.trim(),
-      is_narrative: false, // Chat social nunca é narrativa
+      is_narrative: false, // Group chat is NEVER narrative
     });
 
     if (error) {
-      console.error("Error sending message:", error);
+      console.error("Error sending group chat message:", error);
       toast({
         title: "Erro",
         description: "Não foi possível enviar a mensagem",
