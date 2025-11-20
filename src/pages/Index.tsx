@@ -110,6 +110,29 @@ const Index = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !room) return;
 
+        // Only GM can create the welcome message
+        if (user.id !== room.gm_id) {
+          console.log('Not GM, skipping welcome message creation');
+          return;
+        }
+
+        // Double-check that no messages exist in the database
+        const { data: existingMessages, error: checkError } = await supabase
+          .from('gm_messages')
+          .select('id')
+          .eq('room_id', room.id)
+          .limit(1);
+
+        if (checkError) {
+          console.error('Error checking existing messages:', checkError);
+          return;
+        }
+
+        if (existingMessages && existingMessages.length > 0) {
+          console.log('Messages already exist, skipping welcome message');
+          return;
+        }
+
         console.log('Creating AI welcome message with ALL characters context...');
         setIsLoading(true);
 
