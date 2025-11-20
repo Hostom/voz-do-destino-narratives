@@ -54,6 +54,19 @@ const Index = () => {
     ascending: true,
   });
 
+  // Debug: Log when gmMessages change
+  useEffect(() => {
+    if (gmMessages.length > 0) {
+      console.log('gmMessages updated:', gmMessages.length, 'messages');
+      const lastMessage = gmMessages[gmMessages.length - 1];
+      console.log('Last message:', {
+        sender: lastMessage.sender,
+        character_name: lastMessage.character_name,
+        content_preview: lastMessage.content.substring(0, 50) + '...'
+      });
+    }
+  }, [gmMessages]);
+
   // Check auth status
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -178,21 +191,74 @@ Decidam juntos, e deixem o destino se desenrolar...`;
 
       // Trigger game-master function
       // The server will save the GM response ONLY to gm_messages (NOT room_chat_messages)
+      console.log('Calling game-master function with:', {
+        roomId: room.id,
+        characterName: character.name,
+        message: message.trim()
+      });
+      
       try {
-        await supabase.functions.invoke('game-master', {
+        // The function returns a stream (SSE), we need to consume it to ensure it completes
+        // The server will save the response to gm_messages when the stream completes
+        console.log('Invoking game-master function...');
+        const { data, error: invokeError } = await supabase.functions.invoke('game-master', {
           body: {
             messages: [{ role: 'user', content: message.trim() }],
             roomId: room.id,
             characterName: character.name,
           },
         });
-      } catch (invokeError) {
-        console.error('Error calling game master:', invokeError);
-        // Don't show error toast here - the server will handle it
-        // The response will appear in gm_messages when ready
+
+        if (invokeError) {
+          console.error('Error calling game master:', invokeError);
+          toast({
+            title: "Erro",
+            description: invokeError.message || "Falha ao chamar a IA",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+        } else {
+          console.log('Game-master function invoked successfully. Response will appear in gm_messages via real-time.');
+          // If data is a ReadableStream, consume it to ensure the function completes
+          if (data && typeof data.getReader === 'function') {
+            const reader = data.getReader();
+            const decoder = new TextDecoder();
+            let consumed = false;
+            
+            // Consume the stream to ensure it completes
+            (async () => {
+              try {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) {
+                    consumed = true;
+                    console.log('Stream consumed completely');
+                    break;
+                  }
+                  // Decode but don't process - we're just consuming the stream
+                  decoder.decode(value, { stream: true });
+                }
+              } catch (streamError) {
+                console.error('Error consuming stream:', streamError);
+              }
+            })();
+          } else {
+            console.log('No stream to consume, data:', data);
+          }
+          // Don't set loading to false here - wait for real-time update
+        }
+      } catch (invokeError: any) {
+        console.error('Exception calling game master:', invokeError);
+        toast({
+          title: "Erro",
+          description: invokeError?.message || "Falha ao obter resposta da IA",
+          variant: "destructive",
+        });
+        setIsLoading(false);
       }
 
-      setIsLoading(false);
+      // Don't set loading to false immediately - wait for the AI response
+      // The loading will be cleared when we detect a new GM message in gmMessages
     } catch (error) {
       console.error('Error in handleSend (GM chat):', error);
       toast({
@@ -203,6 +269,34 @@ Decidam juntos, e deixem o destino se desenrolar...`;
       setIsLoading(false);
     }
   };
+
+  // Clear loading state when we receive a GM response
+  useEffect(() => {
+    if (isLoading && gmMessages.length > 0) {
+      const lastMessage = gmMessages[gmMessages.length - 1];
+      if (lastMessage.sender === "GM") {
+        console.log('GM response received, clearing loading state');
+        setIsLoading(false);
+      }
+    }
+  }, [gmMessages, isLoading]);
+
+  // Safety timeout: clear loading after 30 seconds if no response
+  useEffect(() => {
+    if (isLoading) {
+      const timeout = setTimeout(() => {
+        console.warn('Loading timeout - no GM response received after 30 seconds');
+        setIsLoading(false);
+        toast({
+          title: "Timeout",
+          description: "A resposta da IA está demorando. Verifique se a função está funcionando.",
+          variant: "destructive",
+        });
+      }, 30000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isLoading]);
 
   const handleCharacterComplete = () => {
     setShowCreation(false);

@@ -221,33 +221,47 @@ serve(async (req) => {
               // CRITICAL: ALWAYS save the complete GM response ONLY to gm_messages table
               // NEVER save to room_chat_messages or any other collection
               if (fullResponse && roomId) {
+                console.log("Stream complete. Full response length:", fullResponse.length);
                 console.log("Saving GM response to gm_messages ONLY...");
                 
                 // Get the GM user id from the room
-                const { data: room } = await supabase
+                const { data: room, error: roomError } = await supabase
                   .from('rooms')
                   .select('gm_id')
                   .eq('id', roomId)
                   .single();
 
-                if (room) {
+                if (roomError) {
+                  console.error("Error fetching room:", roomError);
+                } else if (room) {
                   // Insert ONLY into gm_messages - this is the single source of truth for GM narrations
-                  const { error: insertError } = await supabase
+                  const { data: insertedData, error: insertError } = await supabase
                     .from("gm_messages")
                     .insert({
                       room_id: roomId,
                       player_id: room.gm_id,
                       sender: "GM",
                       character_name: "Voz do Destino",
-                      content: fullResponse,
+                      content: fullResponse.trim(),
                       type: "gm",
-                    });
+                    })
+                    .select();
                   
                   if (insertError) {
                     console.error("Error saving GM message to gm_messages:", insertError);
                   } else {
-                    console.log("GM response saved to gm_messages successfully - NOT saved to room_chat_messages");
+                    console.log("✅ GM response saved to gm_messages successfully. ID:", insertedData?.[0]?.id);
+                    console.log("Response preview:", fullResponse.substring(0, 100) + "...");
                   }
+                } else {
+                  console.error("Room not found for roomId:", roomId);
+                }
+              } else {
+                if (!fullResponse) {
+                  console.warn("No fullResponse to save");
+                }
+                if (!roomId) {
+                  console.warn("No roomId provided");
                 }
               }
               controller.close();

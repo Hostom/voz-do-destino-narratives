@@ -68,16 +68,21 @@ export function useCollection<T extends Record<string, any>>(
 
           // Reload all data to ensure consistency
           // This ensures we always have the correct sorted order and no duplicates
-          const { data: updatedData, error: reloadError } = await supabase
-            .from(tableName as any)
-            .select("*")
-            .eq("room_id", options.roomId)
-            .order(options.orderBy || "created_at", { ascending: options.ascending !== false });
+          try {
+            const { data: updatedData, error: reloadError } = await supabase
+              .from(tableName as any)
+              .select("*")
+              .eq("room_id", options.roomId)
+              .order(options.orderBy || "created_at", { ascending: options.ascending !== false });
 
-          if (!reloadError && updatedData) {
-            setData((updatedData as T[]) || []);
-          } else if (reloadError) {
-            console.error(`Error reloading ${tableName} after real-time update:`, reloadError);
+            if (!reloadError && updatedData) {
+              console.log(`Reloaded ${tableName}: ${updatedData.length} items`);
+              setData((updatedData as T[]) || []);
+            } else if (reloadError) {
+              console.error(`Error reloading ${tableName} after real-time update:`, reloadError);
+            }
+          } catch (err) {
+            console.error(`Exception reloading ${tableName}:`, err);
           }
         }
       )
