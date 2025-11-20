@@ -202,29 +202,50 @@ Decidam juntos, e deixem o destino se desenrolar...`;
         // The function returns a stream (SSE), we need to consume it to ensure it completes
         // The server will save the response to gm_messages when the stream completes
         console.log('Invoking game-master function...');
-        const { data, error: invokeError } = await supabase.functions.invoke('game-master', {
-          body: {
+        
+        // Get the Supabase URL and anon key from environment
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        
+        if (!supabaseUrl || !supabaseAnonKey) {
+          throw new Error('Supabase configuration missing');
+        }
+
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        const authToken = session?.access_token;
+
+        // Call the function using fetch directly for better stream handling
+        const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken || supabaseAnonKey}`,
+            'apikey': supabaseAnonKey,
+          },
+          body: JSON.stringify({
             messages: [{ role: 'user', content: message.trim() }],
             roomId: room.id,
             characterName: character.name,
-          },
+          }),
         });
 
-        if (invokeError) {
-          console.error('Error calling game master:', invokeError);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Error calling game master:', response.status, errorText);
           toast({
             title: "Erro",
-            description: invokeError.message || "Falha ao chamar a IA",
+            description: `Falha ao chamar a IA: ${response.status}`,
             variant: "destructive",
           });
           setIsLoading(false);
         } else {
           console.log('Game-master function invoked successfully. Response will appear in gm_messages via real-time.');
-          // If data is a ReadableStream, consume it to ensure the function completes
-          if (data && typeof data.getReader === 'function') {
-            const reader = data.getReader();
+          
+          // Consume the stream to ensure it completes
+          const reader = response.body?.getReader();
+          if (reader) {
             const decoder = new TextDecoder();
-            let consumed = false;
             
             // Consume the stream to ensure it completes
             (async () => {
@@ -232,7 +253,6 @@ Decidam juntos, e deixem o destino se desenrolar...`;
                 while (true) {
                   const { done, value } = await reader.read();
                   if (done) {
-                    consumed = true;
                     console.log('Stream consumed completely');
                     break;
                   }
@@ -244,7 +264,7 @@ Decidam juntos, e deixem o destino se desenrolar...`;
               }
             })();
           } else {
-            console.log('No stream to consume, data:', data);
+            console.warn('No response body/stream received');
           }
           // Don't set loading to false here - wait for real-time update
         }

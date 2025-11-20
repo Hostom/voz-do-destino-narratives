@@ -108,7 +108,7 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
       return;
     }
 
-    // Then trigger game-master function
+    // Then trigger game-master function using fetch directly for better SSE support
     // The function returns a stream (SSE), we need to consume it to ensure it completes
     // The server will save the GM response to gm_messages when the stream completes
     console.log('Calling game-master function with:', {
@@ -118,31 +118,51 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
     });
     
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke('game-master', {
-        body: {
+      // Get the Supabase URL and anon key from environment
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration missing');
+      }
+
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+
+      // Call the function using fetch directly for better stream handling
+      const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken || supabaseAnonKey}`,
+          'apikey': supabaseAnonKey,
+        },
+        body: JSON.stringify({
           messages: [{ role: 'user', content: messageContent }],
           roomId,
           characterName: characterName,
-        },
+        }),
       });
 
-      if (invokeError) {
-        console.error('Error calling game master:', invokeError);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error calling game master:', response.status, errorText);
         toast({
           title: "Erro",
-          description: invokeError.message || "Falha ao chamar a IA",
+          description: `Falha ao chamar a IA: ${response.status}`,
           variant: "destructive",
         });
         setIsLoading(false);
         return;
       }
 
-      // If data is a ReadableStream, consume it to ensure the function completes
-      if (data && typeof data.getReader === 'function') {
-        const reader = data.getReader();
+      // Consume the stream to ensure it completes
+      // The server will save the response to gm_messages when the stream completes
+      const reader = response.body?.getReader();
+      if (reader) {
         const decoder = new TextDecoder();
         
-        // Consume the stream to ensure it completes
         try {
           while (true) {
             const { done, value } = await reader.read();
@@ -156,9 +176,11 @@ export const GMChat = ({ roomId, characterName, isGM }: GMChatProps) => {
           }
         } catch (streamError) {
           console.error('Error consuming stream:', streamError);
+          setIsLoading(false);
         }
       } else {
-        console.log('No stream to consume, data:', data);
+        console.warn('No response body/stream received');
+        setIsLoading(false);
       }
       
       // Don't set loading to false here - wait for real-time update
