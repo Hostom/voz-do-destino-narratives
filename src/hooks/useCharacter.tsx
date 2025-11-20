@@ -186,13 +186,30 @@ export const useCharacter = () => {
     }
   };
 
-  const getCharacterSummary = () => {
+  const getCharacterSummary = async () => {
     if (!character) return "";
 
     const getModifier = (score: number) => {
       const mod = Math.floor((score - 10) / 2);
       return mod >= 0 ? `+${mod}` : `${mod}`;
     };
+
+    // Fetch character items
+    let itemsList = "";
+    try {
+      const { data: items, error } = await supabase
+        .from("character_items")
+        .select("*")
+        .eq("character_id", character.id);
+      
+      if (!error && items && items.length > 0) {
+        itemsList = "\n\nITENS:\n" + items.map(item => 
+          `- ${item.item_name}${item.quantity > 1 ? ` (x${item.quantity})` : ''}${item.equipped ? ' [Equipado]' : ''}${item.description ? `: ${item.description}` : ''}`
+        ).join('\n');
+      }
+    } catch (error) {
+      console.error("Error loading items for summary:", error);
+    }
 
     return `Nome: ${character.name}
 Raça: ${character.race}
@@ -210,7 +227,7 @@ ATRIBUTOS:
 HP: ${character.current_hp}/${character.max_hp}
 Classe de Armadura: ${character.armor_class}
 Antecedente: ${character.background}
-${character.backstory ? `\nHistória: ${character.backstory}` : ''}`;
+${character.backstory ? `\nHistória: ${character.backstory}` : ''}${itemsList}`;
   };
 
   return {

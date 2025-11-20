@@ -151,9 +151,10 @@ serve(async (req) => {
   }
 
   try {
-    const { messages: clientMessages, roomId, characterName = 'Mestre do Jogo', characterId } = await req.json();
+    const { messages: clientMessages, roomId, characterName = 'Mestre do Jogo', characterId, isSessionStart = false } = await req.json();
     console.log("Received client messages:", clientMessages?.length || 0);
     console.log("Room ID:", roomId, "Character:", characterName, "Character ID:", characterId);
+    console.log("Is Session Start:", isSessionStart);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -180,7 +181,7 @@ serve(async (req) => {
     // PREFER characterId from request if provided, otherwise try to find it
     let activeCharacterId: string | null = characterId || null;
 
-    if (roomId) {
+    if (roomId && !isSessionStart) {
       console.log("Fetching conversation history for room:", roomId);
       
       // CRITICAL: Fetch ALL character sheets in the room to provide full context to AI
@@ -571,7 +572,8 @@ PERSONAGEM: ${char.name}
               // CRITICAL: ALWAYS save the complete GM response ONLY to gm_messages table
               // NEVER save to room_chat_messages or any other collection
               // This function MUST NEVER insert into room_chat_messages
-              if (fullResponse && roomId) {
+              // Skip saving if this is a session start (the message is only for context, not for history)
+              if (fullResponse && roomId && !isSessionStart) {
                 console.log("Stream complete. Full response length:", fullResponse.length);
                 console.log("Saving GM response to gm_messages ONLY...");
                 console.log("⚠️ CRITICAL: This function will NEVER save to room_chat_messages");
