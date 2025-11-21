@@ -830,6 +830,8 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           onBackToLobby={room ? handleBackToLobby : undefined}
           roomCode={room?.room_code}
           characterId={character?.id}
+          players={players}
+          gmId={room?.gm_id}
         />
 
         {showCharacterSheet && character && (
