@@ -8,6 +8,9 @@ import { MessageSquare, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCollection } from "@/hooks/useCollection";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { useVoiceChat } from "@/hooks/useVoiceChat";
+import { VoicePanel } from "./VoicePanel";
+import { VoiceFlame } from "./VoiceFlame";
 
 interface GroupMessage {
   id: string;
@@ -42,6 +45,34 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
+
+  // Get current user ID for voice chat
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  
+  useEffect(() => {
+    const getUserId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    getUserId();
+  }, []);
+
+  // Initialize voice chat
+  const {
+    isConnected,
+    isMuted,
+    speakingMap,
+    connectedPeers,
+    connect,
+    disconnect,
+    toggleMute,
+  } = useVoiceChat({
+    roomId,
+    userId: currentUserId,
+    userName: characterName,
+  });
 
   // CRITICAL: Use useCollection with filters to subscribe ONLY to room_chat_messages
   // This is the single source of truth for group strategy messages
@@ -201,105 +232,126 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
   };
 
   return (
-    <Card className="h-full flex flex-col bg-card/80 backdrop-blur border-primary/20">
-      <CardHeader className="pb-3 flex-shrink-0">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <MessageSquare className="w-5 h-5" />
-          Chat do Grupo (Social)
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Discussões e estratégias entre jogadores - Não interage com a IA
-        </p>
-        {initiativeOrder.length > 0 && (
-          <div className="mt-2 text-sm">
-            <span className="text-muted-foreground">Turno de: </span>
-            <span className="font-semibold text-primary">{initiativeOrder[currentTurn]?.character_name || 'Aguardando'}</span>
-            {isMyTurn && <span className="ml-2 text-xs text-accent">(Sua vez!)</span>}
-          </div>
-        )}
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-3 p-4 overflow-hidden min-h-0">
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-3">
-            {messagesLoading && messages.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                Carregando mensagens...
-              </div>
-            )}
-            {!messagesLoading && messages.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                <p>Nenhuma mensagem social ainda.</p>
-                <p className="text-xs mt-1">Use este chat para discutir estratégias com o grupo.</p>
-              </div>
-            )}
-            {messages.map((msg) => {
-              // CRITICAL: Double-check at render level - block ANY narrative message
-              if (msg.is_narrative === true) {
-                console.warn("Blocked narrative message at render level:", msg);
-                return null;
-              }
-              
-              // Additional safety checks
-              if (msg.sender === "GM" || msg.type === "gm") {
-                console.warn("Blocked GM message at render level:", msg);
-                return null;
-              }
-              
-              return (
-                <div
-                  key={msg.id}
-                  className="rounded-lg p-3 animate-in slide-in-from-bottom-2 bg-secondary/50"
-                >
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="font-semibold text-sm text-foreground">
-                      {msg.character_name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(msg.created_at).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                  <p className="text-sm text-foreground">
-                    {msg.message}
-                  </p>
-                </div>
-              );
-            })}
-            
-            {typingUsers.length > 0 && (
-              <div className="text-sm text-muted-foreground italic">
-                {typingUsers.map((u) => u.character_name).join(", ")}{" "}
-                {typingUsers.length === 1 ? "está" : "estão"} digitando...
-              </div>
-            )}
-            
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
+    <div className="h-full flex flex-col gap-3">
+      {/* Voice Panel */}
+      <VoicePanel
+        isConnected={isConnected}
+        isMuted={isMuted}
+        connectedPeers={connectedPeers}
+        speakingMap={speakingMap}
+        onConnect={connect}
+        onDisconnect={disconnect}
+        onToggleMute={toggleMute}
+      />
 
-        <form onSubmit={sendMessage} className="space-y-2">
-          <div className="flex gap-2">
-            <Input
-              value={newMessage}
-              onChange={(e) => {
-                setNewMessage(e.target.value);
-                handleTyping();
-              }}
-              placeholder="Discuta estratégias com o grupo..."
-              className="flex-1"
-            />
-            <Button 
-              type="submit" 
-              size="icon" 
-              disabled={!newMessage.trim()}
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      {/* Chat Card */}
+      <Card className="flex-1 flex flex-col bg-card/80 backdrop-blur border-primary/20 min-h-0">
+        <CardHeader className="pb-3 flex-shrink-0">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <MessageSquare className="w-5 h-5" />
+            Chat do Grupo (Social)
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Discussões e estratégias entre jogadores - Não interage com a IA
+          </p>
+          {initiativeOrder.length > 0 && (
+            <div className="mt-2 text-sm">
+              <span className="text-muted-foreground">Turno de: </span>
+              <span className="font-semibold text-primary">{initiativeOrder[currentTurn]?.character_name || 'Aguardando'}</span>
+              {isMyTurn && <span className="ml-2 text-xs text-accent">(Sua vez!)</span>}
+            </div>
+          )}
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col gap-3 p-4 overflow-hidden min-h-0">
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-3">
+              {messagesLoading && messages.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Carregando mensagens...
+                </div>
+              )}
+              {!messagesLoading && messages.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  <p>Nenhuma mensagem social ainda.</p>
+                  <p className="text-xs mt-1">Use este chat para discutir estratégias com o grupo.</p>
+                </div>
+              )}
+              {messages.map((msg) => {
+                // CRITICAL: Double-check at render level - block ANY narrative message
+                if (msg.is_narrative === true) {
+                  console.warn("Blocked narrative message at render level:", msg);
+                  return null;
+                }
+                
+                // Additional safety checks
+                if (msg.sender === "GM" || msg.type === "gm") {
+                  console.warn("Blocked GM message at render level:", msg);
+                  return null;
+                }
+                
+                return (
+                  <div
+                    key={msg.id}
+                    className="rounded-lg p-3 animate-in slide-in-from-bottom-2 bg-secondary/50"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      {/* Voice Flame Indicator */}
+                      <VoiceFlame 
+                        userId={msg.user_id} 
+                        isSpeaking={speakingMap[msg.user_id] || false} 
+                      />
+                      <div className="flex items-baseline gap-2 flex-1">
+                        <span className="font-semibold text-sm text-foreground">
+                          {msg.character_name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(msg.created_at).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-foreground ml-8">
+                      {msg.message}
+                    </p>
+                  </div>
+                );
+              })}
+              
+              {typingUsers.length > 0 && (
+                <div className="text-sm text-muted-foreground italic">
+                  {typingUsers.map((u) => u.character_name).join(", ")}{" "}
+                  {typingUsers.length === 1 ? "está" : "estão"} digitando...
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+
+          <form onSubmit={sendMessage} className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                value={newMessage}
+                onChange={(e) => {
+                  setNewMessage(e.target.value);
+                  handleTyping();
+                }}
+                placeholder="Discuta estratégias com o grupo..."
+                className="flex-1"
+              />
+              <Button 
+                type="submit" 
+                size="icon" 
+                disabled={!newMessage.trim()}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 };

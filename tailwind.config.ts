@@ -83,10 +83,85 @@ export default {
             height: "0",
           },
         },
+        "flame-pulse": {
+          "0%, 100%": {
+            transform: "scale(0.9)",
+            filter: "brightness(1)",
+          },
+          "25%": {
+            transform: "scale(1.1) translateY(-2px)",
+            filter: "brightness(1.3)",
+          },
+          "50%": {
+            transform: "scale(1) translateY(0)",
+            filter: "brightness(1.1)",
+          },
+          "75%": {
+            transform: "scale(1.05) translateY(-1px)",
+            filter: "brightness(1.2)",
+          },
+        },
+        "flame-flicker": {
+          "0%, 100%": {
+            opacity: "0.8",
+            transform: "scale(0.95)",
+          },
+          "50%": {
+            opacity: "1",
+            transform: "scale(1.05)",
+          },
+        },
+        "spark-1": {
+          "0%": {
+            transform: "translate(0, 0) scale(0)",
+            opacity: "0",
+          },
+          "50%": {
+            transform: "translate(8px, -8px) scale(1)",
+            opacity: "1",
+          },
+          "100%": {
+            transform: "translate(12px, -12px) scale(0)",
+            opacity: "0",
+          },
+        },
+        "spark-2": {
+          "0%": {
+            transform: "translate(0, 0) scale(0)",
+            opacity: "0",
+          },
+          "50%": {
+            transform: "translate(-6px, 6px) scale(1)",
+            opacity: "1",
+          },
+          "100%": {
+            transform: "translate(-10px, 10px) scale(0)",
+            opacity: "0",
+          },
+        },
+        "energy-ring": {
+          "0%": {
+            transform: "scale(1)",
+            opacity: "0.5",
+          },
+          "50%": {
+            transform: "scale(1.2)",
+            opacity: "0.2",
+          },
+          "100%": {
+            transform: "scale(1)",
+            opacity: "0.5",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "flame-pulse": "flame-pulse 0.8s ease-in-out infinite",
+        "flame-flicker": "flame-flicker 0.3s ease-in-out infinite",
+        "spark-1": "spark-1 1.5s ease-in-out infinite",
+        "spark-2": "spark-2 1.8s ease-in-out infinite 0.3s",
+        "energy-ring": "energy-ring 2s ease-in-out infinite",
       },
     },
   },
