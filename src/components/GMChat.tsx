@@ -267,9 +267,19 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
             )}
             {messages.map((msg) => {
               const messageContent = msg.content ?? msg.message ?? "";
+              
+              console.log('[GMChat] Processing message:', {
+                id: msg.id,
+                sender: msg.sender,
+                contentLength: messageContent.length,
+                preview: messageContent.substring(0, 100)
+              });
+              
               const shopItems = msg.sender === "GM" && hasShopItems(messageContent) 
                 ? parseItemList(messageContent) 
                 : [];
+              
+              console.log('[GMChat] Shop items for message:', shopItems.length);
               
               return (
                 <div key={msg.id}>
