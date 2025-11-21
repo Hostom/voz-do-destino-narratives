@@ -65,10 +65,32 @@ RESULTADO: Jogador vê os 10 itens na aba "Loja" + recebe narrativa fluida no ch
 • Se houver múltiplas ações em uma mensagem, solicite testes para CADA ação individualmente
 
 💥 REGRAS DE DANO E COMBATE (CRÍTICO)
-• IMPORTANTE: Você TEM ACESSO COMPLETO às fichas dos personagens no contexto do sistema
-  - CA (Classe de Armadura), HP atual/máximo, modificadores de atributos
-  - NUNCA peça ao jogador informações que você já tem (CA, HP, modificadores, etc.)
-  - Use essas informações DIRETAMENTE para resolver combates, calcular dano e determinar resultados
+🚫 ATENÇÃO MÁXIMA: TODAS AS FICHAS DOS PERSONAGENS ESTÃO NA SEÇÃO "FICHAS DOS PERSONAGENS" ACIMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• VOCÊ TEM ACESSO COMPLETO E DIRETO A TODAS ESTAS INFORMAÇÕES:
+  ✓ CA (Classe de Armadura) de cada personagem
+  ✓ HP atual/máximo de cada personagem
+  ✓ TODOS os modificadores de atributos (FOR, DES, CON, INT, SAB, CAR)
+  ✓ Nível, classe, raça
+  ✓ Armas equipadas
+  ✓ Condições ativas
+  
+• 🚫 REGRA ABSOLUTA - NUNCA, EM HIPÓTESE ALGUMA, PEÇA AO JOGADOR:
+  ❌ "Qual é sua CA?"
+  ❌ "Quantos HP você tem?"
+  ❌ "Qual seu modificador de [atributo]?"
+  ❌ "Qual seu nível/classe/raça?"
+  ❌ Qualquer informação que já está nas fichas acima
+  
+• ✅ USE ESSAS INFORMAÇÕES DIRETAMENTE:
+  - Para calcular testes: use os modificadores das fichas
+  - Para resolver ataques: use a CA das fichas
+  - Para aplicar dano: use o HP atual das fichas
+  - Para determinar efeitos: use o nível/classe das fichas
+  
+• Se você NÃO conseguir ver essas informações = há problema técnico
+  - NÃO peça ao jogador para fornecer
+  - Informe que há um erro e aguarde correção
 • TODA ação de combate (ataque corpo-a-corpo, ataque à distância, magia de ataque) requer:
   1. Teste de ataque primeiro (d20 + modificador vs AC do inimigo)
   2. Se acertar, DEPOIS role o dano
@@ -343,7 +365,7 @@ serve(async (req) => {
       console.log("Fetching conversation history for room:", roomId);
       
       // CRITICAL: Fetch ALL character sheets in the room to provide full context to AI
-      const { data: roomPlayers } = await supabase
+      const { data: roomPlayers, error: roomPlayersError } = await supabase
         .from("room_players")
         .select(`
           user_id,
@@ -370,6 +392,27 @@ serve(async (req) => {
           )
         `)
         .eq("room_id", roomId);
+
+      // 🔍 DIAGNOSTIC LOGGING FOR CHARACTER SHEETS
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("🔍 CHARACTER SHEETS QUERY DIAGNOSTICS");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("Room ID:", roomId);
+      console.log("Room players error:", roomPlayersError);
+      console.log("Room players count:", roomPlayers?.length || 0);
+      if (roomPlayers && roomPlayers.length > 0) {
+        roomPlayers.forEach((rp: any, idx: number) => {
+          console.log(`Player ${idx + 1}:`, {
+            user_id: rp.user_id,
+            character_id: rp.character_id,
+            character_name: rp.characters?.name,
+            has_character_data: !!rp.characters
+          });
+        });
+      } else {
+        console.warn("⚠️ NO ROOM PLAYERS FOUND - Character context will be EMPTY");
+      }
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
       // Build character sheets context
       let characterSheetsContext = "";
@@ -400,8 +443,57 @@ PERSONAGEM: ${char.name}
           }
         });
         characterSheetsContext += "\n=== FIM DAS FICHAS ===\n";
-        console.log("Character sheets context prepared for", roomPlayers.length, "characters");
+        console.log("✅ Character sheets context prepared for", roomPlayers.length, "characters");
+      } else {
+        // 🔥 FALLBACK: If room_players query failed but we have characterId, try to fetch that character
+        console.warn("⚠️ Room players query returned empty. Attempting fallback...");
+        
+        if (characterId) {
+          console.log("🔄 Fetching character directly using characterId:", characterId);
+          const { data: fallbackChar, error: fallbackError } = await supabase
+            .from("characters")
+            .select("*")
+            .eq("id", characterId)
+            .single();
+          
+          if (!fallbackError && fallbackChar) {
+            console.log("✅ Fallback successful! Got character:", fallbackChar.name);
+            characterSheetsContext = "\n\n=== FICHAS DOS PERSONAGENS NA SESSÃO ===\n";
+            
+            const char = fallbackChar;
+            const strMod = Math.floor((char.strength - 10) / 2);
+            const dexMod = Math.floor((char.dexterity - 10) / 2);
+            const conMod = Math.floor((char.constitution - 10) / 2);
+            const intMod = Math.floor((char.intelligence - 10) / 2);
+            const wisMod = Math.floor((char.wisdom - 10) / 2);
+            const chaMod = Math.floor((char.charisma - 10) / 2);
+
+            characterSheetsContext += `
+PERSONAGEM: ${char.name}
+- Character ID: ${char.id}
+- Raça/Classe: ${char.race} ${char.class} Nível ${char.level}
+- HP: ${char.current_hp}/${char.max_hp} | CA: ${char.armor_class}
+- Atributos: FOR ${char.strength}(${strMod>=0?'+':''}${strMod}) | DES ${char.dexterity}(${dexMod>=0?'+':''}${dexMod}) | CON ${char.constitution}(${conMod>=0?'+':''}${conMod}) | INT ${char.intelligence}(${intMod>=0?'+':''}${intMod}) | SAB ${char.wisdom}(${wisMod>=0?'+':''}${wisMod}) | CAR ${char.charisma}(${chaMod>=0?'+':''}${chaMod})
+- Bônus Proficiência: +${char.proficiency_bonus}
+- XP: ${char.experience_points}
+- Arma Equipada: ${char.equipped_weapon?.name || 'Desarmado'}
+- Condições: ${char.conditions && Array.isArray(char.conditions) && char.conditions.length > 0 ? char.conditions.join(', ') : 'Nenhuma'}
+`;
+            characterSheetsContext += "\n=== FIM DAS FICHAS ===\n";
+            activeCharacterId = char.id;
+          } else {
+            console.error("❌ Fallback failed:", fallbackError);
+          }
+        } else {
+          console.error("❌ No characterId provided for fallback");
+        }
       }
+      
+      // 🔍 LOG THE FINAL CONTEXT
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("📋 FINAL CHARACTER CONTEXT TO BE SENT TO AI:");
+      console.log(characterSheetsContext || "⚠️ EMPTY - NO CHARACTER DATA");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       
       // Get the last player message to identify who sent it
       const { data: lastPlayerMsg } = await supabase
