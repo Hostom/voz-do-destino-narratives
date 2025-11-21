@@ -1207,6 +1207,98 @@ export type Database = {
           },
         ]
       }
+      shop_states: {
+        Row: {
+          created_at: string | null
+          id: string
+          items: Json
+          npc_name: string
+          npc_personality: string
+          npc_reputation: number
+          room_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          items?: Json
+          npc_name?: string
+          npc_personality?: string
+          npc_reputation?: number
+          room_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          items?: Json
+          npc_name?: string
+          npc_personality?: string
+          npc_reputation?: number
+          room_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_states_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_transactions: {
+        Row: {
+          character_id: string
+          created_at: string | null
+          id: string
+          item_id: string
+          item_name: string
+          player_id: string
+          price: number
+          quantity: number
+          room_id: string
+        }
+        Insert: {
+          character_id: string
+          created_at?: string | null
+          id?: string
+          item_id: string
+          item_name: string
+          player_id: string
+          price: number
+          quantity?: number
+          room_id: string
+        }
+        Update: {
+          character_id?: string
+          created_at?: string | null
+          id?: string
+          item_id?: string
+          item_name?: string
+          player_id?: string
+          price?: number
+          quantity?: number
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_transactions_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_transactions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

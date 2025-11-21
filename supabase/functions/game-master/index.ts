@@ -89,24 +89,38 @@ Sua missão é criar, mestrar e conduzir histórias interativas, reagindo às es
 
 🛒 SISTEMA DE LOJA (CRÍTICO)
 • Quando o jogador encontrar uma loja, mercador, ou NPC vendedor, você DEVE usar o formato [SHOP] para listar itens
-• O bloco [SHOP] será automaticamente removido da narrativa e exibido na aba "Loja" do jogador
-• Formato obrigatório:
+• O bloco [SHOP] será automaticamente extraído e enviado para a aba "Loja" do jogador
+• FORMATO OBRIGATÓRIO (siga exatamente este formato):
   [SHOP]
-  Espada Longa — 1d8 corte (15 PO)
-  Escudo de Madeira — +2 CA (10 PO)
-  Poção de Cura — Restaura 2d4+2 HP (25 PO)
-• Cada item deve ter: Nome — Descrição/Stats (Preço PO)
-• Use preços realistas baseados na raridade e qualidade
-• Após o bloco [SHOP], continue a narrativa normalmente sem mencionar os itens novamente
+  NPC: Nome do Mercador
+  PERSONALITY: friendly|neutral|hostile
+  REPUTATION: 0
+  ---
+  Espada Longa — 1d8 dano cortante. Arma versátil para combate corpo a corpo (15 PO) [uncommon, normal]
+  Escudo de Madeira — +2 CA. Proteção básica (10 PO) [common, normal]
+  Poção de Cura — Restaura 2d4+2 HP. Líquido vermelho brilhante (50 PO) [uncommon, normal]
+  
+• Regras:
+  - Cada item: Nome — Descrição completa (Preço PO) [raridade, qualidade]
+  - Raridade: common, uncommon, rare, epic, legendary
+  - Qualidade: broken, normal, refined, perfect, legendary
+  - Personality do NPC: friendly (-10% preço), neutral (0%), hostile (+15%)
+  - Reputation: cada ponto dá -2% desconto adicional
+• O bloco [SHOP] será REMOVIDO da narrativa exibida ao jogador
+• Continue a narrativa APÓS o bloco sem mencionar os itens novamente
 • Exemplo completo:
-  "Você entra na loja do ferreiro. O anão olha para você com interesse.
+  "Você entra na forja. O anão Thorin martela uma espada e olha para você.
   
   [SHOP]
-  Espada Longa — 1d8 dano de corte (15 PO)
-  Escudo de Madeira — +2 CA (10 PO)
-  Adaga — 1d4 dano perfurante (2 PO)
+  NPC: Thorin Martelo de Ferro
+  PERSONALITY: friendly
+  REPUTATION: 5
+  ---
+  Espada Longa +1 — 1d8+1 dano cortante. Lâmina encantada com runas élficas (300 PO) [rare, refined]
+  Escudo de Aço — +2 CA. Sólido e bem forjado (50 PO) [uncommon, normal]
+  Adaga de Prata — 1d4 dano perfurante. Eficaz contra mortos-vivos (25 PO) [uncommon, normal]
   
-  O ferreiro sorri: 'O que você precisa, aventureiro?'"
+  Thorin limpa as mãos no avental: 'Procurando algo específico, aventureiro?'"
 
 💬 INTERAÇÃO COM O JOGADOR
 • Nunca avance sem a ação do jogador
@@ -659,9 +673,9 @@ PERSONAGEM: ${char.name}
                 } else if (room) {
                   console.log("Room found. GM ID:", room.gm_id);
                   
-                  // Detect and process [SHOP] blocks
+                  // Detect and process [SHOP] blocks with new format
                   let narrativeText = fullResponse.trim();
-                  const shopBlockRegex = /\[SHOP\]\s*\n([\s\S]*?)(?=\n\n|\n\[|$)/i;
+                  const shopBlockRegex = /\[SHOP\]\s*\n([\s\S]*?)(?=\n\n[A-Z]|\n[A-Z][^a-z\n]*$|$)/i;
                   const shopMatch = narrativeText.match(shopBlockRegex);
                   
                   if (shopMatch) {
@@ -671,58 +685,88 @@ PERSONAGEM: ${char.name}
                     // Remove shop block from narrative
                     narrativeText = narrativeText.replace(shopBlockRegex, '').trim();
                     
-                    // Parse shop items
-                    const shopItems: any[] = [];
-                    const itemLines = shopContent.split('\n').filter(line => line.trim());
+                    const shopLines = shopContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                     
-                    for (const line of itemLines) {
-                      const trimmed = line.trim();
-                      if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('#')) continue;
+                    let npcName = "Mercador";
+                    let npcPersonality: "friendly" | "neutral" | "hostile" = "neutral";
+                    let npcReputation = 0;
+                    let itemsStart = 0;
+                    
+                    // Parse metadata
+                    for (let i = 0; i < shopLines.length; i++) {
+                      const line = shopLines[i];
+                      if (line === '---') {
+                        itemsStart = i + 1;
+                        break;
+                      }
                       
-                      // Parse format: Item Name — stats (price PO) or Item Name (price PO) — stats
-                      const priceMatch = trimmed.match(/(\d+)\s*(PO|GP|PP|PE|PC|PL)/i);
-                      const price = priceMatch ? parseInt(priceMatch[1]) : 100;
+                      if (line.startsWith('NPC:')) {
+                        npcName = line.substring(4).trim();
+                      } else if (line.startsWith('PERSONALITY:')) {
+                        const pers = line.substring(12).trim().toLowerCase();
+                        if (pers === 'friendly' || pers === 'neutral' || pers === 'hostile') {
+                          npcPersonality = pers;
+                        }
+                      } else if (line.startsWith('REPUTATION:')) {
+                        npcReputation = parseInt(line.substring(11).trim()) || 0;
+                      }
+                    }
+                    
+                    // Parse items
+                    const shopItems: any[] = [];
+                    for (let i = itemsStart; i < shopLines.length; i++) {
+                      const line = shopLines[i];
+                      if (line === '---' || !line) continue;
                       
-                      // Extract item name (before — or first part)
-                      const nameMatch = trimmed.match(/^([^—–-]+)/);
-                      const itemName = nameMatch ? nameMatch[1].trim() : trimmed.split('—')[0].split('–')[0].split('-')[0].trim();
-                      
-                      // Extract stats/description (after — or in parentheses)
-                      const statsMatch = trimmed.match(/[—–-]\s*(.+?)(?:\s*\(|$)/) || trimmed.match(/\(([^)]+)\)/);
-                      const stats = statsMatch ? statsMatch[1].trim() : '';
-                      
-                      // Determine rarity from price or name
+                      // Extract rarity and quality from [rarity, quality]
+                      const metaMatch = line.match(/\[(\w+),\s*(\w+)\]\s*$/);
                       let rarity: "common" | "uncommon" | "rare" | "epic" | "legendary" = "common";
-                      if (price >= 10000 || /lendário|legendary|épico|epic/i.test(itemName)) rarity = "legendary";
-                      else if (price >= 5000 || /raro|rare/i.test(itemName)) rarity = "epic";
-                      else if (price >= 1000 || /incomum|uncommon/i.test(itemName)) rarity = "rare";
-                      else if (price >= 500) rarity = "uncommon";
-                      
-                      // Determine quality
                       let quality: "broken" | "normal" | "refined" | "perfect" | "legendary" = "normal";
-                      if (/perfeito|perfect|refinado|refined/i.test(itemName + stats)) quality = "refined";
-                      else if (/quebrado|broken|danificado/i.test(itemName + stats)) quality = "broken";
-                      else if (rarity === "legendary") quality = "legendary";
+                      let itemText = line;
                       
-                      // Extract attributes from stats
+                      if (metaMatch) {
+                        const rarityStr = metaMatch[1].toLowerCase();
+                        const qualityStr = metaMatch[2].toLowerCase();
+                        
+                        if (['common', 'uncommon', 'rare', 'epic', 'legendary'].includes(rarityStr)) {
+                          rarity = rarityStr as any;
+                        }
+                        if (['broken', 'normal', 'refined', 'perfect', 'legendary'].includes(qualityStr)) {
+                          quality = qualityStr as any;
+                        }
+                        
+                        itemText = line.substring(0, metaMatch.index).trim();
+                      }
+                      
+                      // Extract price from (XXX PO)
+                      const priceMatch = itemText.match(/\((\d+)\s*(?:PO|GP|Gold|Ouro)\)/i);
+                      let price = 0;
+                      if (priceMatch) {
+                        price = parseInt(priceMatch[1]);
+                        itemText = itemText.replace(priceMatch[0], '').trim();
+                      }
+                      
+                      // Split name and description by —
+                      const parts = itemText.split('—').map(p => p.trim());
+                      const itemName = parts[0] || 'Item Desconhecido';
+                      const description = parts.slice(1).join('. ') || '';
+                      
+                      // Extract attributes from description
                       const attributes: Record<string, any> = {};
-                      const attackMatch = stats.match(/(\d+d\d+|\+\d+)\s*(ataque|attack|dano|damage)/i);
-                      const defenseMatch = stats.match(/(\+?\d+)\s*(CA|AC|defesa|defense)/i);
-                      const magicMatch = stats.match(/(\+?\d+)\s*(magia|magic|mana)/i);
+                      const attackMatch = description.match(/(\d+d\d+(?:\+\d+)?)\s*(?:dano|damage|corte|cortante|perfurante|contundente)/i);
+                      const defenseMatch = description.match(/(\+\d+)\s*(?:CA|AC)/i);
+                      const healMatch = description.match(/(?:Restaura|Cura)\s*(\d+d\d+(?:\+\d+)?)\s*(?:HP|PV)/i);
                       
                       if (attackMatch) attributes.attack = attackMatch[1];
-                      if (defenseMatch) attributes.defense = parseInt(defenseMatch[1]);
-                      if (magicMatch) attributes.magic = parseInt(magicMatch[1]);
-                      
-                      // Calculate final price (will be recalculated in update-shop with NPC modifiers)
-                      const basePrice = price;
+                      if (defenseMatch) attributes.defense = defenseMatch[1];
+                      if (healMatch) attributes.healing = healMatch[1];
                       
                       shopItems.push({
                         id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                         name: itemName,
-                        description: stats || '',
-                        basePrice: basePrice,
-                        finalPrice: basePrice, // Will be recalculated
+                        description: description,
+                        basePrice: price,
+                        finalPrice: price, // Will be recalculated by update-shop
                         rarity: rarity,
                         quality: quality,
                         stock: -1, // Unlimited
@@ -731,7 +775,7 @@ PERSONAGEM: ${char.name}
                     }
                     
                     if (shopItems.length > 0) {
-                      console.log(`✅ Parsed ${shopItems.length} shop items`);
+                      console.log(`✅ Parsed ${shopItems.length} shop items from [SHOP] block`);
                       
                       // Call update-shop function
                       try {
@@ -746,9 +790,9 @@ PERSONAGEM: ${char.name}
                           },
                           body: JSON.stringify({
                             roomId: roomId,
-                            npcName: "Mercador",
-                            npcPersonality: "neutral",
-                            npcReputation: 0,
+                            npcName: npcName,
+                            npcPersonality: npcPersonality,
+                            npcReputation: npcReputation,
                             items: shopItems,
                           }),
                         });

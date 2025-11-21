@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Store, Search, Filter } from "lucide-react";
 import { ShopItemCard } from "./ShopItemCard";
 import { ShopItemModal } from "./ShopItemModal";
-import { ShopState, ShopItem, Rarity, calculateFinalPrice } from "@/lib/shop-pricing";
+import { ShopState, ShopItem, Rarity, Quality, Personality, calculateFinalPrice } from "@/lib/shop-pricing";
 import { Badge } from "@/components/ui/badge";
 
 interface ShopPanelProps {
@@ -41,20 +41,25 @@ export const ShopPanel = ({ roomId }: ShopPanelProps) => {
 
       if (data) {
         // Recalculate final prices with current NPC modifiers
-        const itemsWithPrices = data.items.map((item: ShopItem) => ({
+        const items = Array.isArray(data.items) ? data.items : [];
+        const itemsWithPrices = items.map((item: any) => ({
           ...item,
           finalPrice: calculateFinalPrice(
             item.basePrice,
-            item.rarity,
-            item.quality,
-            data.npc_personality,
+            item.rarity as Rarity,
+            item.quality as Quality,
+            data.npc_personality as Personality,
             data.npc_reputation
           ),
         }));
         
         setShopState({
-          ...data,
+          room_id: data.room_id,
+          npc_name: data.npc_name,
+          npc_personality: data.npc_personality as Personality,
+          npc_reputation: data.npc_reputation,
           items: itemsWithPrices,
+          updated_at: data.updated_at,
         });
       }
     };
@@ -72,13 +77,14 @@ export const ShopPanel = ({ roomId }: ShopPanelProps) => {
           const shopData = payload.payload;
           
           // Recalculate final prices
-          const itemsWithPrices = shopData.items.map((item: ShopItem) => ({
+          const items = Array.isArray(shopData.items) ? shopData.items : [];
+          const itemsWithPrices = items.map((item: any) => ({
             ...item,
             finalPrice: calculateFinalPrice(
               item.basePrice,
-              item.rarity,
-              item.quality,
-              shopData.npcPersonality,
+              item.rarity as Rarity,
+              item.quality as Quality,
+              shopData.npcPersonality as Personality,
               shopData.npcReputation
             ),
           }));
@@ -86,7 +92,7 @@ export const ShopPanel = ({ roomId }: ShopPanelProps) => {
           setShopState({
             room_id: shopData.roomId,
             npc_name: shopData.npcName,
-            npc_personality: shopData.npcPersonality,
+            npc_personality: shopData.npcPersonality as Personality,
             npc_reputation: shopData.npcReputation,
             items: itemsWithPrices,
             updated_at: shopData.updatedAt,
@@ -110,20 +116,25 @@ export const ShopPanel = ({ roomId }: ShopPanelProps) => {
           console.log("🛒 Shop state changed in DB:", payload);
           if (payload.new) {
             const data = payload.new as any;
-            const itemsWithPrices = data.items.map((item: ShopItem) => ({
+            const items = Array.isArray(data.items) ? data.items : [];
+            const itemsWithPrices = items.map((item: any) => ({
               ...item,
               finalPrice: calculateFinalPrice(
                 item.basePrice,
-                item.rarity,
-                item.quality,
-                data.npc_personality,
+                item.rarity as Rarity,
+                item.quality as Quality,
+                data.npc_personality as Personality,
                 data.npc_reputation
               ),
             }));
             
             setShopState({
-              ...data,
+              room_id: data.room_id,
+              npc_name: data.npc_name,
+              npc_personality: data.npc_personality as Personality,
+              npc_reputation: data.npc_reputation,
               items: itemsWithPrices,
+              updated_at: data.updated_at,
             });
           }
         }
