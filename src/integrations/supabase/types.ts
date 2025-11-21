@@ -637,6 +637,7 @@ export type Database = {
       }
       merchant_items: {
         Row: {
+          available: boolean
           base_price: number
           created_at: string
           current_price: number
@@ -652,6 +653,7 @@ export type Database = {
           weight: number
         }
         Insert: {
+          available?: boolean
           base_price: number
           created_at?: string
           current_price: number
@@ -667,6 +669,7 @@ export type Database = {
           weight?: number
         }
         Update: {
+          available?: boolean
           base_price?: number
           created_at?: string
           current_price?: number
@@ -988,6 +991,7 @@ export type Database = {
           gm_id: string
           id: string
           initiative_order: Json | null
+          merchant_active: boolean
           room_code: string
           session_active: boolean
         }
@@ -998,6 +1002,7 @@ export type Database = {
           gm_id: string
           id?: string
           initiative_order?: Json | null
+          merchant_active?: boolean
           room_code: string
           session_active?: boolean
         }
@@ -1008,6 +1013,7 @@ export type Database = {
           gm_id?: string
           id?: string
           initiative_order?: Json | null
+          merchant_active?: boolean
           room_code?: string
           session_active?: boolean
         }

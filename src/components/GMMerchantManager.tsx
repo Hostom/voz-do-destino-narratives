@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Store, Plus, Trash2 } from "lucide-react";
+import { Store, Plus, Trash2, Power, PowerOff } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 interface MerchantItem {
   id: string;
@@ -27,6 +29,7 @@ export function GMMerchantManager({ roomId }: GMerchantManagerProps) {
   const { toast } = useToast();
   const [items, setItems] = useState<MerchantItem[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [merchantActive, setMerchantActive] = useState(false);
   const [formData, setFormData] = useState({
     item_name: "",
     item_type: "misc",
@@ -39,6 +42,27 @@ export function GMMerchantManager({ roomId }: GMerchantManagerProps) {
 
   useEffect(() => {
     loadItems();
+    loadMerchantStatus();
+
+    const channel = supabase
+      .channel(`merchant-${roomId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms',
+          filter: `id=eq.${roomId}`
+        },
+        () => {
+          loadMerchantStatus();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [roomId]);
 
   const loadItems = async () => {
@@ -50,6 +74,47 @@ export function GMMerchantManager({ roomId }: GMerchantManagerProps) {
 
     if (data) {
       setItems(data);
+    }
+  };
+
+  const loadMerchantStatus = async () => {
+    const { data } = await supabase
+      .from("rooms")
+      .select("merchant_active")
+      .eq("id", roomId)
+      .single();
+
+    if (data) {
+      setMerchantActive(data.merchant_active);
+    }
+  };
+
+  const toggleMerchant = async () => {
+    try {
+      const newStatus = !merchantActive;
+      
+      const { error } = await supabase
+        .from("rooms")
+        .update({ merchant_active: newStatus })
+        .eq("id", roomId);
+
+      if (error) throw error;
+
+      setMerchantActive(newStatus);
+
+      toast({
+        title: newStatus ? "🏪 Mercador Aberto!" : "Mercador Fechado",
+        description: newStatus 
+          ? "Os jogadores agora podem ver e comprar os itens disponíveis" 
+          : "O mercador não está mais disponível para os jogadores",
+      });
+    } catch (error) {
+      console.error("Error toggling merchant:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível alterar o status do mercador",
+        variant: "destructive",
+      });
     }
   };
 
@@ -133,18 +198,31 @@ export function GMMerchantManager({ roomId }: GMerchantManagerProps) {
   return (
     <Card className="border-primary/30">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <CardTitle className="flex items-center gap-2">
             <Store className="h-5 w-5" />
             Gerenciar Mercador
           </CardTitle>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Item
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Badge variant={merchantActive ? "default" : "secondary"}>
+              {merchantActive ? "Aberto" : "Fechado"}
+            </Badge>
+            <Switch
+              checked={merchantActive}
+              onCheckedChange={toggleMerchant}
+            />
+          </div>
+        </div>
+        
+        {merchantActive && (
+          <div className="flex items-center gap-2">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="w-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Item
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Adicionar Item ao Mercador</DialogTitle>
@@ -271,41 +349,50 @@ export function GMMerchantManager({ roomId }: GMerchantManagerProps) {
                   Adicionar ao Mercador
                 </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[300px]">
-          <div className="space-y-2">
-            {items.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Nenhum item no mercador
-              </p>
-            ) : (
-              items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-3 bg-background/50 rounded-lg"
-                >
-                  <div>
-                    <p className="font-medium text-sm">{item.item_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.current_price} PO • {item.stock === -1 ? "∞" : item.stock} estoque
-                    </p>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleDeleteItem(item.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              ))
-            )}
+        {!merchantActive ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Store className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>Mercador fechado</p>
+            <p className="text-xs mt-1">Ative o mercador para adicionar itens</p>
           </div>
-        </ScrollArea>
+        ) : (
+          <ScrollArea className="h-[300px]">
+            <div className="space-y-2">
+              {items.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  Nenhum item adicionado. Adicione itens para os jogadores comprarem!
+                </p>
+              ) : (
+                items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 bg-background/50 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{item.item_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.current_price} PO • {item.stock === -1 ? "∞" : item.stock} estoque
+                      </p>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleDeleteItem(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        )}
       </CardContent>
     </Card>
   );
