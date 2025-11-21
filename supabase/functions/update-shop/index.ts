@@ -52,13 +52,25 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    // Check if this is a service role call (from game-master function)
+    const isServiceRole = token === serviceRoleKey;
+    
+    let userId: string | null = null;
+    
+    if (!isServiceRole) {
+      // Validate user token
+      const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
 
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      userId = user.id;
     }
 
     const body: ShopUpdateRequest = await req.json();
@@ -71,34 +83,36 @@ serve(async (req) => {
       );
     }
 
-    // Verify user has access to this room (GM or player)
-    const { data: room, error: roomError } = await supabaseClient
-      .from("rooms")
-      .select("gm_id")
-      .eq("id", roomId)
-      .single();
+    // Verify user has access to this room (GM or player) - skip for service role
+    if (!isServiceRole && userId) {
+      const { data: room, error: roomError } = await supabaseClient
+        .from("rooms")
+        .select("gm_id")
+        .eq("id", roomId)
+        .single();
 
-    if (roomError || !room) {
-      return new Response(
-        JSON.stringify({ error: "Room not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+      if (roomError || !room) {
+        return new Response(
+          JSON.stringify({ error: "Room not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-    const isGM = room.gm_id === user.id;
-    const isPlayer = await supabaseClient
-      .from("room_players")
-      .select("id")
-      .eq("room_id", roomId)
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => !!data);
+      const isGM = room.gm_id === userId;
+      const isPlayer = await supabaseClient
+        .from("room_players")
+        .select("id")
+        .eq("room_id", roomId)
+        .eq("user_id", userId)
+        .single()
+        .then(({ data }) => !!data);
 
-    if (!isGM && !isPlayer) {
-      return new Response(
-        JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      if (!isGM && !isPlayer) {
+        return new Response(
+          JSON.stringify({ error: "Access denied" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Upsert shop state
