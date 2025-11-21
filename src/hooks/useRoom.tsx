@@ -569,7 +569,11 @@ export const useRoom = () => {
         .maybeSingle();
 
       if (playerError) throw playerError;
-      if (!playerData) throw new Error("Você não está mais nesta sala");
+      if (!playerData) {
+        // User not in room anymore, clear saved session
+        localStorage.removeItem('activeRoomSession');
+        throw new Error("Você não está mais nesta sala");
+      }
 
       // Load room data
       const { data: roomData, error: roomError } = await supabase
@@ -580,7 +584,9 @@ export const useRoom = () => {
 
       if (roomError) throw roomError;
 
+      // Set room state to trigger subscriptions and player loading
       setRoom(roomData);
+      
       toast({
         title: "Sessão Restaurada",
         description: `Reconectado à sala ${roomData.room_code}`,
@@ -589,6 +595,7 @@ export const useRoom = () => {
       return roomData;
     } catch (error) {
       console.error("Error reconnecting to room:", error);
+      localStorage.removeItem('activeRoomSession');
       toast({
         title: "Erro ao reconectar",
         description: error instanceof Error ? error.message : "Não foi possível reconectar à sala",
