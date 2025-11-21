@@ -31,76 +31,80 @@ export const ChatInputWithActions = ({
   };
 
   return (
-    <div className="flex gap-2 items-end">
-      {isMobile && (
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              size="icon"
-              className="h-10 w-10 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation shrink-0 mb-2 md:mb-6"
+    <div className="border-t border-border/50 backdrop-blur-epic bg-card/30 p-3 md:p-4 safe-bottom">
+      <div className="container mx-auto max-w-4xl flex gap-2 items-start">
+        {isMobile && (
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                size="icon"
+                className="h-12 w-12 rounded-lg shadow-md bg-secondary hover:bg-secondary/80 transition-all shrink-0"
+              >
+                {open ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Plus className="h-5 w-5" />
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent 
+              side="top" 
+              align="start"
+              className="w-auto p-2 mb-2 bg-popover/95 backdrop-blur-sm border-primary/20 shadow-lg"
             >
-              {open ? (
-                <X className="h-4 w-4" />
-              ) : (
-                <Plus className="h-4 w-4" />
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent 
-            side="top" 
-            align="start"
-            className="w-auto p-2 bg-popover/95 backdrop-blur-sm border-primary/20"
-          >
-            <div className="flex flex-col gap-2">
-              {onChatClick && (
-                <Button
-                  size="lg"
-                  onClick={() => handleActionClick(onChatClick)}
-                  className="w-full justify-start gap-3 h-14 touch-manipulation"
-                >
-                  <MessageSquare className="h-5 w-5" />
-                  <span className="text-base">Chat Social</span>
-                </Button>
-              )}
-              
-              {onDiceClick && (
-                <Button
-                  size="lg"
-                  onClick={() => handleActionClick(onDiceClick)}
-                  className="w-full justify-start gap-3 h-14 touch-manipulation"
-                >
-                  <Dices className="h-5 w-5" />
-                  <span className="text-base">Dados</span>
-                </Button>
-              )}
-              
-              {onInventoryClick && (
-                <Button
-                  size="lg"
-                  onClick={() => handleActionClick(onInventoryClick)}
-                  className="w-full justify-start gap-3 h-14 touch-manipulation"
-                >
-                  <Package className="h-5 w-5" />
-                  <span className="text-base">Inventário</span>
-                </Button>
-              )}
+              <div className="flex flex-col gap-2">
+                {onChatClick && (
+                  <Button
+                    size="lg"
+                    variant="ghost"
+                    onClick={() => handleActionClick(onChatClick)}
+                    className="w-full justify-start gap-3 h-12 touch-manipulation hover:bg-accent"
+                  >
+                    <MessageSquare className="h-5 w-5" />
+                    <span className="text-base">Chat Social</span>
+                  </Button>
+                )}
+                
+                {onDiceClick && (
+                  <Button
+                    size="lg"
+                    variant="ghost"
+                    onClick={() => handleActionClick(onDiceClick)}
+                    className="w-full justify-start gap-3 h-12 touch-manipulation hover:bg-accent"
+                  >
+                    <Dices className="h-5 w-5" />
+                    <span className="text-base">Dados</span>
+                  </Button>
+                )}
+                
+                {onInventoryClick && (
+                  <Button
+                    size="lg"
+                    variant="ghost"
+                    onClick={() => handleActionClick(onInventoryClick)}
+                    className="w-full justify-start gap-3 h-12 touch-manipulation hover:bg-accent"
+                  >
+                    <Package className="h-5 w-5" />
+                    <span className="text-base">Inventário</span>
+                  </Button>
+                )}
 
-              {onCharacterClick && (
-                <Button
-                  size="lg"
-                  onClick={() => handleActionClick(onCharacterClick)}
-                  className="w-full justify-start gap-3 h-14 touch-manipulation"
-                >
-                  <User className="h-5 w-5" />
-                  <span className="text-base">Personagem</span>
-                </Button>
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
-      
-      <div className="flex-1">
+                {onCharacterClick && (
+                  <Button
+                    size="lg"
+                    variant="ghost"
+                    onClick={() => handleActionClick(onCharacterClick)}
+                    className="w-full justify-start gap-3 h-12 touch-manipulation hover:bg-accent"
+                  >
+                    <User className="h-5 w-5" />
+                    <span className="text-base">Personagem</span>
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+        
         <ChatInput onSend={onSend} disabled={disabled} />
       </div>
     </div>
