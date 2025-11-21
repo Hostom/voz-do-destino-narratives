@@ -87,7 +87,7 @@ const Index = () => {
     checkGMStatus();
   }, [room?.gm_id]);
 
-  // Check auth status
+  // Check auth status and restore session state
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -100,6 +100,107 @@ const Index = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Detect page close/reload and allow reconnection
+  useEffect(() => {
+    if (!user || !room) return;
+
+    // Save current room info to localStorage
+    const roomInfo = {
+      roomId: room.id,
+      roomCode: room.room_code,
+      sessionActive: room.session_active,
+      combatActive: room.combat_active,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('activeRoomSession', JSON.stringify(roomInfo));
+
+    // Cleanup old sessions on load (older than 24h)
+    const savedRoom = localStorage.getItem('activeRoomSession');
+    if (savedRoom) {
+      const parsed = JSON.parse(savedRoom);
+      const hoursSinceLastSession = (Date.now() - parsed.timestamp) / (1000 * 60 * 60);
+      if (hoursSinceLastSession > 24) {
+        localStorage.removeItem('activeRoomSession');
+      }
+    }
+  }, [user, room]);
+
+  // Restore session on page load
+  useEffect(() => {
+    if (!user || room || authLoading || characterLoading) return;
+
+    const savedRoom = localStorage.getItem('activeRoomSession');
+    if (savedRoom) {
+      const parsed = JSON.parse(savedRoom);
+      
+      // Check if session is recent (less than 24h)
+      const hoursSinceLastSession = (Date.now() - parsed.timestamp) / (1000 * 60 * 60);
+      if (hoursSinceLastSession < 24 && parsed.sessionActive) {
+        // Try to reconnect to the room
+        const reconnectToRoom = async () => {
+          try {
+            const { data: roomData, error: roomError } = await supabase
+              .from('rooms')
+              .select('*')
+              .eq('id', parsed.roomId)
+              .single();
+
+            if (roomError || !roomData) {
+              console.log('Room no longer exists, clearing saved session');
+              localStorage.removeItem('activeRoomSession');
+              return;
+            }
+
+            // Check if user is still in the room
+            const { data: playerData, error: playerError } = await supabase
+              .from('room_players')
+              .select('*')
+              .eq('room_id', parsed.roomId)
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (playerError || !playerData) {
+              console.log('User no longer in room, clearing saved session');
+              localStorage.removeItem('activeRoomSession');
+              return;
+            }
+
+            // Reconnect successfully
+            console.log('Reconnecting to saved session:', parsed.roomCode);
+            toast({
+              title: "Sessão Restaurada",
+              description: `Reconectando à sala ${parsed.roomCode}`,
+            });
+
+            // Set the view based on room state
+            if (roomData.combat_active) {
+              setView('combat');
+            } else if (roomData.session_active) {
+              setView('game');
+            } else {
+              setView('lobby');
+            }
+          } catch (error) {
+            console.error('Error reconnecting to room:', error);
+            localStorage.removeItem('activeRoomSession');
+          }
+        };
+
+        reconnectToRoom();
+      } else {
+        // Session too old, clear it
+        localStorage.removeItem('activeRoomSession');
+      }
+    }
+  }, [user, room, authLoading, characterLoading, toast]);
+
+  // Clear session info when leaving room
+  useEffect(() => {
+    if (!room && user) {
+      localStorage.removeItem('activeRoomSession');
+    }
+  }, [room, user]);
 
   // Load all characters when user is authenticated
   useEffect(() => {
@@ -518,6 +619,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
 
   const handleLeaveRoom = () => {
     leaveRoom();
+    localStorage.removeItem('activeRoomSession');
     setView('menu');
   };
 
@@ -568,7 +670,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           });
         }
 
-        // 2. Desativar sessão
+        // 2. Desativar sessão e atualizar localStorage
         const { error } = await supabase
           .from('rooms')
           .update({ session_active: false, combat_active: false })
@@ -584,6 +686,16 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
           setView('game');
           return;
         }
+
+        // Update localStorage to reflect we're in lobby
+        const roomInfo = {
+          roomId: room.id,
+          roomCode: room.room_code,
+          sessionActive: false,
+          combatActive: false,
+          timestamp: Date.now()
+        };
+        localStorage.setItem('activeRoomSession', JSON.stringify(roomInfo));
       } catch (error) {
         console.error('Error in handleBackToLobby:', error);
         toast({
