@@ -14,17 +14,24 @@ export interface ShopItem {
  * Detects bullet-list items and extracts name, description, stats, price, etc.
  */
 export function parseItemList(text: string): ShopItem[] {
-  if (!text) return [];
+  if (!text) {
+    console.log('[NPCShop] parseItemList: empty text');
+    return [];
+  }
+
+  console.log('[NPCShop] parseItemList called with text:', text.substring(0, 200));
 
   const items: ShopItem[] = [];
   
-  // Match bullet points with optional stats in parentheses
+  // Match bullet points with optional stats in parentheses or asterisks
+  // This regex now handles: "• item *(stats)*" and "• item (stats)"
   const itemRegex = /^[•*-]\s*(.+?)(?:\s*\*?\(([^)]+)\)\*?)?$/gm;
   
   let match;
   let index = 0;
   
   while ((match = itemRegex.exec(text)) !== null) {
+    console.log('[NPCShop] Regex match found:', match);
     const fullText = match[1]?.trim();
     const statsText = match[2]?.trim();
     
@@ -99,7 +106,7 @@ export function parseItemList(text: string): ShopItem[] {
       weight = `${weightMatch[1]} ${weightMatch[2]}`;
     }
     
-    items.push({
+    const item = {
       id: `item-${index++}-${Date.now()}`,
       name,
       description: restDescription || description,
@@ -108,9 +115,13 @@ export function parseItemList(text: string): ShopItem[] {
       price,
       rarity,
       weight,
-    });
+    };
+    
+    console.log('[NPCShop] Parsed item:', item);
+    items.push(item);
   }
   
+  console.log('[NPCShop] Total items parsed:', items.length);
   return items;
 }
 
@@ -120,14 +131,22 @@ export function parseItemList(text: string): ShopItem[] {
 export function hasShopItems(text: string): boolean {
   if (!text) return false;
   
+  console.log('[NPCShop] hasShopItems called');
+  
   // Check for bullet points
   const hasBullets = /^[•*-]\s+/m.test(text);
+  console.log('[NPCShop] hasBullets:', hasBullets);
   
   // Check for item-related keywords
-  const hasItemKeywords = /\b(sword|shield|potion|dagger|armor|weapon|tool|item|equipment)\b/i.test(text);
+  const hasItemKeywords = /\b(sword|shield|potion|dagger|armor|weapon|tool|item|equipment|espada|escudo|poção|adaga|armadura|arma|ferramenta|equipamento)\b/i.test(text);
+  console.log('[NPCShop] hasItemKeywords:', hasItemKeywords);
   
   // Check for stats patterns
   const hasStatsPattern = /\(\s*[\w\s,+\d]+\s*\)/.test(text);
+  console.log('[NPCShop] hasStatsPattern:', hasStatsPattern);
   
-  return hasBullets && (hasItemKeywords || hasStatsPattern);
+  const result = hasBullets && (hasItemKeywords || hasStatsPattern);
+  console.log('[NPCShop] hasShopItems result:', result);
+  
+  return result;
 }

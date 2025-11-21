@@ -14,7 +14,14 @@ export const NPCShop = ({ items, messageId }: NPCShopProps) => {
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  if (items.length === 0) return null;
+  console.log('[NPCShop] Rendering with items:', items.length, 'messageId:', messageId);
+
+  if (items.length === 0) {
+    console.log('[NPCShop] No items, not rendering');
+    return null;
+  }
+
+  console.log('[NPCShop] Rendering shop with items:', items);
 
   const handleItemClick = (item: ShopItem) => {
     setSelectedItem(item);
