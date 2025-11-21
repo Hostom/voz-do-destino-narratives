@@ -17,6 +17,7 @@ import { Crown, Plus, Trash2, Heart, Shield, Swords, Users, Sparkles } from "luc
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { GMXPDistribution } from "./GMXPDistribution";
+import { GMItemDistribution } from "./GMItemDistribution";
 
 interface NPC {
   id: string;
@@ -514,6 +515,13 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
           </Card>
 
           <GMXPDistribution roomId={roomId} players={players} />
+          <GMItemDistribution 
+            roomId={roomId} 
+            players={players.map(p => ({
+              character_id: p.characters!.id,
+              character_name: p.characters!.name
+            }))} 
+          />
         </div>
       )}
     </Card>
