@@ -548,6 +548,45 @@ export type Database = {
         }
         Relationships: []
       }
+      item_trades: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          from_character_id: string
+          id: string
+          item_id: string
+          item_name: string
+          quantity: number
+          room_id: string
+          status: string
+          to_character_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          from_character_id: string
+          id?: string
+          item_id: string
+          item_name: string
+          quantity?: number
+          room_id: string
+          status?: string
+          to_character_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          from_character_id?: string
+          id?: string
+          item_id?: string
+          item_name?: string
+          quantity?: number
+          room_id?: string
+          status?: string
+          to_character_id?: string
+        }
+        Relationships: []
+      }
       npcs: {
         Row: {
           armor_class: number
