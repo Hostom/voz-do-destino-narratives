@@ -28,6 +28,9 @@ import { CharacterStatsBar } from "@/components/CharacterStatsBar";
 import { XPNotification } from "@/components/XPNotification";
 import { ItemRewardNotification } from "@/components/ItemRewardNotification";
 import { ItemTradeNotifications } from "@/components/ItemTradeNotifications";
+import { CraftingPanel } from "@/components/CraftingPanel";
+import { MerchantPanel } from "@/components/MerchantPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface GMMessage {
   id: string;
@@ -1017,21 +1020,57 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                     </SheetTrigger>
                     <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
                       <SheetHeader>
-                        <SheetTitle>Inventário</SheetTitle>
+                        <SheetTitle>Gerenciamento de Itens</SheetTitle>
                       </SheetHeader>
-                      <div className="mt-4 h-[calc(100vh-8rem)]">
-                        <InventoryPanel 
-                          characterId={character.id} 
-                          carryingCapacity={150}
-                          roomId={room?.id}
-                          players={players
-                            .filter(p => p.characters)
-                            .map(p => ({
-                              character_id: p.character_id,
-                              character_name: p.characters!.name
-                            }))
-                          }
-                        />
+                      <div className="mt-4">
+                        <Tabs defaultValue="inventory">
+                          <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="inventory">Inventário</TabsTrigger>
+                            <TabsTrigger value="crafting">Crafting</TabsTrigger>
+                            <TabsTrigger value="merchant">Mercador</TabsTrigger>
+                          </TabsList>
+
+                          <TabsContent value="inventory" className="mt-4">
+                            <InventoryPanel 
+                              characterId={character.id} 
+                              carryingCapacity={150}
+                              roomId={room?.id}
+                              players={players
+                                .filter(p => p.characters)
+                                .map(p => ({
+                                  character_id: p.character_id,
+                                  character_name: p.characters!.name
+                                }))
+                              }
+                            />
+                          </TabsContent>
+
+                          <TabsContent value="crafting" className="mt-4">
+                            <CraftingPanel
+                              characterId={character.id}
+                              intelligence={character.intelligence}
+                              wisdom={character.wisdom}
+                            />
+                          </TabsContent>
+
+                          <TabsContent value="merchant" className="mt-4">
+                            {room ? (
+                              <MerchantPanel
+                                characterId={character.id}
+                                roomId={room.id}
+                                goldPieces={character.gold_pieces}
+                                onGoldChange={() => {
+                                  // Trigger character reload
+                                  window.location.reload();
+                                }}
+                              />
+                            ) : (
+                              <p className="text-sm text-muted-foreground text-center py-8">
+                                Entre em uma sala para acessar o mercador
+                              </p>
+                            )}
+                          </TabsContent>
+                        </Tabs>
                       </div>
                     </SheetContent>
                   </Sheet>
@@ -1278,21 +1317,56 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
               <Sheet open={showMobileInventory} onOpenChange={setShowMobileInventory}>
                 <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
                   <SheetHeader>
-                    <SheetTitle>Inventário</SheetTitle>
+                    <SheetTitle>Gerenciamento de Itens</SheetTitle>
                   </SheetHeader>
-                  <div className="mt-4 h-[calc(100vh-8rem)]">
-                    <InventoryPanel 
-                      characterId={character.id} 
-                      carryingCapacity={150}
-                      roomId={room?.id}
-                      players={players
-                        .filter(p => p.characters)
-                        .map(p => ({
-                          character_id: p.character_id,
-                          character_name: p.characters!.name
-                        }))
-                      }
-                    />
+                  <div className="mt-4">
+                    <Tabs defaultValue="inventory">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="inventory">Inventário</TabsTrigger>
+                        <TabsTrigger value="crafting">Crafting</TabsTrigger>
+                        <TabsTrigger value="merchant">Mercador</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="inventory" className="mt-4">
+                        <InventoryPanel 
+                          characterId={character.id} 
+                          carryingCapacity={150}
+                          roomId={room?.id}
+                          players={players
+                            .filter(p => p.characters)
+                            .map(p => ({
+                              character_id: p.character_id,
+                              character_name: p.characters!.name
+                            }))
+                          }
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="crafting" className="mt-4">
+                        <CraftingPanel
+                          characterId={character.id}
+                          intelligence={character.intelligence}
+                          wisdom={character.wisdom}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="merchant" className="mt-4">
+                        {room ? (
+                          <MerchantPanel
+                            characterId={character.id}
+                            roomId={room.id}
+                            goldPieces={character.gold_pieces}
+                            onGoldChange={() => {
+                              window.location.reload();
+                            }}
+                          />
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            Entre em uma sala para acessar o mercador
+                          </p>
+                        )}
+                      </TabsContent>
+                    </Tabs>
                   </div>
                 </SheetContent>
               </Sheet>

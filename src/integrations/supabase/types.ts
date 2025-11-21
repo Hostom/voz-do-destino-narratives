@@ -414,6 +414,54 @@ export type Database = {
           },
         ]
       }
+      crafting_recipes: {
+        Row: {
+          crafting_time_minutes: number
+          created_at: string
+          description: string | null
+          difficulty_dc: number
+          id: string
+          name: string
+          rarity: string
+          required_items: Json
+          required_skill: string | null
+          result_item_name: string
+          result_item_type: string
+          result_quantity: number
+          result_weight: number
+        }
+        Insert: {
+          crafting_time_minutes?: number
+          created_at?: string
+          description?: string | null
+          difficulty_dc?: number
+          id?: string
+          name: string
+          rarity?: string
+          required_items?: Json
+          required_skill?: string | null
+          result_item_name: string
+          result_item_type?: string
+          result_quantity?: number
+          result_weight?: number
+        }
+        Update: {
+          crafting_time_minutes?: number
+          created_at?: string
+          description?: string | null
+          difficulty_dc?: number
+          id?: string
+          name?: string
+          rarity?: string
+          required_items?: Json
+          required_skill?: string | null
+          result_item_name?: string
+          result_item_type?: string
+          result_quantity?: number
+          result_weight?: number
+        }
+        Relationships: []
+      }
       experience_rewards: {
         Row: {
           amount: number
@@ -584,6 +632,90 @@ export type Database = {
           room_id?: string
           status?: string
           to_character_id?: string
+        }
+        Relationships: []
+      }
+      merchant_items: {
+        Row: {
+          base_price: number
+          created_at: string
+          current_price: number
+          description: string | null
+          id: string
+          item_name: string
+          item_type: string
+          properties: Json | null
+          rarity: string
+          room_id: string
+          stock: number
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          base_price: number
+          created_at?: string
+          current_price: number
+          description?: string | null
+          id?: string
+          item_name: string
+          item_type?: string
+          properties?: Json | null
+          rarity?: string
+          room_id: string
+          stock?: number
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          base_price?: number
+          created_at?: string
+          current_price?: number
+          description?: string | null
+          id?: string
+          item_name?: string
+          item_type?: string
+          properties?: Json | null
+          rarity?: string
+          room_id?: string
+          stock?: number
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: []
+      }
+      merchant_transactions: {
+        Row: {
+          character_id: string
+          created_at: string
+          id: string
+          item_name: string
+          merchant_item_id: string | null
+          price: number
+          quantity: number
+          room_id: string
+          transaction_type: string
+        }
+        Insert: {
+          character_id: string
+          created_at?: string
+          id?: string
+          item_name: string
+          merchant_item_id?: string | null
+          price: number
+          quantity?: number
+          room_id: string
+          transaction_type: string
+        }
+        Update: {
+          character_id?: string
+          created_at?: string
+          id?: string
+          item_name?: string
+          merchant_item_id?: string | null
+          price?: number
+          quantity?: number
+          room_id?: string
+          transaction_type?: string
         }
         Relationships: []
       }
