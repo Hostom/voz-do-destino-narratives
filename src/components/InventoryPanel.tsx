@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { Coins, Package, Plus, Trash2, Weight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ItemTradeOffer } from "./ItemTradeOffer";
 
 interface InventoryItem {
   id: string;
@@ -32,9 +33,11 @@ interface Currency {
 interface InventoryPanelProps {
   characterId: string;
   carryingCapacity: number;
+  roomId?: string;
+  players?: Array<{ character_id: string; character_name: string }>;
 }
 
-export const InventoryPanel = ({ characterId, carryingCapacity }: InventoryPanelProps) => {
+export const InventoryPanel = ({ characterId, carryingCapacity, roomId, players = [] }: InventoryPanelProps) => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [currency, setCurrency] = useState<Currency>({
     copper_pieces: 0,
@@ -395,14 +398,26 @@ export const InventoryPanel = ({ characterId, carryingCapacity }: InventoryPanel
                           <span>Peso: {(item.weight * item.quantity).toFixed(1)} lb</span>
                         </div>
                       </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => deleteItem(item.id)}
-                        className="h-8 w-8"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        {roomId && players.length > 1 && (
+                          <ItemTradeOffer
+                            itemId={item.id}
+                            itemName={item.item_name}
+                            quantity={item.quantity}
+                            characterId={characterId}
+                            roomId={roomId}
+                            players={players}
+                          />
+                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => deleteItem(item.id)}
+                          className="h-8 w-8"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))

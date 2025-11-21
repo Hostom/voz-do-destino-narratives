@@ -27,6 +27,7 @@ import { useCollection } from "@/hooks/useCollection";
 import { CharacterStatsBar } from "@/components/CharacterStatsBar";
 import { XPNotification } from "@/components/XPNotification";
 import { ItemRewardNotification } from "@/components/ItemRewardNotification";
+import { ItemTradeNotifications } from "@/components/ItemTradeNotifications";
 
 interface GMMessage {
   id: string;
@@ -822,6 +823,9 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
         <>
           <XPNotification characterId={character.id} />
           <ItemRewardNotification characterId={character.id} />
+          {room && (
+            <ItemTradeNotifications characterId={character.id} roomId={room.id} />
+          )}
         </>
       )}
       
@@ -1019,6 +1023,14 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                         <InventoryPanel 
                           characterId={character.id} 
                           carryingCapacity={150}
+                          roomId={room?.id}
+                          players={players
+                            .filter(p => p.characters)
+                            .map(p => ({
+                              character_id: p.character_id,
+                              character_name: p.characters!.name
+                            }))
+                          }
                         />
                       </div>
                     </SheetContent>
@@ -1272,6 +1284,14 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                     <InventoryPanel 
                       characterId={character.id} 
                       carryingCapacity={150}
+                      roomId={room?.id}
+                      players={players
+                        .filter(p => p.characters)
+                        .map(p => ({
+                          character_id: p.character_id,
+                          character_name: p.characters!.name
+                        }))
+                      }
                     />
                   </div>
                 </SheetContent>
