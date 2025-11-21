@@ -7,8 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Scroll, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCollection } from "@/hooks/useCollection";
-import { NPCShop } from "./shop/NPCShop";
-import { parseItemList, hasShopItems } from "./shop/parseItemList";
+import { extractShopItems } from "@/utils/extractShopItems";
+import { ShopItemsList } from "@/components/shop/ShopItemsList";
 
 interface GMMessage {
   id: string;
@@ -140,7 +140,7 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
     // Then trigger game-master function using fetch directly for better SSE support
     // The function returns a stream (SSE), we need to consume it to ensure it completes
     // The server will save the GM response to gm_messages when the stream completes
-      console.log('Calling game-master function with:', {
+    console.log('Calling game-master function with:', {
         roomId,
         characterName,
         characterId: characterId,
@@ -266,64 +266,41 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
               </div>
             )}
             {messages.map((msg) => {
-              const messageContent = msg.content ?? msg.message ?? "";
+              const content = msg.content ?? msg.message ?? "";
               
-              console.log('[GMChat] Processing message:', {
-                id: msg.id,
-                sender: msg.sender,
-                contentLength: messageContent.length,
-                preview: messageContent.substring(0, 100)
-              });
-              
-              let shopItems: any[] = [];
-              
-              try {
-                if (msg.sender === "GM") {
-                  console.log('[GMChat] Checking if message has shop items...');
-                  const hasShop = hasShopItems(messageContent);
-                  console.log('[GMChat] hasShopItems result:', hasShop);
-                  
-                  if (hasShop) {
-                    shopItems = parseItemList(messageContent);
-                    console.log('[GMChat] Parsed shop items:', shopItems);
-                  }
-                }
-              } catch (error) {
-                console.error('[GMChat] Error parsing shop items:', error);
-              }
-              
-              console.log('[GMChat] Shop items for message:', shopItems.length);
-              
+              // Parse shop items for GM messages
+              const shopData = msg.sender === "GM" ? extractShopItems(content) : null;
+              const displayText = shopData ? shopData.cleanedText : content;
+              const shopItems = shopData?.items || [];
+
               return (
-                <div key={msg.id}>
-                  <div
-                    className={`rounded-lg p-3 animate-in slide-in-from-bottom-2 ${
-                      msg.sender === "GM"
-                        ? "bg-gradient-to-r from-primary/20 to-accent/20 border-l-4 border-primary"
-                        : "bg-secondary/50"
-                    }`}
-                  >
-                    <div className="flex items-baseline gap-2 mb-1">
-                      {msg.sender === "GM" && (
-                        <span className="text-xs font-bold text-primary">🎭 MESTRE</span>
-                      )}
-                      <span className={`font-semibold text-sm ${msg.sender === "GM" ? "text-primary" : "text-foreground"}`}>
-                        {msg.character_name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(msg.created_at).toLocaleTimeString("pt-BR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                    <p className={`text-sm ${msg.sender === "GM" ? "font-medium text-foreground" : "text-foreground"}`}>
-                      {messageContent}
-                    </p>
+                <div
+                  key={msg.id}
+                  className={`rounded-lg p-3 animate-in slide-in-from-bottom-2 ${
+                    msg.sender === "GM"
+                      ? "bg-gradient-to-r from-primary/20 to-accent/20 border-l-4 border-primary"
+                      : "bg-secondary/50"
+                  }`}
+                >
+                  <div className="flex items-baseline gap-2 mb-1">
+                    {msg.sender === "GM" && (
+                      <span className="text-xs font-bold text-primary">🎭 MESTRE</span>
+                    )}
+                    <span className={`font-semibold text-sm ${msg.sender === "GM" ? "text-primary" : "text-foreground"}`}>
+                      {msg.character_name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(msg.created_at).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </div>
-                  
-                  {shopItems.length > 0 && (
-                    <NPCShop items={shopItems} messageId={msg.id} />
+                  <p className={`text-sm ${msg.sender === "GM" ? "font-medium text-foreground" : "text-foreground"}`}>
+                    {displayText}
+                  </p>
+                  {msg.sender === "GM" && shopItems.length > 0 && (
+                    <ShopItemsList items={shopItems} />
                   )}
                 </div>
               );
