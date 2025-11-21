@@ -63,11 +63,16 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
   const {
     isConnected,
     isMuted,
+    isPushToTalk,
+    isPTTActive,
     speakingMap,
     connectedPeers,
+    peerStats,
     connect,
     disconnect,
     toggleMute,
+    togglePushToTalk,
+    setPeerVolume,
   } = useVoiceChat({
     roomId,
     userId: currentUserId,
@@ -237,11 +242,16 @@ export const RoomChat = ({ roomId, characterName, currentTurn, initiativeOrder, 
       <VoicePanel
         isConnected={isConnected}
         isMuted={isMuted}
+        isPushToTalk={isPushToTalk}
+        isPTTActive={isPTTActive}
         connectedPeers={connectedPeers}
         speakingMap={speakingMap}
+        peerStats={peerStats}
         onConnect={connect}
         onDisconnect={disconnect}
         onToggleMute={toggleMute}
+        onTogglePushToTalk={togglePushToTalk}
+        onVolumeChange={setPeerVolume}
       />
 
       {/* Chat Card */}

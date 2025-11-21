@@ -6,6 +6,12 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 interface PeerConnection {
   connection: RTCPeerConnection;
   stream?: MediaStream;
+  volume: number;
+  stats?: {
+    latency: number;
+    packetLoss: number;
+    quality: 'excellent' | 'good' | 'poor' | 'disconnected';
+  };
 }
 
 interface VoiceChatConfig {
@@ -34,8 +40,11 @@ const SILENCE_DURATION_MS = 500;
 export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isPushToTalk, setIsPushToTalk] = useState(false);
+  const [isPTTActive, setIsPTTActive] = useState(false);
   const [speakingMap, setSpeakingMap] = useState<Record<string, boolean>>({});
   const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
+  const [peerStats, setPeerStats] = useState<Record<string, PeerConnection['stats']>>({});
   
   const { toast } = useToast();
   
@@ -115,10 +124,11 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
       }
       const rms = Math.sqrt(sum / dataArray.length);
 
-      const isSpeakingNow = rms > VAD_THRESHOLD;
+      // PTT mode: only speak if space is held
+      const shouldSpeak = isPushToTalk ? isPTTActive : rms > VAD_THRESHOLD;
 
       // State changed: speaking started
-      if (isSpeakingNow && !isSpeakingRef.current) {
+      if (shouldSpeak && !isSpeakingRef.current) {
         console.log("[VoiceChat] Speaking detected");
         isSpeakingRef.current = true;
         setSpeakingMap((prev) => ({ ...prev, [userId]: true }));
@@ -132,7 +142,7 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
       }
 
       // State changed: silence detected
-      if (!isSpeakingNow && isSpeakingRef.current) {
+      if (!shouldSpeak && isSpeakingRef.current) {
         if (!silenceTimerRef.current) {
           silenceTimerRef.current = setTimeout(() => {
             console.log("[VoiceChat] Silence detected");
@@ -200,6 +210,7 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
       }
 
       audioElement.srcObject = remoteStream;
+      audioElement.volume = 1.0; // Default volume
 
       // Store stream reference
       const existingPeer = peerConnectionsRef.current.get(peerId);
@@ -244,8 +255,17 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
       }
     };
 
-    peerConnectionsRef.current.set(peerId, { connection: pc });
+    peerConnectionsRef.current.set(peerId, { 
+      connection: pc, 
+      volume: 1.0,
+      stats: {
+        latency: 0,
+        packetLoss: 0,
+        quality: 'good'
+      }
+    });
     updateConnectedPeers();
+    startStatsMonitoring(peerId, pc);
 
     return pc;
   };
@@ -403,6 +423,102 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
     const peers = Array.from(peerConnectionsRef.current.keys());
     setConnectedPeers(peers);
   };
+
+  // Monitor connection stats
+  const startStatsMonitoring = (peerId: string, pc: RTCPeerConnection) => {
+    const interval = setInterval(async () => {
+      if (!peerConnectionsRef.current.has(peerId)) {
+        clearInterval(interval);
+        return;
+      }
+
+      try {
+        const stats = await pc.getStats();
+        let latency = 0;
+        let packetLoss = 0;
+
+        stats.forEach((report) => {
+          if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+            latency = report.currentRoundTripTime ? report.currentRoundTripTime * 1000 : 0;
+          }
+          if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+            const lost = report.packetsLost || 0;
+            const received = report.packetsReceived || 1;
+            packetLoss = (lost / (lost + received)) * 100;
+          }
+        });
+
+        const quality: PeerConnection['stats']['quality'] = 
+          latency < 100 && packetLoss < 1 ? 'excellent' :
+          latency < 200 && packetLoss < 3 ? 'good' :
+          latency < 400 && packetLoss < 5 ? 'poor' : 'disconnected';
+
+        const peer = peerConnectionsRef.current.get(peerId);
+        if (peer) {
+          peer.stats = { latency, packetLoss, quality };
+          setPeerStats((prev) => ({
+            ...prev,
+            [peerId]: { latency, packetLoss, quality }
+          }));
+        }
+      } catch (error) {
+        console.error(`[VoiceChat] Error getting stats for ${peerId}:`, error);
+      }
+    }, 2000);
+  };
+
+  // Set volume for a peer
+  const setPeerVolume = (peerId: string, volume: number) => {
+    const peer = peerConnectionsRef.current.get(peerId);
+    if (peer) {
+      peer.volume = volume;
+      const audioElement = document.getElementById(`audio-${peerId}`) as HTMLAudioElement;
+      if (audioElement) {
+        audioElement.volume = volume;
+      }
+    }
+  };
+
+  // Toggle push-to-talk mode
+  const togglePushToTalk = () => {
+    setIsPushToTalk((prev) => {
+      const newValue = !prev;
+      toast({
+        title: newValue ? "Push-to-Talk Ativado" : "VAD Automático Ativado",
+        description: newValue 
+          ? "Segure ESPAÇO para falar" 
+          : "Detecção automática de voz ativada",
+      });
+      return newValue;
+    });
+  };
+
+  // Handle keyboard events for PTT
+  useEffect(() => {
+    if (!isPushToTalk || !isConnected) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        setIsPTTActive(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsPTTActive(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isPushToTalk, isConnected]);
 
   // Connect to voice chat
   const connect = async () => {
@@ -586,10 +702,15 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
   return {
     isConnected,
     isMuted,
+    isPushToTalk,
+    isPTTActive,
     speakingMap,
     connectedPeers,
+    peerStats,
     connect,
     disconnect,
     toggleMute,
+    togglePushToTalk,
+    setPeerVolume,
   };
 };
