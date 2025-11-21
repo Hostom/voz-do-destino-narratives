@@ -11,19 +11,24 @@ export const useVoiceRecording = () => {
 
   const startRecording = async () => {
     try {
+      console.log('Requesting microphone access...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('Microphone access granted');
+      
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
+          console.log('Audio chunk received:', event.data.size, 'bytes');
           chunksRef.current.push(event.data);
         }
       };
 
       mediaRecorder.start();
       setIsRecording(true);
+      console.log('Recording started');
       
       toast({
         title: "Gravando",
@@ -33,7 +38,7 @@ export const useVoiceRecording = () => {
       console.error('Error starting recording:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível acessar o microfone",
+        description: "Não foi possível acessar o microfone. Verifique as permissões.",
         variant: "destructive",
       });
     }
@@ -47,11 +52,13 @@ export const useVoiceRecording = () => {
       }
 
       mediaRecorderRef.current.onstop = async () => {
+        console.log('Recording stopped');
         setIsRecording(false);
         setIsProcessing(true);
 
         try {
           const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          console.log('Audio blob created:', audioBlob.size, 'bytes');
           
           // Convert blob to base64
           const reader = new FileReader();
@@ -63,11 +70,14 @@ export const useVoiceRecording = () => {
               throw new Error('Failed to convert audio to base64');
             }
 
+            console.log('Sending audio to transcription service...');
+            
             // Send to edge function for transcription
             const { data, error } = await supabase.functions.invoke('voice-to-text', {
               body: { audio: base64Audio }
             });
 
+            console.log('Transcription response:', data, error);
             setIsProcessing(false);
 
             if (error) {
@@ -75,6 +85,11 @@ export const useVoiceRecording = () => {
             }
 
             if (data?.text) {
+              console.log('Transcription successful:', data.text);
+              toast({
+                title: "Sucesso",
+                description: "Áudio transcrito com sucesso!",
+              });
               resolve(data.text);
             } else {
               throw new Error('No transcription received');
@@ -93,7 +108,7 @@ export const useVoiceRecording = () => {
           console.error('Error processing audio:', error);
           toast({
             title: "Erro",
-            description: "Não foi possível transcrever o áudio",
+            description: error instanceof Error ? error.message : "Não foi possível transcrever o áudio",
             variant: "destructive",
           });
           reject(error);
