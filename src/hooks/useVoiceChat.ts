@@ -61,7 +61,12 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
   const initializeMicrophone = async () => {
     try {
       console.log("[VoiceChat] Requesting microphone access...");
+      console.log("[VoiceChat] Navigator.mediaDevices available:", !!navigator.mediaDevices);
       
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("getUserMedia não suportado neste navegador");
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -72,7 +77,7 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
       });
 
       localStreamRef.current = stream;
-      console.log("[VoiceChat] Microphone access granted");
+      console.log("[VoiceChat] Microphone access granted, stream tracks:", stream.getTracks().length);
 
       // Setup VAD
       setupVAD(stream);
@@ -80,6 +85,8 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
       return stream;
     } catch (error) {
       console.error("[VoiceChat] Error accessing microphone:", error);
+      console.error("[VoiceChat] Error name:", error instanceof Error ? error.name : 'unknown');
+      console.error("[VoiceChat] Error message:", error instanceof Error ? error.message : 'unknown');
       throw error;
     }
   };
@@ -522,6 +529,12 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
 
   // Connect to voice chat
   const connect = async () => {
+    // Prevent multiple simultaneous connections
+    if (isConnected) {
+      console.log("[VoiceChat] Already connected, ignoring");
+      return;
+    }
+
     try {
       console.log("[VoiceChat] Connecting to voice chat...");
 
@@ -591,17 +604,25 @@ export const useVoiceChat = ({ roomId, userId, userName }: VoiceChatConfig) => {
       console.error("[VoiceChat] Error connecting:", error);
       
       let errorMessage = "Não foi possível conectar ao chat de voz";
+      let errorDetails = "";
       
       if (error instanceof Error) {
+        errorDetails = error.message;
         if (error.name === "NotAllowedError") {
-          errorMessage = "Permissão de microfone negada";
+          errorMessage = "Permissão de microfone negada. Clique no ícone de cadeado/câmera na barra de endereço e permita o acesso ao microfone.";
         } else if (error.name === "NotFoundError") {
-          errorMessage = "Microfone não encontrado";
+          errorMessage = "Microfone não encontrado. Verifique se há um microfone conectado ao dispositivo.";
+        } else if (error.name === "NotReadableError") {
+          errorMessage = "Microfone já está em uso por outro aplicativo";
+        } else if (error.name === "OverconstrainedError") {
+          errorMessage = "As configurações de áudio solicitadas não são suportadas";
         }
       }
 
+      console.error("[VoiceChat] Error details:", errorDetails);
+
       toast({
-        title: "Erro",
+        title: "Erro ao Conectar",
         description: errorMessage,
         variant: "destructive",
       });

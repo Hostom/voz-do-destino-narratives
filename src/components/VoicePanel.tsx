@@ -75,7 +75,10 @@ export const VoicePanel = ({
         <div className="flex gap-2">
           {!isConnected ? (
             <Button 
-              onClick={onConnect} 
+              onClick={() => {
+                console.log("[VoicePanel] Button clicked, calling onConnect");
+                onConnect();
+              }}
               className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
               size="sm"
             >
