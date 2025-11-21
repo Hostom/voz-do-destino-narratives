@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChatInput } from "@/components/ChatInput";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, MessageSquare, Dices, Package, User, X } from "lucide-react";
+import { Plus, MessageSquare, Dices, Package, User, X, Store } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatInputWithActionsProps {
@@ -12,6 +12,7 @@ interface ChatInputWithActionsProps {
   onDiceClick?: () => void;
   onInventoryClick?: () => void;
   onCharacterClick?: () => void;
+  onShopClick?: () => void;
 }
 
 export const ChatInputWithActions = ({ 
@@ -20,7 +21,8 @@ export const ChatInputWithActions = ({
   onChatClick,
   onDiceClick,
   onInventoryClick,
-  onCharacterClick
+  onCharacterClick,
+  onShopClick
 }: ChatInputWithActionsProps) => {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -86,6 +88,18 @@ export const ChatInputWithActions = ({
                   >
                     <Package className="h-5 w-5" />
                     <span className="text-base">Inventário</span>
+                  </Button>
+                )}
+
+                {onShopClick && (
+                  <Button
+                    size="lg"
+                    variant="ghost"
+                    onClick={() => handleActionClick(onShopClick)}
+                    className="w-full justify-start gap-3 h-12 touch-manipulation hover:bg-accent"
+                  >
+                    <Store className="h-5 w-5" />
+                    <span className="text-base">Loja</span>
                   </Button>
                 )}
 

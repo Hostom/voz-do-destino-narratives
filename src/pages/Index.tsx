@@ -17,7 +17,7 @@ import { CombatView } from "@/components/CombatView";
 import { useCharacter, Character } from "@/hooks/useCharacter";
 import { useRoom } from "@/hooks/useRoom";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Scroll, MessageSquare, Dices, Package, User, Users } from "lucide-react";
+import { BookOpen, Scroll, MessageSquare, Dices, Package, User, Users, Store } from "lucide-react";
 import { RoomChat } from "@/components/RoomChat";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { InventoryPanel } from "@/components/InventoryPanel";
@@ -64,6 +64,7 @@ const Index = () => {
   const [showMobileDice, setShowMobileDice] = useState(false);
   const [showMobileInventory, setShowMobileInventory] = useState(false);
   const [showMobileCharacter, setShowMobileCharacter] = useState(false);
+  const [showMobileShop, setShowMobileShop] = useState(false);
   const [auctionsActive, setAuctionsActive] = useState(false);
 
   // Use gm_messages as single source of truth for all players
@@ -1132,6 +1133,29 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                   <Sheet>
                     <SheetTrigger asChild>
                       <Button className="w-full gap-2" variant="outline">
+                        <Store className="h-5 w-5" />
+                        Loja
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                      <SheetHeader>
+                        <SheetTitle>Loja</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-4">
+                        {room ? (
+                          <ShopPanel roomId={room.id} />
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            Entre em uma sala para acessar a loja
+                          </p>
+                        )}
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button className="w-full gap-2" variant="outline">
                         <User className="h-5 w-5" />
                         Ficha do Personagem
                       </Button>
@@ -1324,6 +1348,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                   onChatClick={() => setShowMobileChat(true)}
                   onDiceClick={() => setShowMobileDice(true)}
                   onInventoryClick={() => setShowMobileInventory(true)}
+                  onShopClick={() => setShowMobileShop(true)}
                   onCharacterClick={() => setShowMobileCharacter(true)}
                 />
               </div>
@@ -1434,6 +1459,23 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                         )}
                       </TabsContent>
                     </Tabs>
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              <Sheet open={showMobileShop} onOpenChange={setShowMobileShop}>
+                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Loja</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4">
+                    {room ? (
+                      <ShopPanel roomId={room.id} />
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        Entre em uma sala para acessar a loja
+                      </p>
+                    )}
                   </div>
                 </SheetContent>
               </Sheet>
