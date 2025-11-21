@@ -1,9 +1,12 @@
 import { Scroll, Sparkles, LogOut, Users, ArrowLeft, Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getXPForLevel, getXPProgressPercentage } from "@/lib/dnd-xp-progression";
+import { RoomPlayer } from "@/hooks/useRoom";
+import { PlayersPanel } from "@/components/PlayersPanel";
 
 interface GameHeaderProps {
   onLogout?: () => void;
@@ -11,6 +14,8 @@ interface GameHeaderProps {
   onBackToLobby?: () => void;
   roomCode?: string;
   characterId?: string;
+  players?: RoomPlayer[];
+  gmId?: string;
 }
 
 interface CharacterStats {
@@ -20,8 +25,19 @@ interface CharacterStats {
   level: number;
 }
 
-export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, roomCode, characterId }: GameHeaderProps) => {
+export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, roomCode, characterId, players = [], gmId }: GameHeaderProps) => {
   const [stats, setStats] = useState<CharacterStats | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUserId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    getUserId();
+  }, []);
 
   useEffect(() => {
     if (!characterId) return;
@@ -135,6 +151,29 @@ export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, r
                 {roomCode ? `Sala: ${roomCode}` : 'Sistema Ativo'}
               </span>
             </div>
+
+            {/* Players Panel */}
+            {players.length > 0 && gmId && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 md:gap-2 h-7 md:h-9 px-2 md:px-3"
+                  >
+                    <Users className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden sm:inline text-xs md:text-sm">{players.length}</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px] sm:w-[400px] overflow-y-auto">
+                  <PlayersPanel 
+                    players={players}
+                    currentUserId={currentUserId}
+                    gmId={gmId}
+                  />
+                </SheetContent>
+              </Sheet>
+            )}
             
             {onBackToLobby && (
               <Button
