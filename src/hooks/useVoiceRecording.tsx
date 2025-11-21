@@ -11,8 +11,21 @@ export const useVoiceRecording = () => {
 
   const startRecording = async () => {
     try {
+      // Check if we're in a secure context
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Seu navegador não suporta gravação de áudio ou a página precisa estar em HTTPS');
+      }
+
       console.log('Requesting microphone access...');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
       console.log('Microphone access granted');
       
       const mediaRecorder = new MediaRecorder(stream);
@@ -26,6 +39,15 @@ export const useVoiceRecording = () => {
         }
       };
 
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+        toast({
+          title: "Erro na gravação",
+          description: "Ocorreu um erro durante a gravação",
+          variant: "destructive",
+        });
+      };
+
       mediaRecorder.start();
       setIsRecording(true);
       console.log('Recording started');
@@ -36,9 +58,24 @@ export const useVoiceRecording = () => {
       });
     } catch (error) {
       console.error('Error starting recording:', error);
+      
+      let errorMessage = "Não foi possível acessar o microfone";
+      
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = "Permissão negada. Permita o acesso ao microfone nas configurações do navegador";
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = "Nenhum microfone encontrado no dispositivo";
+        } else if (error.name === 'NotReadableError') {
+          errorMessage = "Microfone está sendo usado por outro aplicativo";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Erro",
-        description: "Não foi possível acessar o microfone. Verifique as permissões.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
