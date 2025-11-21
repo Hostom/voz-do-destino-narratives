@@ -32,27 +32,23 @@ export const ChatInputWithActions = ({
 
   return (
     <div className="flex gap-2 items-end">
-      <div className="flex-1">
-        <ChatInput onSend={onSend} disabled={disabled} />
-      </div>
-      
       {isMobile && (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
               size="icon"
-              className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation shrink-0 mb-2 md:mb-6"
+              className="h-10 w-10 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation shrink-0 mb-2 md:mb-6"
             >
               {open ? (
-                <X className="h-4 w-4 md:h-5 md:w-5" />
+                <X className="h-4 w-4" />
               ) : (
-                <Plus className="h-4 w-4 md:h-5 md:w-5" />
+                <Plus className="h-4 w-4" />
               )}
             </Button>
           </PopoverTrigger>
           <PopoverContent 
             side="top" 
-            align="end"
+            align="start"
             className="w-auto p-2 bg-popover/95 backdrop-blur-sm border-primary/20"
           >
             <div className="flex flex-col gap-2">
@@ -103,6 +99,10 @@ export const ChatInputWithActions = ({
           </PopoverContent>
         </Popover>
       )}
+      
+      <div className="flex-1">
+        <ChatInput onSend={onSend} disabled={disabled} />
+      </div>
     </div>
   );
 };
