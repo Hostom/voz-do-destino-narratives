@@ -275,9 +275,22 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
                 preview: messageContent.substring(0, 100)
               });
               
-              const shopItems = msg.sender === "GM" && hasShopItems(messageContent) 
-                ? parseItemList(messageContent) 
-                : [];
+              let shopItems: any[] = [];
+              
+              try {
+                if (msg.sender === "GM") {
+                  console.log('[GMChat] Checking if message has shop items...');
+                  const hasShop = hasShopItems(messageContent);
+                  console.log('[GMChat] hasShopItems result:', hasShop);
+                  
+                  if (hasShop) {
+                    shopItems = parseItemList(messageContent);
+                    console.log('[GMChat] Parsed shop items:', shopItems);
+                  }
+                }
+              } catch (error) {
+                console.error('[GMChat] Error parsing shop items:', error);
+              }
               
               console.log('[GMChat] Shop items for message:', shopItems.length);
               
