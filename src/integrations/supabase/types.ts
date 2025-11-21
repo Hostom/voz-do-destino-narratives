@@ -635,6 +635,45 @@ export type Database = {
         }
         Relationships: []
       }
+      merchant_bargains: {
+        Row: {
+          character_id: string
+          created_at: string
+          discount_percent: number
+          id: string
+          merchant_item_id: string
+          modifier: number
+          roll_result: number
+          room_id: string
+          success: boolean
+          total: number
+        }
+        Insert: {
+          character_id: string
+          created_at?: string
+          discount_percent: number
+          id?: string
+          merchant_item_id: string
+          modifier: number
+          roll_result: number
+          room_id: string
+          success: boolean
+          total: number
+        }
+        Update: {
+          character_id?: string
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          merchant_item_id?: string
+          modifier?: number
+          roll_result?: number
+          room_id?: string
+          success?: boolean
+          total?: number
+        }
+        Relationships: []
+      }
       merchant_items: {
         Row: {
           available: boolean

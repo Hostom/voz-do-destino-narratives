@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingCart, TrendingUp, Coins } from "lucide-react";
+import { ShoppingCart, Coins, TrendingDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface MerchantItem {
@@ -32,20 +32,23 @@ interface MerchantPanelProps {
   characterId: string;
   roomId: string;
   goldPieces: number;
+  charisma: number;
   onGoldChange: () => void;
 }
 
-export function MerchantPanel({ characterId, roomId, goldPieces, onGoldChange }: MerchantPanelProps) {
+export function MerchantPanel({ characterId, roomId, goldPieces, charisma, onGoldChange }: MerchantPanelProps) {
   const { toast } = useToast();
   const [merchantItems, setMerchantItems] = useState<MerchantItem[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [selectedQuantity, setSelectedQuantity] = useState<Record<string, number>>({});
   const [merchantActive, setMerchantActive] = useState(false);
+  const [bargainDiscounts, setBargainDiscounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadMerchantStatus();
     loadMerchantItems();
     loadInventory();
+    loadBargains();
 
     const channel = supabase
       .channel(`merchant-status-${roomId}`)
@@ -124,9 +127,113 @@ export function MerchantPanel({ characterId, roomId, goldPieces, onGoldChange }:
     }
   };
 
+  const loadBargains = async () => {
+    const { data } = await supabase
+      .from("merchant_bargains")
+      .select("merchant_item_id, discount_percent")
+      .eq("character_id", characterId)
+      .eq("room_id", roomId);
+
+    if (data) {
+      const discounts: Record<string, number> = {};
+      data.forEach((bargain) => {
+        discounts[bargain.merchant_item_id] = bargain.discount_percent;
+      });
+      setBargainDiscounts(discounts);
+    }
+  };
+
+  const handleBargain = async (item: MerchantItem) => {
+    // Check if already bargained
+    if (bargainDiscounts[item.id] !== undefined) {
+      toast({
+        title: "Já negociado",
+        description: "Você já tentou barganhar este item",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Roll Charisma check (Persuasion)
+    const charismaModifier = Math.floor((charisma - 10) / 2);
+    const roll = Math.floor(Math.random() * 20) + 1;
+    const total = roll + charismaModifier;
+
+    // DC based on item rarity
+    const dcMap: Record<string, number> = {
+      common: 10,
+      uncommon: 13,
+      rare: 15,
+      very_rare: 18,
+      legendary: 20,
+    };
+    const dc = dcMap[item.rarity] || 12;
+
+    // Calculate discount based on how much they beat the DC
+    let discountPercent = 0;
+    const success = total >= dc;
+    
+    if (success) {
+      const margin = total - dc;
+      if (margin >= 10) discountPercent = 25; // Critical success
+      else if (margin >= 5) discountPercent = 15;
+      else discountPercent = 10;
+    }
+
+    try {
+      // Save bargain attempt
+      const { error } = await supabase
+        .from("merchant_bargains")
+        .insert({
+          room_id: roomId,
+          character_id: characterId,
+          merchant_item_id: item.id,
+          roll_result: roll,
+          modifier: charismaModifier,
+          total: total,
+          discount_percent: discountPercent,
+          success: success,
+        });
+
+      if (error) throw error;
+
+      // Update local state
+      setBargainDiscounts({ ...bargainDiscounts, [item.id]: discountPercent });
+
+      // Show result
+      if (success) {
+        toast({
+          title: `🎲 Negociação bem-sucedida!`,
+          description: `Rolou ${roll} + ${charismaModifier} = ${total} (DC ${dc})\nDesconto de ${discountPercent}% conquistado!`,
+          duration: 5000,
+        });
+      } else {
+        toast({
+          title: "❌ Negociação falhou",
+          description: `Rolou ${roll} + ${charismaModifier} = ${total} (DC ${dc})\nO mercador não aceita sua oferta.`,
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+    } catch (error) {
+      console.error("Error bargaining:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível negociar",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getDiscountedPrice = (itemId: string, basePrice: number): number => {
+    const discount = bargainDiscounts[itemId] || 0;
+    return Math.floor(basePrice * (1 - discount / 100));
+  };
+
   const handleBuy = async (item: MerchantItem) => {
     const quantity = selectedQuantity[item.id] || 1;
-    const totalCost = item.current_price * quantity;
+    const discountedPrice = getDiscountedPrice(item.id, item.current_price);
+    const totalCost = discountedPrice * quantity;
 
     if (goldPieces < totalCost) {
       toast({
@@ -341,7 +448,21 @@ export function MerchantPanel({ characterId, roomId, goldPieces, onGoldChange }:
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-amber-500">{item.current_price} PO</p>
+                            {bargainDiscounts[item.id] !== undefined && bargainDiscounts[item.id] > 0 ? (
+                              <>
+                                <p className="text-xs text-muted-foreground line-through">
+                                  {item.current_price} PO
+                                </p>
+                                <p className="font-bold text-green-500">
+                                  {getDiscountedPrice(item.id, item.current_price)} PO
+                                </p>
+                                <Badge variant="secondary" className="text-xs mt-1">
+                                  -{bargainDiscounts[item.id]}%
+                                </Badge>
+                              </>
+                            ) : (
+                              <p className="font-bold text-amber-500">{item.current_price} PO</p>
+                            )}
                             {item.stock !== -1 && (
                               <p className="text-xs text-muted-foreground">
                                 Estoque: {item.stock}
@@ -349,6 +470,17 @@ export function MerchantPanel({ characterId, roomId, goldPieces, onGoldChange }:
                             )}
                           </div>
                         </div>
+
+                        {bargainDiscounts[item.id] === undefined && (
+                          <Button
+                            onClick={() => handleBargain(item)}
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                          >
+                            💬 Tentar Negociar (Carisma)
+                          </Button>
+                        )}
 
                         <div className="flex gap-2">
                           <Input
@@ -367,13 +499,13 @@ export function MerchantPanel({ characterId, roomId, goldPieces, onGoldChange }:
                           <Button
                             onClick={() => handleBuy(item)}
                             disabled={
-                              goldPieces < item.current_price * (selectedQuantity[item.id] || 1) ||
+                              goldPieces < getDiscountedPrice(item.id, item.current_price) * (selectedQuantity[item.id] || 1) ||
                               (item.stock !== -1 && item.stock === 0)
                             }
                             className="flex-1"
                             size="sm"
                           >
-                            Comprar ({item.current_price * (selectedQuantity[item.id] || 1)} PO)
+                            Comprar ({getDiscountedPrice(item.id, item.current_price) * (selectedQuantity[item.id] || 1)} PO)
                           </Button>
                         </div>
                       </div>

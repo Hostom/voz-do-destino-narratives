@@ -1105,6 +1105,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                                 characterId={character.id}
                                 roomId={room.id}
                                 goldPieces={character.gold_pieces}
+                                charisma={character.charisma}
                                 onGoldChange={() => {
                                   // Trigger character reload
                                   window.location.reload();
@@ -1404,6 +1405,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                             characterId={character.id}
                             roomId={room.id}
                             goldPieces={character.gold_pieces}
+                            charisma={character.charisma}
                             onGoldChange={() => {
                               window.location.reload();
                             }}
