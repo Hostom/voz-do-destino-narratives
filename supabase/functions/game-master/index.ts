@@ -88,20 +88,25 @@ Sua missão é criar, mestrar e conduzir histórias interativas, reagindo às es
 • Formato: "[INICIAR_COMBATE]\n\nOs orcs rugem e avançam em sua direção! Três guerreiros brutais empunham..."
 
 🛒 SISTEMA DE LOJA (CRÍTICO - USE A FERRAMENTA create_shop)
-• Quando o jogador encontrar uma loja, mercador, ou NPC vendedor, você DEVE chamar a ferramenta create_shop
-• OBRIGATÓRIO: Sempre que narrar "você entra na loja", "o mercador mostra seus produtos", etc., CHAME create_shop
-• A ferramenta create_shop automaticamente cria a interface de loja para o jogador
-• Parâmetros obrigatórios:
-  - npc_name: Nome do mercador
-  - npc_personality: "friendly" (-10% preço), "neutral" (0%), "hostile" (+15%)
-  - npc_reputation: Reputação (cada ponto = -2% desconto, padrão 0)
-  - items: Array de itens com: name, description, base_price, rarity (common/uncommon/rare/epic/legendary), quality (broken/normal/refined/perfect/legendary)
-• Exemplo de uso:
-  1. Narre: "Você entra na forja de Thorin. O anão martela uma espada e olha para você."
-  2. CHAME create_shop com os dados da loja
-  3. Continue: "'Procurando algo específico, aventureiro?'"
-• SEMPRE crie pelo menos 5-10 itens variados para cada loja
-• Seja criativo com descrições e efeitos dos itens
+• SEMPRE que narrar uma loja, mercador, vendedor, artesão, ou comerciante, você DEVE chamar create_shop
+• NÃO liste itens no chat - use APENAS a ferramenta create_shop
+• Exemplos de situações que EXIGEM create_shop:
+  - "Você entra na forja..." → CHAME create_shop
+  - "O mercador mostra seus produtos..." → CHAME create_shop
+  - "Uma velha vendedora oferece poções..." → CHAME create_shop
+  - "Você encontra um vendedor ambulante..." → CHAME create_shop
+• Após chamar create_shop, continue a narrativa normalmente SEM listar os itens
+• Parâmetros da ferramenta:
+  - npc_name: Nome do mercador/loja (ex: "Forja do Thorin", "Elara - Joias Mágicas")
+  - npc_personality: "friendly" (desconto 10%), "neutral" (normal), "hostile" (aumento 15%)
+  - npc_reputation: Reputação do jogador (padrão 0, cada ponto = -2%)
+  - items: Array com name, description, base_price, rarity, quality
+• Exemplo correto:
+  1. Narre: "Você entra na forja de Thorin. O anão martela uma espada brilhante."
+  2. CHAME create_shop com 5-10 itens variados
+  3. Continue: "O anão olha para você. 'Procurando algo específico, aventureiro?'"
+• SEMPRE crie pelo menos 5-10 itens variados e criativos para cada loja
+• Os itens aparecerão automaticamente na aba "Loja" - NÃO os liste no chat
 
 💬 INTERAÇÃO COM O JOGADOR
 • Nunca avance sem a ação do jogador
@@ -390,29 +395,87 @@ PERSONAGEM: ${char.name}
     const tools = [
       {
         type: "function",
-            function: {
-              name: "update_character_stats",
-              description: "Atualiza HP e/ou XP de um personagem baseado em eventos da narrativa. CRÍTICO: Quando você NARRAR que o jogador ganhou XP, você DEVE chamar esta ferramenta com xp_gain. SEMPRE narre o que aconteceu ANTES de chamar esta ferramenta. HP_CHANGE: Use VALORES NEGATIVOS para dano (ex: -8 para 8 de dano) e POSITIVOS para cura (ex: +10 para 10 de cura). XP_GAIN: Sempre que mencionar XP na narrativa, CHAME esta ferramenta com o valor correspondente.",
-              parameters: {
-                type: "object",
-                properties: {
-                  hp_change: {
-                    type: "number",
-                    description: "Mudança no HP. CRÍTICO: Use valores NEGATIVOS para dano (ex: -8 para 'você sofre 8 de dano') e POSITIVOS para cura (ex: +10 para 'você recupera 10 HP'). Sempre baseie no que foi narrado."
-                  },
-                  xp_gain: {
-                    type: "number",
-                    description: "Quantidade de XP ganho (sempre positivo ou 0). Ex: 50 para derrotar inimigos, 25 para resolver puzzle"
-                  },
-                  reason: {
-                    type: "string",
-                    description: "Razão da mudança (ex: 'ataque de orc', 'descanso completo', 'derrotou bandidos')"
-                  }
-                },
-                required: [],
-                additionalProperties: false
+        function: {
+          name: "update_character_stats",
+          description: "Atualiza HP e/ou XP do personagem após eventos narrativos. OBRIGATÓRIO chamar quando narrar ganho de XP ou mudanças de HP (dano/cura).",
+          parameters: {
+            type: "object",
+            properties: {
+              hp_change: {
+                type: "number",
+                description: "Mudança no HP. CRÍTICO: Use valores NEGATIVOS para dano (ex: -8 para 'você sofre 8 de dano') e POSITIVOS para cura (ex: +10 para 'você recupera 10 HP'). Sempre baseie no que foi narrado."
+              },
+              xp_gain: {
+                type: "number",
+                description: "Quantidade de XP ganho (sempre positivo ou 0). Ex: 50 para derrotar inimigos, 25 para resolver puzzle"
+              },
+              reason: {
+                type: "string",
+                description: "Razão da mudança (ex: 'ataque de orc', 'descanso completo', 'derrotou bandidos')"
               }
-            }
+            },
+            required: [],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "create_shop",
+          description: "Cria uma loja interativa com itens para os jogadores. OBRIGATÓRIO chamar esta ferramenta sempre que narrar um mercador, loja, ou vendedor. Os itens aparecerão em uma interface dedicada separada do chat.",
+          parameters: {
+            type: "object",
+            properties: {
+              npc_name: {
+                type: "string",
+                description: "Nome do mercador ou loja (ex: 'Forja do Thorin', 'Elara - Joias Mágicas')"
+              },
+              npc_personality: {
+                type: "string",
+                enum: ["friendly", "neutral", "hostile"],
+                description: "Personalidade do NPC que afeta preços: friendly (-10%), neutral (0%), hostile (+15%)"
+              },
+              npc_reputation: {
+                type: "number",
+                description: "Reputação do jogador com o NPC (cada ponto = -2% desconto). Padrão: 0"
+              },
+              items: {
+                type: "array",
+                description: "Lista de itens disponíveis na loja (mínimo 5-10 itens variados)",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: {
+                      type: "string",
+                      description: "Nome do item (ex: 'Espada Longa', 'Poção de Cura')"
+                    },
+                    description: {
+                      type: "string",
+                      description: "Descrição detalhada do item e seus efeitos"
+                    },
+                    base_price: {
+                      type: "number",
+                      description: "Preço base em peças de ouro (será modificado por raridade, qualidade e personalidade)"
+                    },
+                    rarity: {
+                      type: "string",
+                      enum: ["common", "uncommon", "rare", "epic", "legendary"],
+                      description: "Raridade do item"
+                    },
+                    quality: {
+                      type: "string",
+                      enum: ["broken", "normal", "refined", "perfect", "legendary"],
+                      description: "Qualidade da fabricação do item"
+                    }
+                  },
+                  required: ["name", "description", "base_price", "rarity", "quality"]
+                }
+              }
+            },
+            required: ["npc_name", "npc_personality", "items"]
+          }
+        }
       }
     ];
     
