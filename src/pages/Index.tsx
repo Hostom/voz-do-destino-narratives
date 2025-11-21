@@ -48,6 +48,7 @@ const Index = () => {
   const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
   const [view, setView] = useState<'menu' | 'create' | 'join' | 'history' | 'lobby' | 'combat' | 'game'>('menu');
   const [isGM, setIsGM] = useState(false);
+  const [isReturningToGame, setIsReturningToGame] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, startSession, refreshPlayers } = useRoom();
   const { toast } = useToast();
@@ -597,6 +598,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
   };
 
   const handleStartSession = async () => {
+    setIsReturningToGame(true);
     await startSession();
   };
 
@@ -617,10 +619,12 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
     // Only auto-switch to game view when session starts from lobby
     // Don't switch if user manually went back to lobby (session_active will be false)
     if (room.session_active && view === 'lobby' && room.combat_active === false) {
-      // Additional check: only switch if there are no messages yet (initial start)
-      // This prevents switching back when user explicitly returns to lobby
-      if (gmMessages.length === 0) {
+      // Switch to game if:
+      // 1. There are no messages yet (initial start) OR
+      // 2. User explicitly clicked to return to game (isReturningToGame flag)
+      if (gmMessages.length === 0 || isReturningToGame) {
         setView('game');
+        setIsReturningToGame(false); // Reset flag after transitioning
       }
     }
 
@@ -631,7 +635,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
       // Return to game view when combat ends (not lobby)
       setView('game');
     }
-  }, [room?.session_active, room?.combat_active, view, gmMessages.length]);
+  }, [room?.session_active, room?.combat_active, view, gmMessages.length, isReturningToGame]);
 
   if (authLoading || characterLoading) {
     return (
