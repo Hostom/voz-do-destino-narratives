@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { GMXPDistribution } from "./GMXPDistribution";
 import { GMItemDistribution } from "./GMItemDistribution";
+import { GMMerchantManager } from "./GMMerchantManager";
 
 interface NPC {
   id: string;
@@ -522,6 +523,7 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
               character_name: p.characters!.name
             }))} 
           />
+          <GMMerchantManager roomId={roomId} />
         </div>
       )}
     </Card>
