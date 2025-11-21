@@ -87,6 +87,27 @@ Sua missão é criar, mestrar e conduzir histórias interativas, reagindo às es
   - Monstros atacando
 • Formato: "[INICIAR_COMBATE]\n\nOs orcs rugem e avançam em sua direção! Três guerreiros brutais empunham..."
 
+🛒 SISTEMA DE LOJA (CRÍTICO)
+• Quando o jogador encontrar uma loja, mercador, ou NPC vendedor, você DEVE usar o formato [SHOP] para listar itens
+• O bloco [SHOP] será automaticamente removido da narrativa e exibido na aba "Loja" do jogador
+• Formato obrigatório:
+  [SHOP]
+  Espada Longa — 1d8 corte (15 PO)
+  Escudo de Madeira — +2 CA (10 PO)
+  Poção de Cura — Restaura 2d4+2 HP (25 PO)
+• Cada item deve ter: Nome — Descrição/Stats (Preço PO)
+• Use preços realistas baseados na raridade e qualidade
+• Após o bloco [SHOP], continue a narrativa normalmente sem mencionar os itens novamente
+• Exemplo completo:
+  "Você entra na loja do ferreiro. O anão olha para você com interesse.
+  
+  [SHOP]
+  Espada Longa — 1d8 dano de corte (15 PO)
+  Escudo de Madeira — +2 CA (10 PO)
+  Adaga — 1d4 dano perfurante (2 PO)
+  
+  O ferreiro sorri: 'O que você precisa, aventureiro?'"
+
 💬 INTERAÇÃO COM O JOGADOR
 • Nunca avance sem a ação do jogador
 • Sempre encerre com uma pergunta narrativa que impulsiona a história
@@ -637,12 +658,120 @@ PERSONAGEM: ${char.name}
                   console.error("Error fetching room:", roomError);
                 } else if (room) {
                   console.log("Room found. GM ID:", room.gm_id);
+                  
+                  // Detect and process [SHOP] blocks
+                  let narrativeText = fullResponse.trim();
+                  const shopBlockRegex = /\[SHOP\]\s*\n([\s\S]*?)(?=\n\n|\n\[|$)/i;
+                  const shopMatch = narrativeText.match(shopBlockRegex);
+                  
+                  if (shopMatch) {
+                    console.log("🛒 [SHOP] block detected! Processing shop items...");
+                    const shopContent = shopMatch[1].trim();
+                    
+                    // Remove shop block from narrative
+                    narrativeText = narrativeText.replace(shopBlockRegex, '').trim();
+                    
+                    // Parse shop items
+                    const shopItems: any[] = [];
+                    const itemLines = shopContent.split('\n').filter(line => line.trim());
+                    
+                    for (const line of itemLines) {
+                      const trimmed = line.trim();
+                      if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('#')) continue;
+                      
+                      // Parse format: Item Name — stats (price PO) or Item Name (price PO) — stats
+                      const priceMatch = trimmed.match(/(\d+)\s*(PO|GP|PP|PE|PC|PL)/i);
+                      const price = priceMatch ? parseInt(priceMatch[1]) : 100;
+                      
+                      // Extract item name (before — or first part)
+                      const nameMatch = trimmed.match(/^([^—–-]+)/);
+                      const itemName = nameMatch ? nameMatch[1].trim() : trimmed.split('—')[0].split('–')[0].split('-')[0].trim();
+                      
+                      // Extract stats/description (after — or in parentheses)
+                      const statsMatch = trimmed.match(/[—–-]\s*(.+?)(?:\s*\(|$)/) || trimmed.match(/\(([^)]+)\)/);
+                      const stats = statsMatch ? statsMatch[1].trim() : '';
+                      
+                      // Determine rarity from price or name
+                      let rarity: "common" | "uncommon" | "rare" | "epic" | "legendary" = "common";
+                      if (price >= 10000 || /lendário|legendary|épico|epic/i.test(itemName)) rarity = "legendary";
+                      else if (price >= 5000 || /raro|rare/i.test(itemName)) rarity = "epic";
+                      else if (price >= 1000 || /incomum|uncommon/i.test(itemName)) rarity = "rare";
+                      else if (price >= 500) rarity = "uncommon";
+                      
+                      // Determine quality
+                      let quality: "broken" | "normal" | "refined" | "perfect" | "legendary" = "normal";
+                      if (/perfeito|perfect|refinado|refined/i.test(itemName + stats)) quality = "refined";
+                      else if (/quebrado|broken|danificado/i.test(itemName + stats)) quality = "broken";
+                      else if (rarity === "legendary") quality = "legendary";
+                      
+                      // Extract attributes from stats
+                      const attributes: Record<string, any> = {};
+                      const attackMatch = stats.match(/(\d+d\d+|\+\d+)\s*(ataque|attack|dano|damage)/i);
+                      const defenseMatch = stats.match(/(\+?\d+)\s*(CA|AC|defesa|defense)/i);
+                      const magicMatch = stats.match(/(\+?\d+)\s*(magia|magic|mana)/i);
+                      
+                      if (attackMatch) attributes.attack = attackMatch[1];
+                      if (defenseMatch) attributes.defense = parseInt(defenseMatch[1]);
+                      if (magicMatch) attributes.magic = parseInt(magicMatch[1]);
+                      
+                      // Calculate final price (will be recalculated in update-shop with NPC modifiers)
+                      const basePrice = price;
+                      
+                      shopItems.push({
+                        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        name: itemName,
+                        description: stats || '',
+                        basePrice: basePrice,
+                        finalPrice: basePrice, // Will be recalculated
+                        rarity: rarity,
+                        quality: quality,
+                        stock: -1, // Unlimited
+                        attributes: attributes,
+                      });
+                    }
+                    
+                    if (shopItems.length > 0) {
+                      console.log(`✅ Parsed ${shopItems.length} shop items`);
+                      
+                      // Call update-shop function
+                      try {
+                        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+                        const updateShopUrl = `${supabaseUrl}/functions/v1/update-shop`;
+                        const updateShopResponse = await fetch(updateShopUrl, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                            'apikey': Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+                          },
+                          body: JSON.stringify({
+                            roomId: roomId,
+                            npcName: "Mercador",
+                            npcPersonality: "neutral",
+                            npcReputation: 0,
+                            items: shopItems,
+                          }),
+                        });
+                        
+                        if (updateShopResponse.ok) {
+                          console.log("✅ Shop updated successfully via update-shop function");
+                        } else {
+                          const errorText = await updateShopResponse.text();
+                          console.error("❌ Error calling update-shop:", errorText);
+                        }
+                      } catch (shopError) {
+                        console.error("❌ Exception calling update-shop:", shopError);
+                      }
+                    }
+                  }
+                  
                   console.log("Attempting to insert GM response to gm_messages...");
-                  console.log("Response length:", fullResponse.length);
-                  console.log("Response preview (first 200 chars):", fullResponse.substring(0, 200));
+                  console.log("Response length:", narrativeText.length);
+                  console.log("Response preview (first 200 chars):", narrativeText.substring(0, 200));
                   
                   // CRITICAL: Insert ONLY into gm_messages - this is the single source of truth for GM narrations
                   // NEVER insert into room_chat_messages from this function
+                  // Shop blocks are removed from narrative - they appear only in ShopPanel
                   const { data: insertedData, error: insertError } = await supabase
                     .from("gm_messages")
                     .insert({
@@ -650,7 +779,7 @@ PERSONAGEM: ${char.name}
                       player_id: room.gm_id,
                       sender: "GM",
                       character_name: "Voz do Destino",
-                      content: fullResponse.trim(),
+                      content: narrativeText,
                       type: "gm",
                     })
                     .select();

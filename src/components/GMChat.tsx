@@ -7,8 +7,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Scroll, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCollection } from "@/hooks/useCollection";
-import { extractShopItems } from "@/utils/extractShopItems";
-import { ShopItemsList } from "@/components/shop/ShopItemsList";
 
 interface GMMessage {
   id: string;
@@ -267,11 +265,6 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
             )}
             {messages.map((msg) => {
               const content = msg.content ?? msg.message ?? "";
-              
-              // Parse shop items for GM messages
-              const shopData = msg.sender === "GM" ? extractShopItems(content) : null;
-              const displayText = shopData ? shopData.cleanedText : content;
-              const shopItems = shopData?.items || [];
 
               return (
                 <div
@@ -297,11 +290,8 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
                     </span>
                   </div>
                   <p className={`text-sm ${msg.sender === "GM" ? "font-medium text-foreground" : "text-foreground"}`}>
-                    {displayText}
+                    {content}
                   </p>
-                  {msg.sender === "GM" && shopItems.length > 0 && (
-                    <ShopItemsList items={shopItems} />
-                  )}
                 </div>
               );
             })}

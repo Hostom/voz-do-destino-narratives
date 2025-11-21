@@ -31,6 +31,7 @@ import { ItemTradeNotifications } from "@/components/ItemTradeNotifications";
 import { CraftingPanel } from "@/components/CraftingPanel";
 import { MerchantPanel } from "@/components/MerchantPanel";
 import { AuctionPanel } from "@/components/AuctionPanel";
+import { ShopPanel } from "@/components/shop/ShopPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface GMMessage {
@@ -1110,9 +1111,10 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                       </SheetHeader>
                       <div className="mt-4">
                         <Tabs defaultValue="inventory">
-                          <TabsList className={`grid w-full ${merchantActive && auctionsActive ? 'grid-cols-4' : merchantActive || auctionsActive ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                          <TabsList className={`grid w-full ${merchantActive && auctionsActive ? 'grid-cols-5' : merchantActive || auctionsActive ? 'grid-cols-4' : 'grid-cols-3'}`}>
                             <TabsTrigger value="inventory">Inventário</TabsTrigger>
                             <TabsTrigger value="crafting">Crafting</TabsTrigger>
+                            <TabsTrigger value="shop">Loja</TabsTrigger>
                             {merchantActive && (
                               <TabsTrigger value="merchant">Mercador</TabsTrigger>
                             )}
@@ -1142,6 +1144,16 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                               intelligence={character.intelligence}
                               wisdom={character.wisdom}
                             />
+                          </TabsContent>
+
+                          <TabsContent value="shop" className="mt-4">
+                            {room ? (
+                              <ShopPanel roomId={room.id} />
+                            ) : (
+                              <p className="text-sm text-muted-foreground text-center py-8">
+                                Entre em uma sala para acessar a loja
+                              </p>
+                            )}
                           </TabsContent>
 
                           <TabsContent value="merchant" className="mt-4">
