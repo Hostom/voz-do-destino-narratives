@@ -69,6 +69,9 @@ export const useRoom = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      // Clean up any old sessions first
+      await cleanupOldSessions();
+
       // Generate room code
       const { data: codeData, error: codeError } = await supabase.rpc('generate_room_code');
       if (codeError) throw codeError;
@@ -121,6 +124,9 @@ export const useRoom = () => {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
+
+      // Clean up any old sessions first
+      await cleanupOldSessions();
 
       // Find room by code
       const { data: roomData, error: roomError } = await supabase
@@ -554,6 +560,21 @@ export const useRoom = () => {
     if (room?.id) loadPlayers(room.id);
   };
 
+  const cleanupOldSessions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Remove any existing player entries for this user
+      await supabase
+        .from('room_players')
+        .delete()
+        .eq('user_id', user.id);
+    } catch (error) {
+      console.error("Error cleaning up old sessions:", error);
+    }
+  };
+
   const reconnectToRoom = async (roomId: string) => {
     try {
       setLoading(true);
@@ -570,7 +591,8 @@ export const useRoom = () => {
 
       if (playerError) throw playerError;
       if (!playerData) {
-        // User not in room anymore, clear saved session
+        // User not in room anymore, clean up and clear saved session
+        await cleanupOldSessions();
         localStorage.removeItem('activeRoomSession');
         throw new Error("Você não está mais nesta sala");
       }
