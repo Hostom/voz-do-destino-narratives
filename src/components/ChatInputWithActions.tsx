@@ -38,7 +38,7 @@ export const ChatInputWithActions = ({
             <PopoverTrigger asChild>
               <Button
                 size="icon"
-                className="h-9 w-9 rounded-lg shadow-md bg-accent hover:bg-accent/80 text-accent-foreground transition-all shrink-0"
+                className="h-9 w-9 rounded-lg shadow-md bg-accent hover:bg-accent/80 text-accent-foreground transition-all shrink-0 hover:shadow-lg hover:scale-105"
               >
                 {open ? (
                   <X className="h-3.5 w-3.5" />
