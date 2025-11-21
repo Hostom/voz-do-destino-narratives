@@ -39,12 +39,12 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           type="submit"
           size="icon"
           disabled={!input.trim() || disabled}
-          className="h-12 w-12 shrink-0 rounded-lg bg-primary hover:bg-primary/90 shadow-md transition-all"
+          className="h-10 w-10 shrink-0 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all"
         >
           {disabled ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Send className="h-5 w-5" />
+            <Send className="h-4 w-4" />
           )}
         </Button>
       </div>
