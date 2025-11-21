@@ -23,6 +23,7 @@ import { InventoryPanel } from "@/components/InventoryPanel";
 import { Separator } from "@/components/ui/separator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCollection } from "@/hooks/useCollection";
+import { CharacterStatsBar } from "@/components/CharacterStatsBar";
 
 interface GMMessage {
   id: string;
@@ -1120,8 +1121,9 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                 </div>
               </div>
               
-              {/* Input fixo na parte inferior */}
+              {/* Barras de HP/XP e Input fixo na parte inferior */}
               <div className="shrink-0 space-y-3">
+                <CharacterStatsBar characterId={character.id} />
                 <ChatInput
                   onSend={handleSend} 
                   disabled={isLoading}
