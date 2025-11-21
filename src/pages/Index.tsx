@@ -29,7 +29,6 @@ import { XPNotification } from "@/components/XPNotification";
 import { ItemRewardNotification } from "@/components/ItemRewardNotification";
 import { ItemTradeNotifications } from "@/components/ItemTradeNotifications";
 import { CraftingPanel } from "@/components/CraftingPanel";
-import { MerchantPanel } from "@/components/MerchantPanel";
 import { AuctionPanel } from "@/components/AuctionPanel";
 import { ShopPanel } from "@/components/shop/ShopPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -65,7 +64,6 @@ const Index = () => {
   const [showMobileDice, setShowMobileDice] = useState(false);
   const [showMobileInventory, setShowMobileInventory] = useState(false);
   const [showMobileCharacter, setShowMobileCharacter] = useState(false);
-  const [merchantActive, setMerchantActive] = useState(false);
   const [auctionsActive, setAuctionsActive] = useState(false);
 
   // Use gm_messages as single source of truth for all players
@@ -100,49 +98,6 @@ const Index = () => {
     };
     checkGMStatus();
   }, [room?.gm_id]);
-
-  // Load merchant status when room changes
-  useEffect(() => {
-    if (!room) {
-      setMerchantActive(false);
-      return;
-    }
-
-    const loadMerchantStatus = async () => {
-      const { data } = await supabase
-        .from("rooms")
-        .select("merchant_active")
-        .eq("id", room.id)
-        .single();
-
-      if (data) {
-        setMerchantActive(data.merchant_active);
-      }
-    };
-
-    loadMerchantStatus();
-
-    const channel = supabase
-      .channel(`merchant-status-index-${room.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'rooms',
-          filter: `id=eq.${room.id}`
-        },
-        (payload) => {
-          const newData = payload.new as any;
-          setMerchantActive(newData.merchant_active);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [room?.id]);
 
   // Load auction status when room changes
   useEffect(() => {
@@ -1111,13 +1066,10 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                       </SheetHeader>
                       <div className="mt-4">
                         <Tabs defaultValue="inventory">
-                          <TabsList className={`grid w-full ${merchantActive && auctionsActive ? 'grid-cols-5' : merchantActive || auctionsActive ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                          <TabsList className={`grid w-full ${auctionsActive ? 'grid-cols-4' : 'grid-cols-3'}`}>
                             <TabsTrigger value="inventory">Inventário</TabsTrigger>
                             <TabsTrigger value="crafting">Crafting</TabsTrigger>
                             <TabsTrigger value="shop">Loja</TabsTrigger>
-                            {merchantActive && (
-                              <TabsTrigger value="merchant">Mercador</TabsTrigger>
-                            )}
                             {auctionsActive && (
                               <TabsTrigger value="auction">Leilão</TabsTrigger>
                             )}
@@ -1152,25 +1104,6 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                             ) : (
                               <p className="text-sm text-muted-foreground text-center py-8">
                                 Entre em uma sala para acessar a loja
-                              </p>
-                            )}
-                          </TabsContent>
-
-                          <TabsContent value="merchant" className="mt-4">
-                            {room ? (
-                              <MerchantPanel
-                                characterId={character.id}
-                                roomId={room.id}
-                                goldPieces={character.gold_pieces}
-                                charisma={character.charisma}
-                                onGoldChange={() => {
-                                  // Trigger character reload
-                                  window.location.reload();
-                                }}
-                              />
-                            ) : (
-                              <p className="text-sm text-muted-foreground text-center py-8">
-                                Entre em uma sala para acessar o mercador
                               </p>
                             )}
                           </TabsContent>
@@ -1442,13 +1375,10 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                   </SheetHeader>
                   <div className="mt-4">
                     <Tabs defaultValue="inventory">
-                      <TabsList className={`grid w-full ${merchantActive && auctionsActive ? 'grid-cols-5' : merchantActive || auctionsActive ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                      <TabsList className={`grid w-full ${auctionsActive ? 'grid-cols-4' : 'grid-cols-3'}`}>
                         <TabsTrigger value="inventory">Inventário</TabsTrigger>
                         <TabsTrigger value="crafting">Crafting</TabsTrigger>
                         <TabsTrigger value="shop">Loja</TabsTrigger>
-                        {merchantActive && (
-                          <TabsTrigger value="merchant">Mercador</TabsTrigger>
-                        )}
                         {auctionsActive && (
                           <TabsTrigger value="auction">Leilão</TabsTrigger>
                         )}
@@ -1483,24 +1413,6 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                         ) : (
                           <p className="text-sm text-muted-foreground text-center py-8">
                             Entre em uma sala para acessar a loja
-                          </p>
-                        )}
-                      </TabsContent>
-
-                      <TabsContent value="merchant" className="mt-4">
-                        {room ? (
-                          <MerchantPanel
-                            characterId={character.id}
-                            roomId={room.id}
-                            goldPieces={character.gold_pieces}
-                            charisma={character.charisma}
-                            onGoldChange={() => {
-                              window.location.reload();
-                            }}
-                          />
-                        ) : (
-                          <p className="text-sm text-muted-foreground text-center py-8">
-                            Entre em uma sala para acessar o mercador
                           </p>
                         )}
                       </TabsContent>
