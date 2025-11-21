@@ -21,7 +21,7 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-2">
-      <div className="flex gap-2">
+      <div className="flex gap-1.5">
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -39,12 +39,12 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           type="submit"
           size="icon"
           disabled={!input.trim() || disabled}
-          className="h-10 w-10 shrink-0 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all"
+          className="h-9 w-9 shrink-0 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all"
         >
           {disabled ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            <Send className="h-4 w-4" />
+            <Send className="h-3.5 w-3.5" />
           )}
         </Button>
       </div>

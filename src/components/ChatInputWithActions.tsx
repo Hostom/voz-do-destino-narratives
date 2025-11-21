@@ -32,18 +32,18 @@ export const ChatInputWithActions = ({
 
   return (
     <div className="border-t border-border/50 backdrop-blur-epic bg-card/30 p-3 md:p-4 safe-bottom">
-      <div className="container mx-auto max-w-4xl flex gap-2 items-start">
+      <div className="container mx-auto max-w-4xl flex gap-1.5 items-start">
         {isMobile && (
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
                 size="icon"
-                className="h-10 w-10 rounded-lg shadow-md bg-accent hover:bg-accent/80 text-accent-foreground transition-all shrink-0"
+                className="h-9 w-9 rounded-lg shadow-md bg-accent hover:bg-accent/80 text-accent-foreground transition-all shrink-0"
               >
                 {open ? (
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 ) : (
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-3.5 w-3.5" />
                 )}
               </Button>
             </PopoverTrigger>
