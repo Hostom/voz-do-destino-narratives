@@ -7,6 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Scroll, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCollection } from "@/hooks/useCollection";
+import { NPCShop } from "./shop/NPCShop";
+import { parseItemList, hasShopItems } from "./shop/parseItemList";
 
 interface GMMessage {
   id: string;
@@ -263,34 +265,46 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
                 Aguardando resposta do Mestre...
               </div>
             )}
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`rounded-lg p-3 animate-in slide-in-from-bottom-2 ${
-                  msg.sender === "GM"
-                    ? "bg-gradient-to-r from-primary/20 to-accent/20 border-l-4 border-primary"
-                    : "bg-secondary/50"
-                }`}
-              >
-                <div className="flex items-baseline gap-2 mb-1">
-                  {msg.sender === "GM" && (
-                    <span className="text-xs font-bold text-primary">🎭 MESTRE</span>
+            {messages.map((msg) => {
+              const messageContent = msg.content ?? msg.message ?? "";
+              const shopItems = msg.sender === "GM" && hasShopItems(messageContent) 
+                ? parseItemList(messageContent) 
+                : [];
+              
+              return (
+                <div key={msg.id}>
+                  <div
+                    className={`rounded-lg p-3 animate-in slide-in-from-bottom-2 ${
+                      msg.sender === "GM"
+                        ? "bg-gradient-to-r from-primary/20 to-accent/20 border-l-4 border-primary"
+                        : "bg-secondary/50"
+                    }`}
+                  >
+                    <div className="flex items-baseline gap-2 mb-1">
+                      {msg.sender === "GM" && (
+                        <span className="text-xs font-bold text-primary">🎭 MESTRE</span>
+                      )}
+                      <span className={`font-semibold text-sm ${msg.sender === "GM" ? "text-primary" : "text-foreground"}`}>
+                        {msg.character_name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(msg.created_at).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <p className={`text-sm ${msg.sender === "GM" ? "font-medium text-foreground" : "text-foreground"}`}>
+                      {messageContent}
+                    </p>
+                  </div>
+                  
+                  {shopItems.length > 0 && (
+                    <NPCShop items={shopItems} messageId={msg.id} />
                   )}
-                  <span className={`font-semibold text-sm ${msg.sender === "GM" ? "text-primary" : "text-foreground"}`}>
-                    {msg.character_name}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(msg.created_at).toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
                 </div>
-                <p className={`text-sm ${msg.sender === "GM" ? "font-medium text-foreground" : "text-foreground"}`}>
-                  {msg.content ?? msg.message ?? ""}
-                </p>
-              </div>
-            ))}
+              );
+            })}
             
             <div ref={messagesEndRef} />
           </div>
