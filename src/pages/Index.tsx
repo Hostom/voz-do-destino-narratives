@@ -6,6 +6,7 @@ import { CharacterCreation } from "@/components/CharacterCreation";
 import { CharacterSelect } from "@/components/CharacterSelect";
 import { GameHeader } from "@/components/GameHeader";
 import { ChatInput } from "@/components/ChatInput";
+import { ChatInputWithActions } from "@/components/ChatInputWithActions";
 import { DicePanel } from "@/components/DicePanel";
 import { NarrativeMessage } from "@/components/NarrativeMessage";
 import { CreateRoom } from "@/components/CreateRoom";
@@ -53,6 +54,10 @@ const Index = () => {
   const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, startSession, refreshPlayers, reconnectToRoom } = useRoom();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const [showMobileChat, setShowMobileChat] = useState(false);
+  const [showMobileDice, setShowMobileDice] = useState(false);
+  const [showMobileInventory, setShowMobileInventory] = useState(false);
+  const [showMobileCharacter, setShowMobileCharacter] = useState(false);
 
   // Use gm_messages as single source of truth for all players
   // useCollection will handle empty roomId gracefully
@@ -1209,145 +1214,127 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
               {/* Barras de HP/XP e Input fixo na parte inferior */}
               <div className="shrink-0 space-y-3">
                 <CharacterStatsBar characterId={character.id} />
-                <ChatInput
+                <ChatInputWithActions
                   onSend={handleSend} 
                   disabled={isLoading}
+                  onChatClick={() => setShowMobileChat(true)}
+                  onDiceClick={() => setShowMobileDice(true)}
+                  onInventoryClick={() => setShowMobileInventory(true)}
+                  onCharacterClick={() => setShowMobileCharacter(true)}
                 />
               </div>
               
-              {/* Botões flutuantes para mobile */}
-              <div className="fixed bottom-24 right-4 z-50 flex flex-col gap-2 md:gap-3 landscape:bottom-20 landscape:right-2 landscape:gap-1">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button size="icon" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation landscape:h-10 landscape:w-10">
-                      <MessageSquare className="h-5 w-5 md:h-6 md:w-6" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle>Chat Social</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-4 h-[calc(100vh-8rem)]">
-                      <RoomChat 
-                        roomId={room.id} 
-                        characterName={character.name}
-                        currentTurn={room.current_turn ?? 0}
-                        initiativeOrder={(room.initiative_order as any[]) || []}
-                        isGM={room.gm_id === user?.id}
-                      />
-                    </div>
-                  </SheetContent>
-                </Sheet>
+              {/* Sheets para mobile - controlados por estado */}
+              <Sheet open={showMobileChat} onOpenChange={setShowMobileChat}>
+                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Chat Social</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4 h-[calc(100vh-8rem)]">
+                    <RoomChat 
+                      roomId={room.id} 
+                      characterName={character.name}
+                      currentTurn={room.current_turn ?? 0}
+                      initiativeOrder={(room.initiative_order as any[]) || []}
+                      isGM={room.gm_id === user?.id}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
 
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button size="icon" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation">
-                      <Dices className="h-5 w-5 md:h-6 md:w-6" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle>Painel de Dados</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-4">
-                      <DicePanel 
-                        roomId={room.id}
-                        characterName={character.name}
-                        characterStats={{
-                          strength: character.strength,
-                          dexterity: character.dexterity,
-                          constitution: character.constitution,
-                          intelligence: character.intelligence,
-                          wisdom: character.wisdom,
-                          charisma: character.charisma
-                        }}
-                      />
-                    </div>
-                  </SheetContent>
-                </Sheet>
+              <Sheet open={showMobileDice} onOpenChange={setShowMobileDice}>
+                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Painel de Dados</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4">
+                    <DicePanel 
+                      roomId={room.id}
+                      characterName={character.name}
+                      characterStats={{
+                        strength: character.strength,
+                        dexterity: character.dexterity,
+                        constitution: character.constitution,
+                        intelligence: character.intelligence,
+                        wisdom: character.wisdom,
+                        charisma: character.charisma
+                      }}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
 
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button size="icon" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation">
-                      <Package className="h-5 w-5 md:h-6 md:w-6" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle>Inventário</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-4 h-[calc(100vh-8rem)]">
-                      <InventoryPanel 
-                        characterId={character.id} 
-                        carryingCapacity={150}
-                      />
-                    </div>
-                  </SheetContent>
-                </Sheet>
+              <Sheet open={showMobileInventory} onOpenChange={setShowMobileInventory}>
+                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Inventário</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4 h-[calc(100vh-8rem)]">
+                    <InventoryPanel 
+                      characterId={character.id} 
+                      carryingCapacity={150}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
 
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button size="icon" className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation">
-                      <User className="h-5 w-5 md:h-6 md:w-6" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle>Ficha do Personagem</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-4 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Nível</p>
-                          <p className="text-lg font-semibold">{character.level}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">Classe</p>
-                          <p className="text-lg font-semibold">{character.class}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">HP</p>
-                          <p className="text-lg font-semibold">{character.current_hp}/{character.max_hp}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">AC</p>
-                          <p className="text-lg font-semibold">{character.armor_class}</p>
-                        </div>
+              <Sheet open={showMobileCharacter} onOpenChange={setShowMobileCharacter}>
+                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Ficha do Personagem</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Nível</p>
+                        <p className="text-lg font-semibold">{character.level}</p>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground font-semibold">Atributos</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="flex justify-between p-2 rounded bg-background/50">
-                            <span className="text-sm">FOR</span>
-                            <span className="font-bold">{character.strength}</span>
-                          </div>
-                          <div className="flex justify-between p-2 rounded bg-background/50">
-                            <span className="text-sm">DES</span>
-                            <span className="font-bold">{character.dexterity}</span>
-                          </div>
-                          <div className="flex justify-between p-2 rounded bg-background/50">
-                            <span className="text-sm">CON</span>
-                            <span className="font-bold">{character.constitution}</span>
-                          </div>
-                          <div className="flex justify-between p-2 rounded bg-background/50">
-                            <span className="text-sm">INT</span>
-                            <span className="font-bold">{character.intelligence}</span>
-                          </div>
-                          <div className="flex justify-between p-2 rounded bg-background/50">
-                            <span className="text-sm">SAB</span>
-                            <span className="font-bold">{character.wisdom}</span>
-                          </div>
-                          <div className="flex justify-between p-2 rounded bg-background/50">
-                            <span className="text-sm">CAR</span>
-                            <span className="font-bold">{character.charisma}</span>
-                          </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Classe</p>
+                        <p className="text-lg font-semibold">{character.class}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">HP</p>
+                        <p className="text-lg font-semibold">{character.current_hp}/{character.max_hp}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">AC</p>
+                        <p className="text-lg font-semibold">{character.armor_class}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground font-semibold">Atributos</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex justify-between p-2 rounded bg-background/50">
+                          <span className="text-sm">FOR</span>
+                          <span className="font-bold">{character.strength}</span>
+                        </div>
+                        <div className="flex justify-between p-2 rounded bg-background/50">
+                          <span className="text-sm">DES</span>
+                          <span className="font-bold">{character.dexterity}</span>
+                        </div>
+                        <div className="flex justify-between p-2 rounded bg-background/50">
+                          <span className="text-sm">CON</span>
+                          <span className="font-bold">{character.constitution}</span>
+                        </div>
+                        <div className="flex justify-between p-2 rounded bg-background/50">
+                          <span className="text-sm">INT</span>
+                          <span className="font-bold">{character.intelligence}</span>
+                        </div>
+                        <div className="flex justify-between p-2 rounded bg-background/50">
+                          <span className="text-sm">SAB</span>
+                          <span className="font-bold">{character.wisdom}</span>
+                        </div>
+                        <div className="flex justify-between p-2 rounded bg-background/50">
+                          <span className="text-sm">CAR</span>
+                          <span className="font-bold">{character.charisma}</span>
                         </div>
                       </div>
                     </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </>
           )}
         </div>
