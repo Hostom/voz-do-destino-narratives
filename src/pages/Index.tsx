@@ -30,6 +30,7 @@ import { ItemRewardNotification } from "@/components/ItemRewardNotification";
 import { ItemTradeNotifications } from "@/components/ItemTradeNotifications";
 import { CraftingPanel } from "@/components/CraftingPanel";
 import { MerchantPanel } from "@/components/MerchantPanel";
+import { AuctionPanel } from "@/components/AuctionPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface GMMessage {
@@ -64,6 +65,7 @@ const Index = () => {
   const [showMobileInventory, setShowMobileInventory] = useState(false);
   const [showMobileCharacter, setShowMobileCharacter] = useState(false);
   const [merchantActive, setMerchantActive] = useState(false);
+  const [auctionsActive, setAuctionsActive] = useState(false);
 
   // Use gm_messages as single source of truth for all players
   // useCollection will handle empty roomId gracefully
@@ -132,6 +134,46 @@ const Index = () => {
         (payload) => {
           const newData = payload.new as any;
           setMerchantActive(newData.merchant_active);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [room?.id]);
+
+  // Load auction status when room changes
+  useEffect(() => {
+    if (!room) {
+      setAuctionsActive(false);
+      return;
+    }
+
+    const loadAuctionStatus = async () => {
+      const { data, count } = await supabase
+        .from("merchant_auctions")
+        .select("*", { count: "exact", head: true })
+        .eq("room_id", room.id)
+        .eq("status", "active");
+
+      setAuctionsActive((count || 0) > 0);
+    };
+
+    loadAuctionStatus();
+
+    const channel = supabase
+      .channel(`auctions-status-index-${room.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'merchant_auctions',
+          filter: `room_id=eq.${room.id}`
+        },
+        () => {
+          loadAuctionStatus();
         }
       )
       .subscribe();
@@ -1068,11 +1110,14 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                       </SheetHeader>
                       <div className="mt-4">
                         <Tabs defaultValue="inventory">
-                          <TabsList className={`grid w-full ${merchantActive ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                          <TabsList className={`grid w-full ${merchantActive && auctionsActive ? 'grid-cols-4' : merchantActive || auctionsActive ? 'grid-cols-3' : 'grid-cols-2'}`}>
                             <TabsTrigger value="inventory">Inventário</TabsTrigger>
                             <TabsTrigger value="crafting">Crafting</TabsTrigger>
                             {merchantActive && (
                               <TabsTrigger value="merchant">Mercador</TabsTrigger>
+                            )}
+                            {auctionsActive && (
+                              <TabsTrigger value="auction">Leilão</TabsTrigger>
                             )}
                           </TabsList>
 
@@ -1114,6 +1159,23 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                             ) : (
                               <p className="text-sm text-muted-foreground text-center py-8">
                                 Entre em uma sala para acessar o mercador
+                              </p>
+                            )}
+                          </TabsContent>
+
+                          <TabsContent value="auction" className="mt-4">
+                            {room ? (
+                              <AuctionPanel
+                                characterId={character.id}
+                                roomId={room.id}
+                                goldPieces={character.gold_pieces}
+                                onGoldChange={() => {
+                                  window.location.reload();
+                                }}
+                              />
+                            ) : (
+                              <p className="text-sm text-muted-foreground text-center py-8">
+                                Entre em uma sala para acessar leilões
                               </p>
                             )}
                           </TabsContent>
@@ -1368,11 +1430,14 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                   </SheetHeader>
                   <div className="mt-4">
                     <Tabs defaultValue="inventory">
-                      <TabsList className={`grid w-full ${merchantActive ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                      <TabsList className={`grid w-full ${merchantActive && auctionsActive ? 'grid-cols-4' : merchantActive || auctionsActive ? 'grid-cols-3' : 'grid-cols-2'}`}>
                         <TabsTrigger value="inventory">Inventário</TabsTrigger>
                         <TabsTrigger value="crafting">Crafting</TabsTrigger>
                         {merchantActive && (
                           <TabsTrigger value="merchant">Mercador</TabsTrigger>
+                        )}
+                        {auctionsActive && (
+                          <TabsTrigger value="auction">Leilão</TabsTrigger>
                         )}
                       </TabsList>
 
@@ -1413,6 +1478,23 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                         ) : (
                           <p className="text-sm text-muted-foreground text-center py-8">
                             Entre em uma sala para acessar o mercador
+                          </p>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="auction" className="mt-4">
+                        {room ? (
+                          <AuctionPanel
+                            characterId={character.id}
+                            roomId={room.id}
+                            goldPieces={character.gold_pieces}
+                            onGoldChange={() => {
+                              window.location.reload();
+                            }}
+                          />
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            Entre em uma sala para acessar leilões
                           </p>
                         )}
                       </TabsContent>

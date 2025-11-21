@@ -143,6 +143,45 @@ export type Database = {
           },
         ]
       }
+      auction_bids: {
+        Row: {
+          auction_id: string
+          bid_amount: number
+          character_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          auction_id: string
+          bid_amount: number
+          character_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          auction_id?: string
+          bid_amount?: number
+          character_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_bids_auction_id_fkey"
+            columns: ["auction_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_auctions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auction_bids_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       character_items: {
         Row: {
           character_id: string
@@ -634,6 +673,78 @@ export type Database = {
           to_character_id?: string
         }
         Relationships: []
+      }
+      merchant_auctions: {
+        Row: {
+          created_at: string
+          created_by: string
+          current_bidder_id: string | null
+          current_price: number
+          description: string | null
+          end_time: string
+          id: string
+          item_name: string
+          item_type: string
+          properties: Json | null
+          room_id: string
+          start_time: string
+          starting_price: number
+          status: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          current_bidder_id?: string | null
+          current_price: number
+          description?: string | null
+          end_time: string
+          id?: string
+          item_name: string
+          item_type?: string
+          properties?: Json | null
+          room_id: string
+          start_time?: string
+          starting_price: number
+          status?: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          current_bidder_id?: string | null
+          current_price?: number
+          description?: string | null
+          end_time?: string
+          id?: string
+          item_name?: string
+          item_type?: string
+          properties?: Json | null
+          room_id?: string
+          start_time?: string
+          starting_price?: number
+          status?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_auctions_current_bidder_id_fkey"
+            columns: ["current_bidder_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_auctions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       merchant_bargains: {
         Row: {

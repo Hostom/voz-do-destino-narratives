@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { GMXPDistribution } from "./GMXPDistribution";
 import { GMItemDistribution } from "./GMItemDistribution";
 import { GMMerchantManager } from "./GMMerchantManager";
+import { GMAuctionManager } from "./GMAuctionManager";
 
 interface NPC {
   id: string;
@@ -52,6 +53,7 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
   const [npcs, setNpcs] = useState<NPC[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [gmId, setGmId] = useState<string>("");
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -74,6 +76,7 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
 
   useEffect(() => {
     loadNPCs();
+    loadGmId();
 
     const channel = supabase
       .channel(`npcs-${roomId}`)
@@ -95,6 +98,18 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
       supabase.removeChannel(channel);
     };
   }, [roomId]);
+
+  const loadGmId = async () => {
+    const { data } = await supabase
+      .from("rooms")
+      .select("gm_id")
+      .eq("id", roomId)
+      .single();
+
+    if (data) {
+      setGmId(data.gm_id);
+    }
+  };
 
   const loadNPCs = async () => {
     const { data, error } = await supabase
@@ -524,6 +539,7 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
             }))} 
           />
           <GMMerchantManager roomId={roomId} />
+          <GMAuctionManager roomId={roomId} gmId={gmId} />
         </div>
       )}
     </Card>

@@ -36,6 +36,13 @@ interface MerchantPanelProps {
   onGoldChange: () => void;
 }
 
+interface Reputation {
+  level: string;
+  discount: number;
+  markup: number;
+  color: string;
+}
+
 export function MerchantPanel({ characterId, roomId, goldPieces, charisma, onGoldChange }: MerchantPanelProps) {
   const { toast } = useToast();
   const [merchantItems, setMerchantItems] = useState<MerchantItem[]>([]);
@@ -43,12 +50,14 @@ export function MerchantPanel({ characterId, roomId, goldPieces, charisma, onGol
   const [selectedQuantity, setSelectedQuantity] = useState<Record<string, number>>({});
   const [merchantActive, setMerchantActive] = useState(false);
   const [bargainDiscounts, setBargainDiscounts] = useState<Record<string, number>>({});
+  const [reputation, setReputation] = useState<Reputation>({ level: "Neutro", discount: 0, markup: 0, color: "text-muted-foreground" });
 
   useEffect(() => {
     loadMerchantStatus();
     loadMerchantItems();
     loadInventory();
     loadBargains();
+    loadReputation();
 
     const channel = supabase
       .channel(`merchant-status-${roomId}`)
@@ -143,6 +152,37 @@ export function MerchantPanel({ characterId, roomId, goldPieces, charisma, onGol
     }
   };
 
+  const loadReputation = async () => {
+    const { data } = await supabase
+      .from("merchant_bargains")
+      .select("success")
+      .eq("character_id", characterId)
+      .eq("room_id", roomId);
+
+    if (data && data.length > 0) {
+      const successes = data.filter((b) => b.success).length;
+      const failures = data.length - successes;
+      const ratio = successes / data.length;
+
+      // Calculate reputation based on success ratio
+      let rep: Reputation;
+      if (ratio >= 0.8 && successes >= 5) {
+        rep = { level: "Lendário", discount: 15, markup: 0, color: "text-amber-500" };
+      } else if (ratio >= 0.7 && successes >= 3) {
+        rep = { level: "Excelente", discount: 10, markup: 0, color: "text-green-500" };
+      } else if (ratio >= 0.6) {
+        rep = { level: "Bom", discount: 5, markup: 0, color: "text-blue-500" };
+      } else if (ratio >= 0.4) {
+        rep = { level: "Neutro", discount: 0, markup: 0, color: "text-muted-foreground" };
+      } else if (ratio >= 0.2) {
+        rep = { level: "Ruim", discount: 0, markup: 10, color: "text-orange-500" };
+      } else {
+        rep = { level: "Terrível", discount: 0, markup: 20, color: "text-destructive" };
+      }
+      setReputation(rep);
+    }
+  };
+
   const handleBargain = async (item: MerchantItem) => {
     // Check if already bargained
     if (bargainDiscounts[item.id] !== undefined) {
@@ -226,8 +266,11 @@ export function MerchantPanel({ characterId, roomId, goldPieces, charisma, onGol
   };
 
   const getDiscountedPrice = (itemId: string, basePrice: number): number => {
-    const discount = bargainDiscounts[itemId] || 0;
-    return Math.floor(basePrice * (1 - discount / 100));
+    const bargainDiscount = bargainDiscounts[itemId] || 0;
+    // Apply reputation modifier
+    const priceWithReputation = basePrice * (1 + reputation.markup / 100) * (1 - reputation.discount / 100);
+    // Then apply bargain discount
+    return Math.floor(priceWithReputation * (1 - bargainDiscount / 100));
   };
 
   const handleBuy = async (item: MerchantItem) => {
@@ -412,9 +455,21 @@ export function MerchantPanel({ characterId, roomId, goldPieces, charisma, onGol
           <ShoppingCart className="h-5 w-5" />
           Mercador Itinerante
         </CardTitle>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Coins className="h-4 w-4" />
-          <span>Seu ouro: {goldPieces} PO</span>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Coins className="h-4 w-4" />
+            <span>Seu ouro: {goldPieces} PO</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <TrendingDown className="h-4 w-4" />
+            <span>Reputação: <span className={`font-semibold ${reputation.color}`}>{reputation.level}</span></span>
+            {reputation.discount > 0 && (
+              <Badge variant="secondary" className="text-xs">-{reputation.discount}% em tudo</Badge>
+            )}
+            {reputation.markup > 0 && (
+              <Badge variant="destructive" className="text-xs">+{reputation.markup}% em tudo</Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
