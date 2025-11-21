@@ -31,7 +31,7 @@ export const ChatInputWithActions = ({
   };
 
   return (
-    <div className="border-t border-border/50 backdrop-blur-epic bg-card/30 p-3 md:p-4 safe-bottom">
+    <div className="border-t border-border/50 backdrop-blur-epic bg-card/30 px-2 py-3 md:px-2 md:py-4 safe-bottom">
       <div className="container mx-auto max-w-4xl flex gap-1.5 items-start">
         {isMobile && (
           <Popover open={open} onOpenChange={setOpen}>
