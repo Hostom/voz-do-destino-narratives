@@ -63,6 +63,7 @@ const Index = () => {
   const [showMobileDice, setShowMobileDice] = useState(false);
   const [showMobileInventory, setShowMobileInventory] = useState(false);
   const [showMobileCharacter, setShowMobileCharacter] = useState(false);
+  const [merchantActive, setMerchantActive] = useState(false);
 
   // Use gm_messages as single source of truth for all players
   // useCollection will handle empty roomId gracefully
@@ -96,6 +97,49 @@ const Index = () => {
     };
     checkGMStatus();
   }, [room?.gm_id]);
+
+  // Load merchant status when room changes
+  useEffect(() => {
+    if (!room) {
+      setMerchantActive(false);
+      return;
+    }
+
+    const loadMerchantStatus = async () => {
+      const { data } = await supabase
+        .from("rooms")
+        .select("merchant_active")
+        .eq("id", room.id)
+        .single();
+
+      if (data) {
+        setMerchantActive(data.merchant_active);
+      }
+    };
+
+    loadMerchantStatus();
+
+    const channel = supabase
+      .channel(`merchant-status-index-${room.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms',
+          filter: `id=eq.${room.id}`
+        },
+        (payload) => {
+          const newData = payload.new as any;
+          setMerchantActive(newData.merchant_active);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [room?.id]);
 
   // Check auth status and restore session state
   useEffect(() => {
@@ -1024,10 +1068,12 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                       </SheetHeader>
                       <div className="mt-4">
                         <Tabs defaultValue="inventory">
-                          <TabsList className="grid w-full grid-cols-3">
+                          <TabsList className={`grid w-full ${merchantActive ? 'grid-cols-3' : 'grid-cols-2'}`}>
                             <TabsTrigger value="inventory">Inventário</TabsTrigger>
                             <TabsTrigger value="crafting">Crafting</TabsTrigger>
-                            <TabsTrigger value="merchant">Mercador</TabsTrigger>
+                            {merchantActive && (
+                              <TabsTrigger value="merchant">Mercador</TabsTrigger>
+                            )}
                           </TabsList>
 
                           <TabsContent value="inventory" className="mt-4">
@@ -1321,10 +1367,12 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                   </SheetHeader>
                   <div className="mt-4">
                     <Tabs defaultValue="inventory">
-                      <TabsList className="grid w-full grid-cols-3">
+                      <TabsList className={`grid w-full ${merchantActive ? 'grid-cols-3' : 'grid-cols-2'}`}>
                         <TabsTrigger value="inventory">Inventário</TabsTrigger>
                         <TabsTrigger value="crafting">Crafting</TabsTrigger>
-                        <TabsTrigger value="merchant">Mercador</TabsTrigger>
+                        {merchantActive && (
+                          <TabsTrigger value="merchant">Mercador</TabsTrigger>
+                        )}
                       </TabsList>
 
                       <TabsContent value="inventory" className="mt-4">

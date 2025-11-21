@@ -40,11 +40,66 @@ export function MerchantPanel({ characterId, roomId, goldPieces, onGoldChange }:
   const [merchantItems, setMerchantItems] = useState<MerchantItem[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [selectedQuantity, setSelectedQuantity] = useState<Record<string, number>>({});
+  const [merchantActive, setMerchantActive] = useState(false);
 
   useEffect(() => {
+    loadMerchantStatus();
     loadMerchantItems();
     loadInventory();
+
+    const channel = supabase
+      .channel(`merchant-status-${roomId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms',
+          filter: `id=eq.${roomId}`
+        },
+        (payload) => {
+          const newData = payload.new as any;
+          if (newData.merchant_active !== merchantActive) {
+            setMerchantActive(newData.merchant_active);
+            if (newData.merchant_active) {
+              toast({
+                title: "🏪 Mercador Disponível!",
+                description: "O mercador está agora aberto para negócios",
+              });
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'merchant_items',
+          filter: `room_id=eq.${roomId}`
+        },
+        () => {
+          loadMerchantItems();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [roomId, characterId]);
+
+  const loadMerchantStatus = async () => {
+    const { data } = await supabase
+      .from("rooms")
+      .select("merchant_active")
+      .eq("id", roomId)
+      .single();
+
+    if (data) {
+      setMerchantActive(data.merchant_active);
+    }
+  };
 
   const loadMerchantItems = async () => {
     const { data } = await supabase
@@ -226,6 +281,22 @@ export function MerchantPanel({ characterId, roomId, goldPieces, onGoldChange }:
     very_rare: "bg-purple-500",
     legendary: "bg-amber-500",
   };
+
+  if (!merchantActive) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-8 text-muted-foreground">
+            <ShoppingCart className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>Mercador não disponível</p>
+            <p className="text-xs mt-1">
+              Aguarde o GM abrir a loja ou peça para visitar um mercador
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
