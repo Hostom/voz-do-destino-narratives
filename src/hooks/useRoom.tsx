@@ -554,6 +554,52 @@ export const useRoom = () => {
     if (room?.id) loadPlayers(room.id);
   };
 
+  const reconnectToRoom = async (roomId: string) => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Check if user is still in the room
+      const { data: playerData, error: playerError } = await supabase
+        .from('room_players')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (playerError) throw playerError;
+      if (!playerData) throw new Error("Você não está mais nesta sala");
+
+      // Load room data
+      const { data: roomData, error: roomError } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (roomError) throw roomError;
+
+      setRoom(roomData);
+      toast({
+        title: "Sessão Restaurada",
+        description: `Reconectado à sala ${roomData.room_code}`,
+      });
+
+      return roomData;
+    } catch (error) {
+      console.error("Error reconnecting to room:", error);
+      toast({
+        title: "Erro ao reconectar",
+        description: error instanceof Error ? error.message : "Não foi possível reconectar à sala",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     room,
     players,
@@ -567,5 +613,6 @@ export const useRoom = () => {
     endCombat,
     startSession,
     refreshPlayers,
+    reconnectToRoom,
   };
 };
