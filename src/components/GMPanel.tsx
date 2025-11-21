@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { GMXPDistribution } from "./GMXPDistribution";
 import { GMItemDistribution } from "./GMItemDistribution";
 import { GMAuctionManager } from "./GMAuctionManager";
+import { GMShopManager } from "./shop/GMShopManager";
 
 interface NPC {
   id: string;
@@ -537,6 +538,7 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
               character_name: p.characters!.name
             }))} 
           />
+          <GMShopManager roomId={roomId} />
           <GMAuctionManager roomId={roomId} gmId={gmId} />
         </div>
       )}

@@ -9,7 +9,8 @@ export type Personality = "friendly" | "neutral" | "hostile";
 export interface ShopItem {
   id: string;
   name: string;
-  description: string;
+  category?: string;
+  description?: string;
   basePrice: number;
   finalPrice: number;
   rarity: Rarity;
