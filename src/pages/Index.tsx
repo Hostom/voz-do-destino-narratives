@@ -50,7 +50,7 @@ const Index = () => {
   const [isGM, setIsGM] = useState(false);
   const [isReturningToGame, setIsReturningToGame] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, startSession, refreshPlayers } = useRoom();
+  const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, startSession, refreshPlayers, reconnectToRoom } = useRoom();
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -136,43 +136,12 @@ const Index = () => {
       
       // Check if session is recent (less than 24h)
       const hoursSinceLastSession = (Date.now() - parsed.timestamp) / (1000 * 60 * 60);
-      if (hoursSinceLastSession < 24 && parsed.sessionActive) {
-        // Try to reconnect to the room
-        const reconnectToRoom = async () => {
-          try {
-            const { data: roomData, error: roomError } = await supabase
-              .from('rooms')
-              .select('*')
-              .eq('id', parsed.roomId)
-              .single();
-
-            if (roomError || !roomData) {
-              console.log('Room no longer exists, clearing saved session');
-              localStorage.removeItem('activeRoomSession');
-              return;
-            }
-
-            // Check if user is still in the room
-            const { data: playerData, error: playerError } = await supabase
-              .from('room_players')
-              .select('*')
-              .eq('room_id', parsed.roomId)
-              .eq('user_id', user.id)
-              .maybeSingle();
-
-            if (playerError || !playerData) {
-              console.log('User no longer in room, clearing saved session');
-              localStorage.removeItem('activeRoomSession');
-              return;
-            }
-
-            // Reconnect successfully
-            console.log('Reconnecting to saved session:', parsed.roomCode);
-            toast({
-              title: "Sessão Restaurada",
-              description: `Reconectando à sala ${parsed.roomCode}`,
-            });
-
+      if (hoursSinceLastSession < 24) {
+        // Try to reconnect using the useRoom hook
+        const attemptReconnect = async () => {
+          const roomData = await reconnectToRoom(parsed.roomId);
+          
+          if (roomData) {
             // Set the view based on room state
             if (roomData.combat_active) {
               setView('combat');
@@ -181,19 +150,19 @@ const Index = () => {
             } else {
               setView('lobby');
             }
-          } catch (error) {
-            console.error('Error reconnecting to room:', error);
+          } else {
+            // Failed to reconnect, clear saved session
             localStorage.removeItem('activeRoomSession');
           }
         };
 
-        reconnectToRoom();
+        attemptReconnect();
       } else {
         // Session too old, clear it
         localStorage.removeItem('activeRoomSession');
       }
     }
-  }, [user, room, authLoading, characterLoading, toast]);
+  }, [user, room, authLoading, characterLoading, reconnectToRoom]);
 
   // Clear session info when leaving room
   useEffect(() => {
