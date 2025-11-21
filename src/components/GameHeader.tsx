@@ -150,6 +150,11 @@ export const GameHeader = ({ onLogout, onBackToCharacterSelect, onBackToLobby, r
               <span className="text-muted-foreground text-xs md:text-sm whitespace-nowrap">
                 {roomCode ? `Sala: ${roomCode}` : 'Sistema Ativo'}
               </span>
+              {players.length > 0 && (
+                <span className="text-muted-foreground text-xs md:text-sm">
+                  ({players.filter(p => p.is_ready).length}/{players.length})
+                </span>
+              )}
             </div>
 
             {/* Players Panel */}
