@@ -46,7 +46,6 @@ const Index = () => {
   const [showCreation, setShowCreation] = useState(false);
   const [allCharacters, setAllCharacters] = useState<Character[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentSpeakingIndex, setCurrentSpeakingIndex] = useState<number | null>(null);
   const [view, setView] = useState<'menu' | 'create' | 'join' | 'history' | 'lobby' | 'combat' | 'game'>('menu');
   const [isGM, setIsGM] = useState(false);
   const [isReturningToGame, setIsReturningToGame] = useState(false);
@@ -946,10 +945,6 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                         role={msg.sender === "GM" ? "assistant" : "user"}
                         content={msg.content ?? msg.message ?? ""}
                         characterName={msg.sender === "player" ? msg.character_name : undefined}
-                        onSpeak={(content) => {
-                          setCurrentSpeakingIndex(idx);
-                        }}
-                        isSpeaking={currentSpeakingIndex === idx}
                       />
                     ))}
                     {isLoading && (
@@ -1142,10 +1137,6 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                     role={msg.sender === "GM" ? "assistant" : "user"}
                     content={msg.content ?? msg.message ?? ""}
                     characterName={msg.sender === "player" ? msg.character_name : undefined}
-                    onSpeak={(content) => {
-                      setCurrentSpeakingIndex(idx);
-                    }}
-                    isSpeaking={currentSpeakingIndex === idx}
                   />
                 ))}
                 {isLoading && (
@@ -1194,10 +1185,6 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                       role={msg.sender === "GM" ? "assistant" : "user"}
                       content={msg.content ?? msg.message ?? ""}
                       characterName={msg.sender === "player" ? msg.character_name : undefined}
-                      onSpeak={(content) => {
-                        setCurrentSpeakingIndex(idx);
-                      }}
-                      isSpeaking={currentSpeakingIndex === idx}
                     />
                   ))}
                   {isLoading && (
