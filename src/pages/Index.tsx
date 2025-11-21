@@ -26,6 +26,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useCollection } from "@/hooks/useCollection";
 import { CharacterStatsBar } from "@/components/CharacterStatsBar";
 import { XPNotification } from "@/components/XPNotification";
+import { ItemRewardNotification } from "@/components/ItemRewardNotification";
 
 interface GMMessage {
   id: string;
@@ -817,7 +818,12 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 relative overflow-hidden">
       {/* XP Notification System */}
-      {character && <XPNotification characterId={character.id} />}
+      {character && (
+        <>
+          <XPNotification characterId={character.id} />
+          <ItemRewardNotification characterId={character.id} />
+        </>
+      )}
       
       {/* Background effects */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent"></div>

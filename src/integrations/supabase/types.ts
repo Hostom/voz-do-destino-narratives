@@ -500,6 +500,54 @@ export type Database = {
           },
         ]
       }
+      item_rewards: {
+        Row: {
+          auto_added: boolean
+          awarded_by: string
+          character_id: string
+          created_at: string
+          description: string | null
+          id: string
+          item_name: string
+          item_type: string
+          properties: Json | null
+          quantity: number
+          reason: string | null
+          room_id: string
+          weight: number
+        }
+        Insert: {
+          auto_added?: boolean
+          awarded_by: string
+          character_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_name: string
+          item_type?: string
+          properties?: Json | null
+          quantity?: number
+          reason?: string | null
+          room_id: string
+          weight?: number
+        }
+        Update: {
+          auto_added?: boolean
+          awarded_by?: string
+          character_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_name?: string
+          item_type?: string
+          properties?: Json | null
+          quantity?: number
+          reason?: string | null
+          room_id?: string
+          weight?: number
+        }
+        Relationships: []
+      }
       npcs: {
         Row: {
           armor_class: number
