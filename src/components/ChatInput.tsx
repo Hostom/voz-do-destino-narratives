@@ -20,39 +20,38 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   };
 
   return (
-    <div className="border-t border-border/50 backdrop-blur-epic bg-card/30 p-2 md:p-6 safe-bottom">
-      <form onSubmit={handleSubmit} className="container mx-auto max-w-4xl">
-        <div className="flex gap-2 md:gap-3">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Descreva sua ação ou fale com o mestre..."
-            className="min-h-[60px] md:min-h-[80px] resize-none bg-background/50 border-border/50 focus:border-primary/50 transition-colors text-sm md:text-base touch-manipulation"
-            disabled={disabled}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
-          <Button
-            type="submit"
-            disabled={!input.trim() || disabled}
-            className="h-full bg-primary hover:bg-primary/90 active:bg-primary/80 text-primary-foreground shadow-epic px-3 md:px-4 touch-manipulation"
-          >
-            {disabled ? (
-              <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4 md:h-5 md:w-5" />
-            )}
-          </Button>
-        </div>
-        
-        <p className="text-xs text-muted-foreground mt-1.5 md:mt-2 hidden sm:block">
-          Enter para enviar · Shift+Enter para nova linha
-        </p>
-      </form>
-    </div>
+    <form onSubmit={handleSubmit} className="flex-1 flex flex-col gap-2">
+      <div className="flex gap-2">
+        <Textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Descreva sua ação ou fale com o mestre..."
+          className="flex-1 min-h-[48px] resize-none bg-background border-border focus:border-primary transition-colors rounded-lg text-sm touch-manipulation"
+          disabled={disabled}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
+        />
+        <Button
+          type="submit"
+          size="icon"
+          disabled={!input.trim() || disabled}
+          className="h-12 w-12 shrink-0 rounded-lg bg-primary hover:bg-primary/90 shadow-md transition-all"
+        >
+          {disabled ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Send className="h-5 w-5" />
+          )}
+        </Button>
+      </div>
+      
+      <p className="text-xs text-muted-foreground hidden sm:block px-1">
+        Enter para enviar · Shift+Enter para nova linha
+      </p>
+    </form>
   );
 };
