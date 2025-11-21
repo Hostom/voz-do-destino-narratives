@@ -87,40 +87,21 @@ Sua missão é criar, mestrar e conduzir histórias interativas, reagindo às es
   - Monstros atacando
 • Formato: "[INICIAR_COMBATE]\n\nOs orcs rugem e avançam em sua direção! Três guerreiros brutais empunham..."
 
-🛒 SISTEMA DE LOJA (CRÍTICO)
-• Quando o jogador encontrar uma loja, mercador, ou NPC vendedor, você DEVE usar o formato [SHOP] para listar itens
-• O bloco [SHOP] será automaticamente extraído e enviado para a aba "Loja" do jogador
-• FORMATO OBRIGATÓRIO (siga exatamente este formato):
-  [SHOP]
-  NPC: Nome do Mercador
-  PERSONALITY: friendly|neutral|hostile
-  REPUTATION: 0
-  ---
-  Espada Longa — 1d8 dano cortante. Arma versátil para combate corpo a corpo (15 PO) [uncommon, normal]
-  Escudo de Madeira — +2 CA. Proteção básica (10 PO) [common, normal]
-  Poção de Cura — Restaura 2d4+2 HP. Líquido vermelho brilhante (50 PO) [uncommon, normal]
-  
-• Regras:
-  - Cada item: Nome — Descrição completa (Preço PO) [raridade, qualidade]
-  - Raridade: common, uncommon, rare, epic, legendary
-  - Qualidade: broken, normal, refined, perfect, legendary
-  - Personality do NPC: friendly (-10% preço), neutral (0%), hostile (+15%)
-  - Reputation: cada ponto dá -2% desconto adicional
-• O bloco [SHOP] será REMOVIDO da narrativa exibida ao jogador
-• Continue a narrativa APÓS o bloco sem mencionar os itens novamente
-• Exemplo completo:
-  "Você entra na forja. O anão Thorin martela uma espada e olha para você.
-  
-  [SHOP]
-  NPC: Thorin Martelo de Ferro
-  PERSONALITY: friendly
-  REPUTATION: 5
-  ---
-  Espada Longa +1 — 1d8+1 dano cortante. Lâmina encantada com runas élficas (300 PO) [rare, refined]
-  Escudo de Aço — +2 CA. Sólido e bem forjado (50 PO) [uncommon, normal]
-  Adaga de Prata — 1d4 dano perfurante. Eficaz contra mortos-vivos (25 PO) [uncommon, normal]
-  
-  Thorin limpa as mãos no avental: 'Procurando algo específico, aventureiro?'"
+🛒 SISTEMA DE LOJA (CRÍTICO - USE A FERRAMENTA create_shop)
+• Quando o jogador encontrar uma loja, mercador, ou NPC vendedor, você DEVE chamar a ferramenta create_shop
+• OBRIGATÓRIO: Sempre que narrar "você entra na loja", "o mercador mostra seus produtos", etc., CHAME create_shop
+• A ferramenta create_shop automaticamente cria a interface de loja para o jogador
+• Parâmetros obrigatórios:
+  - npc_name: Nome do mercador
+  - npc_personality: "friendly" (-10% preço), "neutral" (0%), "hostile" (+15%)
+  - npc_reputation: Reputação (cada ponto = -2% desconto, padrão 0)
+  - items: Array de itens com: name, description, base_price, rarity (common/uncommon/rare/epic/legendary), quality (broken/normal/refined/perfect/legendary)
+• Exemplo de uso:
+  1. Narre: "Você entra na forja de Thorin. O anão martela uma espada e olha para você."
+  2. CHAME create_shop com os dados da loja
+  3. Continue: "'Procurando algo específico, aventureiro?'"
+• SEMPRE crie pelo menos 5-10 itens variados para cada loja
+• Seja criativo com descrições e efeitos dos itens
 
 💬 INTERAÇÃO COM O JOGADOR
 • Nunca avance sem a ação do jogador
@@ -642,6 +623,59 @@ PERSONAGEM: ${char.name}
                       console.error("❌ Error processing tool call:", toolError);
                       console.error("Tool call details:", JSON.stringify(toolCall, null, 2));
                     }
+                  } else if (toolCall.function?.name === "create_shop") {
+                    try {
+                      const args = JSON.parse(toolCall.function.arguments);
+                      const { npc_name, npc_personality, npc_reputation = 0, items } = args;
+                      
+                      console.log("🛒 Processing create_shop tool call");
+                      console.log("Shop NPC:", npc_name);
+                      console.log("Items count:", items?.length || 0);
+                      
+                      if (items && items.length > 0 && roomId) {
+                        // Transform items to match ShopItem format
+                        const shopItems = items.map((item: any, index: number) => ({
+                          id: `item-${Date.now()}-${index}`,
+                          name: item.name,
+                          description: item.description,
+                          basePrice: item.base_price,
+                          finalPrice: item.base_price, // Will be recalculated by update-shop
+                          rarity: item.rarity,
+                          quality: item.quality,
+                          stock: -1, // Unlimited
+                          attributes: {}, // Could be extracted from description if needed
+                        }));
+                        
+                        // Call update-shop function
+                        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+                        const updateShopUrl = `${supabaseUrl}/functions/v1/update-shop`;
+                        const updateShopResponse = await fetch(updateShopUrl, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                            'apikey': Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+                          },
+                          body: JSON.stringify({
+                            roomId: roomId,
+                            npcName: npc_name,
+                            npcPersonality: npc_personality,
+                            npcReputation: npc_reputation,
+                            items: shopItems,
+                          }),
+                        });
+                        
+                        if (updateShopResponse.ok) {
+                          console.log("✅ Shop created successfully via update-shop function");
+                        } else {
+                          const errorText = await updateShopResponse.text();
+                          console.error("❌ Error calling update-shop:", errorText);
+                        }
+                      }
+                    } catch (toolError) {
+                      console.error("❌ Error processing create_shop tool call:", toolError);
+                      console.error("Tool call details:", JSON.stringify(toolCall, null, 2));
+                    }
                   }
                 }
               } else {
@@ -675,8 +709,15 @@ PERSONAGEM: ${char.name}
                   
                   // Detect and process [SHOP] blocks with new format
                   let narrativeText = fullResponse.trim();
+                  console.log("🔍 Checking for [SHOP] block in response...");
+                  console.log("Response first 200 chars:", narrativeText.substring(0, 200));
+                  
                   const shopBlockRegex = /\[SHOP\]\s*\n([\s\S]*?)(?=\n\n[A-Z]|\n[A-Z][^a-z\n]*$|$)/i;
                   const shopMatch = narrativeText.match(shopBlockRegex);
+                  
+                  if (!shopMatch) {
+                    console.log("❌ No [SHOP] block found in response");
+                  }
                   
                   if (shopMatch) {
                     console.log("🛒 [SHOP] block detected! Processing shop items...");
