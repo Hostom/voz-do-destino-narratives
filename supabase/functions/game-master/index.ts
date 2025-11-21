@@ -562,7 +562,7 @@ PERSONAGEM: ${char.name}
     
     console.log("🔄 Calling Lovable AI Gateway...");
     console.log("📊 Request details:", {
-      model: "google/gemini-2.5-flash",
+      model: "openai/gpt-5-mini",
       messageCount: messageHistory.length,
       hasTools: true,
       streaming: true
@@ -575,7 +575,7 @@ PERSONAGEM: ${char.name}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "openai/gpt-5-mini",
         messages: messageHistory,
         tools: tools,
         tool_choice: "auto",
@@ -831,124 +831,6 @@ PERSONAGEM: ${char.name}
                 }
               }
               
-              // FALLBACK SYSTEM: Auto-extract shop data if mentioned but not created
-              const narrativaMencionaLoja = /loja|mercador|vendedor|artesão|comerciante|feira|forja|alquimia|joalheria|armeiro/i.test(fullResponse);
-              const hasCreateShopCall = toolCalls.some(tc => tc.function?.name === 'create_shop');
-              
-              if (narrativaMencionaLoja && !hasCreateShopCall) {
-                console.warn("⚠️ Shop mentioned but no tool call - activating FALLBACK extraction");
-                console.log("🤖 Calling AI to extract shop data from narrative...");
-                
-                try {
-                  // Extract shop data using a focused AI call
-                  const extractionPrompt = `Analise esta narrativa de RPG e extraia os dados da loja/mercador mencionado.
-
-NARRATIVA:
-${fullResponse}
-
-TAREFA: Retorne um JSON válido com a estrutura exata abaixo. Se não houver loja clara, retorne null.
-
-{
-  "npc_name": "Nome do mercador ou loja",
-  "npc_personality": "friendly" | "neutral" | "hostile",
-  "npc_reputation": 0,
-  "items": [
-    {
-      "name": "Nome do item",
-      "description": "Descrição detalhada",
-      "base_price": 100,
-      "rarity": "common" | "uncommon" | "rare" | "epic" | "legendary",
-      "quality": "broken" | "normal" | "refined" | "perfect" | "legendary"
-    }
-  ]
-}
-
-REGRAS:
-- Crie 8-12 itens variados apropriados para o tipo de loja
-- Preços realistas (common: 1-50 PO, uncommon: 50-200 PO, rare: 200-1000 PO, epic: 1000-5000 PO, legendary: 5000+ PO)
-- Descrições criativas e imersivas
-- Se for forja: armas, armaduras, ferramentas
-- Se for joalheria: anéis, colares, joias
-- Se for alquimia: poções, elixires, ingredientes
-- Se for loja geral: mix de itens úteis
-
-Retorne APENAS o JSON, sem texto adicional.`;
-
-                  const extractionResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      model: "google/gemini-2.5-flash",
-                      messages: [
-                        { role: "user", content: extractionPrompt }
-                      ],
-                      temperature: 0.7,
-                      max_tokens: 2000
-                    }),
-                  });
-
-                  if (extractionResponse.ok) {
-                    const extractionData = await extractionResponse.json();
-                    const extractedContent = extractionData.choices?.[0]?.message?.content?.trim();
-                    
-                    if (extractedContent) {
-                      console.log("📦 Extracted content:", extractedContent.substring(0, 200));
-                      
-                      // Parse JSON (remove markdown code blocks if present)
-                      let jsonStr = extractedContent;
-                      if (jsonStr.includes('```')) {
-                        jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-                      }
-                      
-                      const shopData = JSON.parse(jsonStr);
-                      
-                      if (shopData && shopData.items && shopData.items.length > 0) {
-                        console.log("✅ Successfully extracted shop data:", shopData.npc_name);
-                        console.log(`   Items: ${shopData.items.length}`);
-                        
-                        // Call update-shop function
-                        console.log("📡 Calling update-shop function...");
-                        const shopResponse = await fetch(
-                          `${Deno.env.get('SUPABASE_URL')}/functions/v1/update-shop`,
-                          {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
-                            },
-                            body: JSON.stringify({
-                              roomId: roomId,
-                              npcName: shopData.npc_name,
-                              npcPersonality: shopData.npc_personality || "neutral",
-                              npcReputation: shopData.npc_reputation || 0,
-                              items: shopData.items
-                            })
-                          }
-                        );
-
-                        if (shopResponse.ok) {
-                          const result = await shopResponse.json();
-                          console.log("🎉 FALLBACK SUCCESS: Shop created automatically!", result);
-                        } else {
-                          const errorText = await shopResponse.text();
-                          console.error("❌ Failed to call update-shop:", errorText);
-                        }
-                      } else {
-                        console.log("ℹ️ No valid shop data extracted (might be just narrative mention)");
-                      }
-                    }
-                  } else {
-                    console.error("❌ Extraction API call failed:", extractionResponse.status);
-                  }
-                } catch (e) {
-                  console.error("❌ Error in fallback shop extraction:", e);
-                }
-              } else if (hasCreateShopCall) {
-                console.log("✅ create_shop tool call detected - no fallback needed");
-              }
               
               // CRITICAL: ALWAYS save the complete GM response ONLY to gm_messages table
               // NEVER save to room_chat_messages or any other collection
