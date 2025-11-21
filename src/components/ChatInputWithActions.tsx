@@ -41,12 +41,12 @@ export const ChatInputWithActions = ({
           <PopoverTrigger asChild>
             <Button
               size="icon"
-              className="h-[60px] w-[60px] md:h-[80px] md:w-[80px] rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation shrink-0 mb-2 md:mb-6"
+              className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-epic bg-primary hover:bg-primary/90 touch-manipulation shrink-0 mb-2 md:mb-6"
             >
               {open ? (
-                <X className="h-5 w-5 md:h-6 md:w-6" />
+                <X className="h-4 w-4 md:h-5 md:w-5" />
               ) : (
-                <Plus className="h-5 w-5 md:h-6 md:w-6" />
+                <Plus className="h-4 w-4 md:h-5 md:w-5" />
               )}
             </Button>
           </PopoverTrigger>
