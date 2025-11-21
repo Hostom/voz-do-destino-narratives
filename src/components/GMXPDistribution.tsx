@@ -248,16 +248,47 @@ export const GMXPDistribution = ({ roomId, players }: GMXPDistributionProps) => 
             
             const participation = distribution[player.character.id] || 100;
             const xpAmount = calculatePlayerXP(player.character.id);
+            const newTotalXP = player.character.experience_points + xpAmount;
+            const newLevel = getLevelFromXP(newTotalXP);
+            const willLevelUp = newLevel > player.character.level;
+            const xpToNextLevel = getXPForLevel(newLevel);
+            const xpUntilNext = xpToNextLevel - newTotalXP;
 
             return (
-              <div key={player.character.id} className="space-y-2 p-3 border rounded-lg">
+              <div key={player.character.id} className="space-y-2 p-3 border rounded-lg bg-background/30">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium">{player.character.name}</span>
-                  <Badge variant="secondary">
-                    <Zap className="w-3 h-3 mr-1" />
-                    {xpAmount} XP
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{player.character.name}</span>
+                    <Badge variant="outline" className="text-xs">
+                      Nv {player.character.level}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {willLevelUp && (
+                      <Badge variant="default" className="bg-gradient-to-r from-primary to-yellow-500 animate-pulse">
+                        🎉 Level Up!
+                      </Badge>
+                    )}
+                    <Badge variant="secondary">
+                      <Zap className="w-3 h-3 mr-1" />
+                      +{xpAmount} XP
+                    </Badge>
+                  </div>
                 </div>
+                
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div>XP Atual: {player.character.experience_points.toLocaleString()}</div>
+                  <div>Novo XP: {newTotalXP.toLocaleString()}</div>
+                  {!willLevelUp && newLevel < 20 && (
+                    <div className="text-primary">Faltarão {xpUntilNext.toLocaleString()} XP para o nv {newLevel + 1}</div>
+                  )}
+                  {willLevelUp && (
+                    <div className="text-yellow-500 font-semibold">
+                      Subirá para o nível {newLevel}!
+                    </div>
+                  )}
+                </div>
+                
                 <div className="flex items-center gap-3">
                   <Slider
                     value={[participation]}

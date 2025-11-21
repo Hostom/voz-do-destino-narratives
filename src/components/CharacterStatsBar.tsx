@@ -1,8 +1,10 @@
-import { Heart, Star } from "lucide-react";
+import { Heart, Star, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getXPProgressPercentage } from "@/lib/dnd-xp-progression";
+import { getXPProgressPercentage, getXPToNextLevel, XP_TABLE } from "@/lib/dnd-xp-progression";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 interface CharacterStatsBarProps {
   characterId: string;
@@ -63,6 +65,10 @@ export const CharacterStatsBar = ({ characterId }: CharacterStatsBarProps) => {
 
   const hpPercentage = (stats.current_hp / stats.max_hp) * 100;
   const xpPercentage = getXPProgressPercentage(stats.experience_points, stats.level);
+  const xpToNext = getXPToNextLevel(stats.experience_points, stats.level);
+  const nextLevelXP = XP_TABLE[stats.level + 1];
+  const canLevelUp = stats.level < 20 && stats.experience_points >= nextLevelXP;
+  const nearLevelUp = xpPercentage >= 80 && !canLevelUp;
 
   return (
     <div className="flex flex-col gap-2 p-3 bg-card/50 border border-border/50 rounded-lg backdrop-blur">
@@ -82,19 +88,53 @@ export const CharacterStatsBar = ({ characterId }: CharacterStatsBarProps) => {
       </div>
       
       {/* XP Bar */}
-      <div className="flex items-center gap-2">
-        <Star className="h-4 w-4 text-primary flex-shrink-0" />
-        <div className="flex-1">
-          <Progress 
-            value={xpPercentage} 
-            className="h-2.5 bg-muted"
-            indicatorClassName="bg-primary"
-          />
-        </div>
-        <span className="text-xs font-medium min-w-[50px] text-right">
-          Nv {stats.level}
-        </span>
-      </div>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-2">
+              {canLevelUp ? (
+                <TrendingUp className="h-4 w-4 text-primary flex-shrink-0 animate-pulse" />
+              ) : (
+                <Star className="h-4 w-4 text-primary flex-shrink-0" />
+              )}
+              <div className="flex-1 relative">
+                <Progress 
+                  value={xpPercentage} 
+                  className={`h-2.5 bg-muted ${canLevelUp || nearLevelUp ? 'animate-pulse' : ''}`}
+                  indicatorClassName={canLevelUp ? "bg-gradient-to-r from-primary to-yellow-500" : "bg-primary"}
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                {canLevelUp && (
+                  <Badge variant="default" className="h-5 px-1 text-[10px] bg-gradient-to-r from-primary to-yellow-500 animate-pulse">
+                    UP!
+                  </Badge>
+                )}
+                <span className="text-xs font-medium min-w-[50px] text-right">
+                  Nv {stats.level}
+                </span>
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div className="space-y-1 text-xs">
+              <div className="font-semibold">Progresso de Experiência</div>
+              <div>XP Atual: {stats.experience_points.toLocaleString()}</div>
+              {stats.level < 20 ? (
+                <>
+                  <div>Próximo Nível: {nextLevelXP.toLocaleString()}</div>
+                  <div className="text-muted-foreground">Faltam: {xpToNext.toLocaleString()} XP</div>
+                  {canLevelUp && (
+                    <div className="text-primary font-semibold mt-2">✨ Pronto para subir de nível!</div>
+                  )}
+                </>
+              ) : (
+                <div className="text-yellow-500">Nível Máximo Alcançado!</div>
+              )}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 };
