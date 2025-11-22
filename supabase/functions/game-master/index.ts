@@ -759,12 +759,22 @@ PERSONAGEM: ${char.name}
                     if (dataStr && dataStr !== '[DONE]') {
                       try {
                         const data = JSON.parse(dataStr);
-                        const content = data.choices?.[0]?.delta?.content;
+                        const delta = data.choices?.[0]?.delta;
+                        
+                        // Capture content from both 'content' and 'reasoning' fields
+                        const content = delta?.content;
+                        const reasoning = delta?.reasoning;
+                        
                         if (content) {
                           fullResponse += content;
                         }
+                        // Gemini Pro sometimes only sends reasoning when using tools
+                        if (reasoning && !content) {
+                          console.log("📝 Capturing reasoning as narrative (no content field)");
+                          fullResponse += reasoning;
+                        }
+                        
                         // Collect tool calls progressively
-                        const delta = data.choices?.[0]?.delta;
                         if (delta?.tool_calls) {
                           console.log("🔧 Tool call detected in stream:", JSON.stringify(delta.tool_calls));
                           for (const tc of delta.tool_calls) {
@@ -1144,6 +1154,32 @@ PERSONAGEM: ${char.name}
                       bufferContent: buffer,
                       toolCallsCount: toolCalls.length
                     });
+                    
+                    // If we have tool calls but no narrative, create a default message
+                    if (toolCalls.length > 0 && roomId) {
+                      console.log("⚠️ No narrative text but tool calls present. Creating default message.");
+                      const toolNames = toolCalls.map(tc => tc.function?.name).join(", ");
+                      
+                      const { data: room } = await supabase
+                        .from("rooms")
+                        .select("gm_id")
+                        .eq("id", roomId)
+                        .single();
+                      
+                      if (room) {
+                        await supabase
+                          .from("gm_messages")
+                          .insert({
+                            room_id: roomId,
+                            player_id: room.gm_id,
+                            sender: "GM",
+                            character_name: "Voz do Destino",
+                            content: `_O Mestre está preparando algo... (ações executadas: ${toolNames})_`,
+                            type: "gm",
+                          });
+                        console.log("✅ Default message saved for tool-only response");
+                      }
+                    }
                   }
                   if (!roomId) {
                     console.error("❌ No roomId provided");
@@ -1168,12 +1204,22 @@ PERSONAGEM: ${char.name}
                 if (dataStr && dataStr !== '[DONE]') {
                   try {
                     const data = JSON.parse(dataStr);
-                    const content = data.choices?.[0]?.delta?.content;
+                    const delta = data.choices?.[0]?.delta;
+                    
+                    // Capture content from both 'content' and 'reasoning' fields
+                    const content = delta?.content;
+                    const reasoning = delta?.reasoning;
+                    
                     if (content) {
                       fullResponse += content;
                     }
+                    // Gemini Pro sometimes only sends reasoning when using tools
+                    if (reasoning && !content) {
+                      console.log("📝 Capturing reasoning as narrative (no content field)");
+                      fullResponse += reasoning;
+                    }
+                    
                     // Collect tool calls progressively
-                    const delta = data.choices?.[0]?.delta;
                     if (delta?.tool_calls) {
                       for (const tc of delta.tool_calls) {
                         const key = `${tc.index || 0}_${tc.id || 'default'}`;
