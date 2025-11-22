@@ -258,6 +258,7 @@ serve(async (req) => {
         .select(`
           user_id,
           character_id,
+          conditions,
           characters (
             id,
             name,
@@ -275,8 +276,7 @@ serve(async (req) => {
             charisma,
             proficiency_bonus,
             experience_points,
-            equipped_weapon,
-            conditions
+            equipped_weapon
           )
         `)
         .eq("room_id", roomId);
@@ -326,7 +326,7 @@ PERSONAGEM: ${char.name}
 - Bônus Proficiência: +${char.proficiency_bonus}
 - XP: ${char.experience_points}
 - Arma Equipada: ${char.equipped_weapon?.name || 'Desarmado'}
-- Condições: ${char.conditions && Array.isArray(char.conditions) && char.conditions.length > 0 ? char.conditions.join(', ') : 'Nenhuma'}
+- Condições: ${rp.conditions && Array.isArray(rp.conditions) && rp.conditions.length > 0 ? rp.conditions.join(', ') : 'Nenhuma'}
 `;
           }
         });
