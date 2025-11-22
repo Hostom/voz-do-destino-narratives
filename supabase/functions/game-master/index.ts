@@ -132,89 +132,24 @@ RESULTADO: Jogador vê os 10 itens na aba "Loja" + recebe narrativa fluida no ch
   - Monstros atacando
 • Formato: "[INICIAR_COMBATE]\n\nOs orcs rugem e avançam em sua direção! Três guerreiros brutais empunham..."
 
-🛒 SISTEMA DE LOJA - COMANDO OBRIGATÓRIO
+🛒 LOJA E COMÉRCIO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-REGRA ABSOLUTA: Você DEVE chamar create_shop IMEDIATAMENTE sempre que:
-• Mencionar uma loja, mercador, vendedor, artesão, comerciante, ou feira
-• Um jogador entrar em uma loja ou se aproximar de um vendedor
-• Aparecer qualquer NPC que vende itens
-
-⚠️ CRÍTICO: NÃO espere o jogador pedir itens específicos
-⚠️ CRÍTICO: NÃO pergunte "o que você procura?" antes de criar a loja
-⚠️ CRÍTICO: CRIE a loja PRIMEIRO, DEPOIS converse
+• Os jogadores têm acesso a uma aba "Loja" na interface onde podem comprar itens
+• A loja é configurada manualmente pelo GM através de uma interface dedicada
+• VOCÊ (IA) deve APENAS narrar a existência da loja e sua atmosfera
+• NUNCA liste itens ou preços no chat narrativo
+• NUNCA tente criar ou atualizar a loja via código ou ferramentas
+• Direcione os jogadores para a aba "Loja" se quiserem ver os itens disponíveis
 
 📋 FLUXO CORRETO:
-1. Narre: "Você entra na loja de Elara. Joias brilham nas vitrines."
-2. CHAME create_shop COM 8-12 itens variados (anéis, colares, pulseiras, etc)
-3. Continue: "Elara sorri. 'Bem-vindo! Vejo que admira minhas peças.'"
+1. Narre: "Você entra na loja de Elara. Joias brilham nas vitrines, e o aroma de incenso preenche o ar."
+2. Continue: "Elara, uma elfa de cabelos prateados, sorri. 'Bem-vindo! Fique à vontade para explorar minhas peças.'"
+3. Se o jogador perguntar sobre itens: "Os itens disponíveis estão organizados nas vitrines. Você pode conferir o inventário da loja na aba 'Loja'."
 
-❌ FLUXO ERRADO:
-1. Narre: "Você entra na loja de Elara."
-2. Pergunte: "O que você procura?"
-3. Espere resposta
-4. NÃO CRIE LOJA ← ERRO!
-
-📦 PARÂMETROS DA FERRAMENTA create_shop:
-• npc_name: Nome completo do mercador/loja
-  Exemplos: "Elara - Joias Arcanas", "Forja de Thorin", "Alquimia da Bruxa Verde"
-  
-• npc_personality: "friendly" | "neutral" | "hostile"
-  - friendly = preços -10% (mercador amigável, sorridente)
-  - neutral = preços normais (profissional, focado)
-  - hostile = preços +15% (rude, irritado, preconceituoso)
-  
-• npc_reputation: número (padrão 0)
-  - Jogadores novos = 0
-  - Cada ponto = -2% desconto adicional
-  
-• items: Array de 8-12 itens variados
-  SEMPRE inclua diversidade:
-  - Itens baratos (common, 1-10 PO)
-  - Itens médios (uncommon/rare, 50-200 PO)
-  - Itens caros (epic/legendary, 500-2000+ PO)
-  - Diferentes qualidades (broken, normal, refined, perfect, legendary)
-  
-  Para CADA item:
-  {
-    name: "Nome descritivo e atraente",
-    description: "Descrição detalhada dos efeitos/aparência (2-3 frases)",
-    base_price: número (preço base em ouro),
-    rarity: "common" | "uncommon" | "rare" | "epic" | "legendary",
-    quality: "broken" | "normal" | "refined" | "perfect" | "legendary"
-  }
-
-🎯 EXEMPLOS DE LOJAS POR TIPO:
-
-JOALHERIA (Elara):
-- Anel de Proteção (uncommon, refined, 150 PO)
-- Colar de Charme (common, normal, 25 PO)
-- Coroa de Prata (rare, perfect, 500 PO)
-- Bracelete Rúnico (epic, perfect, 1200 PO)
-- Anel Simples (common, normal, 5 PO)
-- Brincos de Safira (uncommon, refined, 200 PO)
-- Medalhão Amaldiçoado (rare, broken, 80 PO)
-- Tiara da Lua (legendary, legendary, 5000 PO)
-
-FORJA:
-- Espada Longa (common, normal, 15 PO)
-- Machado de Batalha (uncommon, refined, 80 PO)
-- Armadura de Placas (rare, perfect, 1500 PO)
-- Escudo Torre (common, refined, 40 PO)
-
-ALQUIMIA:
-- Poção de Cura (common, normal, 50 PO)
-- Antídoto Raro (uncommon, refined, 120 PO)
-- Elixir de Força (rare, perfect, 400 PO)
-- Veneno Mortal (epic, perfect, 800 PO)
-
-🔄 ATUALIZAÇÃO DE LOJAS:
-• Se o jogador retornar à MESMA loja = NÃO recrie, mantenha a existente
-• Se for uma NOVA loja/mercador = SEMPRE chame create_shop
-• Se o estoque mudar (vendas/reabastecimento) = chame create_shop novamente com novos itens
-
-💡 LEMBRE-SE:
-• Os itens aparecem automaticamente na aba "Loja" na interface
-• NUNCA liste itens no chat narrativo
+❌ NÃO FAÇA:
+• NÃO liste itens: "Ela tem espadas, poções, escudos..."
+• NÃO mencione preços: "Uma espada custa 50 PO..."
+• NÃO tente criar loja via ferramenta ou código
 • SEMPRE crie a loja ANTES de conversar sobre ela
 • Seja criativo nos nomes e descrições dos itens
 
@@ -598,64 +533,6 @@ PERSONAGEM: ${char.name}
             additionalProperties: false
           }
         }
-      },
-      {
-        type: "function",
-        function: {
-          name: "create_shop",
-          description: "Cria uma loja interativa com itens para os jogadores. OBRIGATÓRIO chamar esta ferramenta sempre que narrar um mercador, loja, ou vendedor. Os itens aparecerão em uma interface dedicada separada do chat.",
-          parameters: {
-            type: "object",
-            properties: {
-              npc_name: {
-                type: "string",
-                description: "Nome do mercador ou loja (ex: 'Forja do Thorin', 'Elara - Joias Mágicas')"
-              },
-              npc_personality: {
-                type: "string",
-                enum: ["friendly", "neutral", "hostile"],
-                description: "Personalidade do NPC que afeta preços: friendly (-10%), neutral (0%), hostile (+15%)"
-              },
-              npc_reputation: {
-                type: "number",
-                description: "Reputação do jogador com o NPC (cada ponto = -2% desconto). Padrão: 0"
-              },
-              items: {
-                type: "array",
-                description: "Lista de itens disponíveis na loja (mínimo 5-10 itens variados)",
-                items: {
-                  type: "object",
-                  properties: {
-                    name: {
-                      type: "string",
-                      description: "Nome do item (ex: 'Espada Longa', 'Poção de Cura')"
-                    },
-                    description: {
-                      type: "string",
-                      description: "Descrição detalhada do item e seus efeitos"
-                    },
-                    base_price: {
-                      type: "number",
-                      description: "Preço base em peças de ouro (será modificado por raridade, qualidade e personalidade)"
-                    },
-                    rarity: {
-                      type: "string",
-                      enum: ["common", "uncommon", "rare", "epic", "legendary"],
-                      description: "Raridade do item"
-                    },
-                    quality: {
-                      type: "string",
-                      enum: ["broken", "normal", "refined", "perfect", "legendary"],
-                      description: "Qualidade da fabricação do item"
-                    }
-                  },
-                  required: ["name", "description", "base_price", "rarity", "quality"]
-                }
-              }
-            },
-            required: ["npc_name", "npc_personality", "items"]
-          }
-        }
       }
     ];
     
@@ -874,59 +751,6 @@ PERSONAGEM: ${char.name}
                       }
                     } catch (toolError) {
                       console.error("❌ Error processing tool call:", toolError);
-                      console.error("Tool call details:", JSON.stringify(toolCall, null, 2));
-                    }
-                  } else if (toolCall.function?.name === "create_shop") {
-                    try {
-                      const args = JSON.parse(toolCall.function.arguments);
-                      const { npc_name, npc_personality, npc_reputation = 0, items } = args;
-                      
-                      console.log("🛒 Processing create_shop tool call");
-                      console.log("Shop NPC:", npc_name);
-                      console.log("Items count:", items?.length || 0);
-                      
-                      if (items && items.length > 0 && roomId) {
-                        // Transform items to match ShopItem format
-                        const shopItems = items.map((item: any, index: number) => ({
-                          id: `item-${Date.now()}-${index}`,
-                          name: item.name,
-                          description: item.description,
-                          basePrice: item.base_price,
-                          finalPrice: item.base_price, // Will be recalculated by update-shop
-                          rarity: item.rarity,
-                          quality: item.quality,
-                          stock: -1, // Unlimited
-                          attributes: {}, // Could be extracted from description if needed
-                        }));
-                        
-                        // Call update-shop function
-                        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-                        const updateShopUrl = `${supabaseUrl}/functions/v1/update-shop`;
-                        const updateShopResponse = await fetch(updateShopUrl, {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-                            'apikey': Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-                          },
-                          body: JSON.stringify({
-                            roomId: roomId,
-                            npcName: npc_name,
-                            npcPersonality: npc_personality,
-                            npcReputation: npc_reputation,
-                            items: shopItems,
-                          }),
-                        });
-                        
-                        if (updateShopResponse.ok) {
-                          console.log("✅ Shop created successfully via update-shop function");
-                        } else {
-                          const errorText = await updateShopResponse.text();
-                          console.error("❌ Error calling update-shop:", errorText);
-                        }
-                      }
-                    } catch (toolError) {
-                      console.error("❌ Error processing create_shop tool call:", toolError);
                       console.error("Tool call details:", JSON.stringify(toolCall, null, 2));
                     }
                   }
