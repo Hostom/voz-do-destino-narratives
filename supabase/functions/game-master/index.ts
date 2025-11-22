@@ -499,9 +499,14 @@ PERSONAGEM: ${char.name}
                 type: "string",
                 description: "Nome do comerciante/lojista (ex: 'Gareth, o Ferreiro', 'Lúcia, a Joalheira')"
               },
+              npc_description: {
+                type: "string",
+                description: "Breve descrição do NPC e da loja (ex: 'Um anão robusto com uma forja brilhante')"
+              },
               npc_personality: {
                 type: "string",
-                description: "Personalidade do NPC (ex: 'amigável', 'suspeito', 'honesto', 'ganancioso')"
+                enum: ["friendly", "neutral", "hostile"],
+                description: "Personalidade do NPC: 'friendly' (amigável), 'neutral' (neutro), 'hostile' (hostil)"
               },
               npc_reputation: {
                 type: "number",
@@ -515,38 +520,48 @@ PERSONAGEM: ${char.name}
                   properties: {
                     id: {
                       type: "string",
-                      description: "ID único do item (ex: 'sword_1', 'potion_healing')"
+                      description: "ID único do item (ex: 'sword_longsword_1', 'ring_silver_2')"
                     },
                     name: {
                       type: "string",
-                      description: "Nome do item (ex: 'Espada Longa', 'Poção de Cura')"
+                      description: "Nome do item (ex: 'Espada Longa', 'Anel de Prata')"
                     },
-                    base_price: {
+                    basePrice: {
                       type: "number",
                       description: "Preço base em peças de ouro (ex: 50)"
                     },
+                    finalPrice: {
+                      type: "number",
+                      description: "Preço final calculado (use o mesmo valor que basePrice inicialmente)"
+                    },
                     description: {
                       type: "string",
-                      description: "Descrição do item"
+                      description: "Descrição detalhada do item"
                     },
                     rarity: {
                       type: "string",
-                      description: "Raridade: 'common', 'uncommon', 'rare', 'very_rare', 'legendary'"
+                      enum: ["common", "uncommon", "rare", "epic", "legendary"],
+                      description: "Raridade do item"
                     },
-                    item_type: {
+                    quality: {
                       type: "string",
-                      description: "Tipo: 'weapon', 'armor', 'potion', 'misc'"
+                      enum: ["broken", "normal", "refined", "perfect", "legendary"],
+                      description: "Qualidade do item (padrão: 'normal')"
                     },
                     stock: {
                       type: "number",
                       description: "Quantidade disponível (-1 = ilimitado)"
+                    },
+                    category: {
+                      type: "string",
+                      description: "Categoria do item (ex: 'weapon', 'armor', 'jewelry', 'potion')"
                     }
                   },
-                  required: ["id", "name", "base_price", "description", "rarity"]
+                  required: ["id", "name", "basePrice", "finalPrice", "description", "rarity", "quality"]
                 }
               }
             },
-            required: ["npc_name", "items"],
+            required: ["npc_name", "npc_description", "items"],
             additionalProperties: false
           }
         }
@@ -717,6 +732,7 @@ PERSONAGEM: ${char.name}
                           body: JSON.stringify({
                             roomId,
                             npcName: args.npc_name || 'Mercador',
+                            npcDescription: args.npc_description || 'Um comerciante experiente',
                             npcPersonality: args.npc_personality || 'neutral',
                             npcReputation: args.npc_reputation || 0,
                             items: args.items || []
@@ -725,7 +741,8 @@ PERSONAGEM: ${char.name}
                       );
                       
                       if (setShopResponse.ok) {
-                        console.log("✅ Shop configured successfully");
+                        const result = await setShopResponse.json();
+                        console.log("✅ Shop configured successfully:", result);
                       } else {
                         const errorText = await setShopResponse.text();
                         console.error("❌ Error configuring shop:", errorText);
