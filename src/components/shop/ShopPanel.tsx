@@ -9,6 +9,9 @@ import { ShopItemCard } from "./ShopItemCard";
 import { ShopItemModal } from "./ShopItemModal";
 import { ShopState, ShopItem, Rarity, Quality, Personality, calculateFinalPrice } from "@/lib/shop-pricing";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ShopSellPanel } from "./ShopSellPanel";
 
 interface ShopPanelProps {
   roomId: string;
@@ -16,6 +19,7 @@ interface ShopPanelProps {
 }
 
 export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
+  const { toast } = useToast();
   const [shopState, setShopState] = useState<ShopState | null>(null);
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -98,6 +102,11 @@ export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
             items: itemsWithPrices,
             updated_at: shopData.updatedAt,
           });
+
+          toast({
+            title: "🛒 Loja Atualizada",
+            description: `${shopData.npcName} atualizou o inventário da loja!`,
+          });
         }
       )
       .on(
@@ -106,6 +115,12 @@ export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
         () => {
           console.log("🛒 Shop closed");
           setShopState(null);
+          
+          toast({
+            title: "🚪 Loja Fechada",
+            description: "A loja foi fechada pelo Mestre.",
+            variant: "destructive",
+          });
         }
       )
       .subscribe();
@@ -239,6 +254,13 @@ export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
+          <Tabs defaultValue="buy" className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="buy">Comprar</TabsTrigger>
+              <TabsTrigger value="sell">Vender</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="buy" className="flex-1 flex flex-col gap-4 overflow-hidden mt-4">
           {/* Filters */}
           <div className="space-y-3">
             <div className="relative">
@@ -300,6 +322,17 @@ export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
               </div>
             )}
           </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="sell" className="flex-1 overflow-hidden mt-4">
+              <ShopSellPanel 
+                characterId={characterId} 
+                roomId={roomId}
+                npcPersonality={shopState.npc_personality}
+                npcReputation={shopState.npc_reputation}
+              />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -309,6 +342,8 @@ export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
         onOpenChange={setIsModalOpen}
         characterId={characterId}
         roomId={roomId}
+        npcPersonality={shopState?.npc_personality}
+        npcReputation={shopState?.npc_reputation}
       />
     </>
   );

@@ -4,7 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ShopItem } from "@/lib/shop-pricing";
+import { ShopItem, Personality } from "@/lib/shop-pricing";
 import { Package, Coins, Star } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { getRarityColor, getRarityBorderColor, getQualityStars } from "@/lib/shop-pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { ShopBargainButton } from "./ShopBargainButton";
 
 interface ShopItemModalProps {
   item: ShopItem | null;
@@ -20,11 +21,28 @@ interface ShopItemModalProps {
   onOpenChange: (open: boolean) => void;
   characterId: string;
   roomId: string;
+  npcPersonality?: Personality;
+  npcReputation?: number;
 }
 
-export const ShopItemModal = ({ item, open, onOpenChange, characterId, roomId }: ShopItemModalProps) => {
+export const ShopItemModal = ({ 
+  item, 
+  open, 
+  onOpenChange, 
+  characterId, 
+  roomId,
+  npcPersonality = "neutral",
+  npcReputation = 0 
+}: ShopItemModalProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState(0);
+
+  useEffect(() => {
+    if (item) {
+      setCurrentPrice(item.finalPrice);
+    }
+  }, [item]);
 
   if (!item) return null;
 
@@ -48,11 +66,11 @@ export const ShopItemModal = ({ item, open, onOpenChange, characterId, roomId }:
 
       const currentGold = character.gold_pieces || 0;
 
-      // Check if enough gold
-      if (currentGold < item.finalPrice) {
+      // Check if enough gold (use currentPrice which may have discount)
+      if (currentGold < currentPrice) {
         toast({
           title: "Ouro insuficiente",
-          description: `Você precisa de ${item.finalPrice} PO, mas só tem ${currentGold} PO.`,
+          description: `Você precisa de ${currentPrice} PO, mas só tem ${currentGold} PO.`,
           variant: "destructive",
         });
         return;
@@ -68,10 +86,10 @@ export const ShopItemModal = ({ item, open, onOpenChange, characterId, roomId }:
         return;
       }
 
-      // Deduct gold
+      // Deduct gold (use currentPrice which may have discount)
       const { error: updateError } = await supabase
         .from("characters")
-        .update({ gold_pieces: currentGold - item.finalPrice })
+        .update({ gold_pieces: currentGold - currentPrice })
         .eq("id", characterId);
 
       if (updateError) throw updateError;
@@ -170,7 +188,12 @@ export const ShopItemModal = ({ item, open, onOpenChange, characterId, roomId }:
               <span className="text-lg font-bold">Preço</span>
             </div>
             <Badge variant="outline" className="text-lg px-4 py-2">
-              {item.finalPrice} PO
+              {currentPrice !== item.finalPrice && (
+                <span className="line-through text-muted-foreground mr-2">
+                  {item.finalPrice}
+                </span>
+              )}
+              {currentPrice} PO
             </Badge>
           </div>
           
@@ -223,13 +246,22 @@ export const ShopItemModal = ({ item, open, onOpenChange, characterId, roomId }:
           
           <Separator />
           
+          <ShopBargainButton
+            item={item}
+            characterId={characterId}
+            roomId={roomId}
+            npcPersonality={npcPersonality}
+            npcReputation={npcReputation}
+            onSuccess={(newPrice) => setCurrentPrice(newPrice)}
+          />
+          
           <Button 
             className="w-full" 
             size="lg" 
             onClick={handleBuy}
             disabled={loading || item.stock === 0}
           >
-            {loading ? "Comprando..." : item.stock === 0 ? "Sem estoque" : `Comprar por ${item.finalPrice} PO`}
+            {loading ? "Comprando..." : item.stock === 0 ? "Sem estoque" : `Comprar por ${currentPrice} PO`}
           </Button>
         </div>
       </DialogContent>
