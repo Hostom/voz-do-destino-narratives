@@ -210,7 +210,7 @@ export const ShopItemModal = ({
             </div>
           )}
           
-          {Object.keys(item.attributes).length > 0 && (
+          {item.attributes && Object.keys(item.attributes).length > 0 && (
             <>
               <Separator />
               <div>
