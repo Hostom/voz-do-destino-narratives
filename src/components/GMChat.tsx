@@ -30,6 +30,7 @@ interface GMChatProps {
 export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps) => {
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
@@ -38,11 +39,53 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
 
   // CRITICAL: Use useCollection with filters to subscribe ONLY to gm_messages
   // This is the single source of truth for GM narrative messages
-  const { data: rawMessages, loading } = useCollection<GMMessage>("gm_messages", {
+  const { data: rawMessages, loading, error: realtimeError } = useCollection<GMMessage>("gm_messages", {
     filters: { room_id: roomId },
     orderBy: "created_at",
     ascending: true,
   });
+
+  // Fallback polling quando realtime falhar
+  useEffect(() => {
+    if (realtimeError && isLoading) {
+      console.warn('Realtime error detected, starting polling fallback');
+      
+      // Poll a cada 2 segundos quando esperando resposta
+      const interval = setInterval(async () => {
+        try {
+          const { data: messages } = await supabase
+            .from("gm_messages")
+            .select("*")
+            .eq("room_id", roomId)
+            .order("created_at", { ascending: false })
+            .limit(1);
+          
+          if (messages && messages.length > 0 && messages[0].sender === "GM") {
+            const lastMessage = messages[0];
+            // Check if this is a new message
+            if (!messageCache.has(lastMessage.id)) {
+              console.log('New GM message detected via polling');
+              setIsLoading(false);
+              // Force reload by clearing cache
+              setMessageCache(new Map());
+            }
+          }
+        } catch (err) {
+          console.error('Polling error:', err);
+        }
+      }, 2000);
+      
+      setPollingInterval(interval);
+      
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    } else if (!isLoading && pollingInterval) {
+      // Clear polling when not loading
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+  }, [realtimeError, isLoading, roomId, messageCache]);
 
   // Aplicar cache para evitar re-renders desnecessários
   const messages = useMemo(() => {
@@ -83,16 +126,21 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
     }
   }, [messages, isLoading]);
 
-  // Safety timeout: clear loading after 30 seconds if no response
+  // Safety timeout: clear loading after 60 seconds (Gemini Pro pode ser lento)
   useEffect(() => {
     if (isLoading) {
       const timeout = setTimeout(() => {
-        console.warn('Loading timeout - no GM response received after 30 seconds');
+        console.warn('Loading timeout - no GM response received after 60 seconds');
+        toast({
+          title: "Tempo esgotado",
+          description: "A IA está demorando mais que o esperado. Tente recarregar a página.",
+          variant: "destructive",
+        });
         setIsLoading(false);
-      }, 30000);
+      }, 60000); // 60 segundos
       return () => clearTimeout(timeout);
     }
-  }, [isLoading]);
+  }, [isLoading, toast]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,8 +307,15 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
               </div>
             )}
             {isLoading && (
-              <div className="text-center text-muted-foreground text-sm italic">
-                Aguardando resposta do Mestre...
+              <div className="text-center space-y-2">
+                <div className="text-muted-foreground text-sm italic animate-pulse">
+                  Aguardando resposta do Mestre...
+                </div>
+                {realtimeError && (
+                  <div className="text-xs text-amber-500">
+                    Reconectando... (verificando a cada 2s)
+                  </div>
+                )}
               </div>
             )}
             {messages.map((msg) => {
