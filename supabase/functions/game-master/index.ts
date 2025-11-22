@@ -133,25 +133,13 @@ RESULTADO: Jogador vê os 10 itens na aba "Loja" + recebe narrativa fluida no ch
 • Formato: "[INICIAR_COMBATE]\n\nOs orcs rugem e avançam em sua direção! Três guerreiros brutais empunham..."
 
 🛒 LOJA E COMÉRCIO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Os jogadores têm acesso a uma aba "Loja" na interface onde podem comprar itens
-• A loja é configurada manualmente pelo GM através de uma interface dedicada
-• VOCÊ (IA) deve APENAS narrar a existência da loja e sua atmosfera
-• NUNCA liste itens ou preços no chat narrativo
-• NUNCA tente criar ou atualizar a loja via código ou ferramentas
-• Direcione os jogadores para a aba "Loja" se quiserem ver os itens disponíveis
-
-📋 FLUXO CORRETO:
-1. Narre: "Você entra na loja de Elara. Joias brilham nas vitrines, e o aroma de incenso preenche o ar."
-2. Continue: "Elara, uma elfa de cabelos prateados, sorri. 'Bem-vindo! Fique à vontade para explorar minhas peças.'"
-3. Se o jogador perguntar sobre itens: "Os itens disponíveis estão organizados nas vitrines. Você pode conferir o inventário da loja na aba 'Loja'."
-
-❌ NÃO FAÇA:
-• NÃO liste itens: "Ela tem espadas, poções, escudos..."
-• NÃO mencione preços: "Uma espada custa 50 PO..."
-• NÃO tente criar loja via ferramenta ou código
-• SEMPRE crie a loja ANTES de conversar sobre ela
-• Seja criativo nos nomes e descrições dos itens
+• Os jogadores têm acesso a uma aba "Loja" na interface para comprar itens
+• A loja é configurada pelo GM através de uma interface dedicada
+• Você apenas narra a atmosfera e o lojista - NUNCA liste itens ou preços
+• Quando o jogador SAI da loja ou diz que vai fazer outra coisa, a loja deve ser fechada
+• Use close_shop quando a narrativa indicar que o jogador deixou a loja ou mudou de atividade
+• Exemplo: Jogador entra na ferraria → GM configura loja → Narra a cena
+• Exemplo: Jogador sai da ferraria → Use close_shop → Narre a saída
 
 💬 INTERAÇÃO COM O JOGADOR
 • Nunca avance sem a ação do jogador
@@ -163,25 +151,15 @@ RESULTADO: Jogador vê os 10 itens na aba "Loja" + recebe narrativa fluida no ch
 • Quando o jogador fizer roleplay excepcional, interpretação profunda, ou tomar decisões criativas e corajosas, CONCEDA INSPIRAÇÃO
 • Inspiração permite ao jogador ter vantagem em um teste futuro (mecânica D&D 5e)
 
-🛠️ FERRAMENTAS DISPONÍVEIS (CRÍTICO - SEMPRE USAR QUANDO APLICÁVEL)
-Você tem acesso a ferramentas que automatizam ações mecânicas:
+🛠️ FERRAMENTAS DISPONÍVEIS (CRÍTICO)
 • update_character_stats: Atualiza HP e/ou XP do personagem
-  - Parâmetros: hp_change (number), xp_gain (number), reason (string)
-  - CRÍTICO: Quando você NARRAR ganho de XP, SEMPRE chame esta ferramenta com xp_gain
-  - Exemplo: "Você derrotou o goblin! Ganhou 50 XP" → CHAME update_character_stats com xp_gain=50
-  - Para dano: use hp_change NEGATIVO (ex: -8 para 8 de dano)
-  - Para cura: use hp_change POSITIVO (ex: +10 para 10 de cura)
-  - SEMPRE narre o evento ANTES de chamar a ferramenta
-  - NUNCA mencione XP na narrativa sem chamar a ferramenta imediatamente depois
-
-IMPORTANTE SOBRE XP (OBRIGATÓRIO):
-- Se você narrar "Você ganhou X XP", você DEVE chamar update_character_stats com xp_gain=X
-- Isso é OBRIGATÓRIO, não opcional
-- O sistema NÃO atualizará XP automaticamente só pela narrativa
-- Sem a chamada da ferramenta, o XP NÃO será adicionado ao personagem
-- Exemplo correto: Narre vitória → Mencione XP ganho → Chame update_character_stats com xp_gain
-• SEMPRE inclua texto narrativo descrevendo o que aconteceu, mesmo ao usar ferramentas
-• Quando atualizar HP/XP, SEMPRE narre o evento que causou a mudança ANTES de usar a ferramenta
+  - SEMPRE chame quando narrar ganho de XP ou mudanças de HP
+  - hp_change: NEGATIVO para dano (ex: -8), POSITIVO para cura (ex: +10)
+  - xp_gain: sempre positivo (ex: 50)
+  - SEMPRE narre ANTES de chamar a ferramenta
+• close_shop: Limpa/fecha a loja quando o jogador sair ou mudar de atividade
+  - Use quando o jogador deixar a loja ou disser que vai fazer outra coisa
+  - Exemplo: "Você sai da ferraria e segue pela rua" → close_shop
 
 🔒 ISOLAMENTO DE FICHAS EM MULTIPLAYER (CRÍTICO)
 • Cada jogador possui uma ficha ÚNICA identificada por um Player ID
@@ -195,42 +173,12 @@ IMPORTANTE SOBRE XP (OBRIGATÓRIO):
     * "O que eu posso fazer?"
     * "Descreva meu personagem"
 
-🧠 RACIOCÍNIO CRÍTICO E AVALIAÇÃO LÓGICA (OBRIGATÓRIO ANTES DE CADA RESPOSTA)
-
-Antes de narrar qualquer ação do jogador, execute internamente esta análise:
-
-1. IDENTIFICAÇÃO DE PREMISSAS
-   • O que o jogador ASSUMIU que pode fazer?
-   • Ele está usando uma habilidade que realmente possui na ficha?
-   • Ele está inventando regras, efeitos ou poderes inexistentes?
-
-2. VERIFICAÇÃO DE LÓGICA MECÂNICA
-   • A ação é fisicamente possível dentro do mundo?
-   • A ação é mecanicamente permitida pelas regras de D&D 5e?
-   • A ficha do personagem permite essa ação (classe, nível, equipamento)?
-   • Existe algum impacto mecânico sendo ignorado?
-
-3. CONFRONTO CONSTRUTIVO
-   Se a ação violar regras do D&D 5e ou a ficha do personagem:
-   • Corrija de forma educada e clara: "Essa ação não é compatível com as regras de D&D 5e"
-   • Explique por quê: "Seu personagem não possui essa habilidade/magia/equipamento"
-   • Ofereça alternativas viáveis: "Mas você pode tentar X ou Y, que são compatíveis com sua ficha"
-
-4. REGRA ABSOLUTA: NUNCA ACEITAR CRIAÇÃO DE MECÂNICAS NOVAS
-   Exemplos de ações INVÁLIDAS que devem ser rejeitadas:
-   ❌ "Eu voo porque me concentro muito" (sem habilidade de voo)
-   ❌ "Eu dou dois ataques" (quando a classe/nível não permite)
-   ❌ "Eu conjuro Bola de Fogo" (sem ter essa magia preparada/conhecida)
-   ❌ "Eu tenho vantagem porque quero" (sem justificativa mecânica)
-   ❌ "Eu recupero HP respirando fundo" (sem habilidade de cura)
-
-   Resposta padrão:
-   "Essa ação não existe no sistema D&D 5e ou não é suportada pela sua ficha. Aqui estão alternativas coerentes que você pode tentar baseadas em suas habilidades reais..."
-
-5. VERIFICAÇÃO DA FICHA
-   • Sempre consulte os atributos, equipamentos e habilidades da ficha
-   • Use apenas o que está registrado
-   • Se o jogador mencionar algo que não está na ficha, corrija educadamente
+🧠 VALIDAÇÃO DE AÇÕES
+• SEMPRE verifique se a ação do jogador é compatível com sua ficha e com as regras de D&D 5e
+• Se algo não for possível, corrija educadamente e ofereça alternativas viáveis
+• Consulte os atributos, equipamentos e habilidades da ficha antes de narrar
+• NUNCA aceite criações de mecânicas inexistentes (voar sem habilidade, ataques extras sem recurso, etc.)
+• Execute essas verificações SILENCIOSAMENTE - não explique seu processo de raciocínio na narrativa
 • Em cenas de grupo, use a ficha correta de cada jogador:
   - Se o Guerreiro ataca, use força/CA/HP/arma do GUERREIRO
   - Se o Mago lança magia, use INT/spell slots do MAGO
@@ -533,6 +481,19 @@ PERSONAGEM: ${char.name}
             additionalProperties: false
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "close_shop",
+          description: "Fecha/limpa a loja quando o jogador sair ou mudar de atividade. Use quando a narrativa indicar que o personagem deixou a loja.",
+          parameters: {
+            type: "object",
+            properties: {},
+            required: [],
+            additionalProperties: false
+          }
+        }
       }
     ];
     
@@ -625,9 +586,108 @@ PERSONAGEM: ${char.name}
               lastChunkTime = now;
             }
             
-            if (done) {
-              console.log(`🏁 Stream finished. Total chunks: ${chunkCount}, Response length: ${fullResponse.length}`);
-              // Process any remaining buffer
+                console.log("Stream finished, processing collected tool calls...");
+                
+                // Convert toolCallsById Map to array
+                toolCalls = Array.from(toolCallsById.values());
+                console.log("Collected tool calls:", toolCalls.length);
+                
+                // Process tool calls
+                for (const toolCall of toolCalls) {
+                  const toolName = toolCall.function?.name;
+                  console.log(`Processing tool call: ${toolName}`);
+                  
+                  if (toolName === 'close_shop') {
+                    console.log('🛒 Closing shop...');
+                    
+                    if (roomId) {
+                      try {
+                        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+                        const closeShopUrl = `${supabaseUrl}/functions/v1/close-shop`;
+                        const closeShopResponse = await fetch(closeShopUrl, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                            'apikey': Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+                          },
+                          body: JSON.stringify({ roomId }),
+                        });
+                        
+                        if (closeShopResponse.ok) {
+                          console.log("✅ Shop closed successfully");
+                        } else {
+                          const errorText = await closeShopResponse.text();
+                          console.error("❌ Error closing shop:", errorText);
+                        }
+                      } catch (shopError) {
+                        console.error("❌ Exception closing shop:", shopError);
+                      }
+                    }
+                  }
+                  
+                  if (toolName === 'update_character_stats') {
+                    try {
+                      const args = JSON.parse(toolCall.function?.arguments || '{}');
+                      console.log('📊 Update character stats:', args);
+                      
+                      // Only process if we have an active character
+                      if (activeCharacterId) {
+                        const updates: any = {};
+                        
+                        // Handle HP change
+                        if (args.hp_change !== undefined && args.hp_change !== 0) {
+                          const { data: char } = await supabase
+                            .from('characters')
+                            .select('current_hp')
+                            .eq('id', activeCharacterId)
+                            .single();
+                          
+                          if (char) {
+                            const newHp = Math.max(0, char.current_hp + args.hp_change);
+                            updates.current_hp = newHp;
+                            console.log(`HP change: ${char.current_hp} → ${newHp} (${args.hp_change})`);
+                          }
+                        }
+                        
+                        // Handle XP gain
+                        if (args.xp_gain && args.xp_gain > 0) {
+                          const { data: char } = await supabase
+                            .from('characters')
+                            .select('experience_points')
+                            .eq('id', activeCharacterId)
+                            .single();
+                          
+                          if (char) {
+                            const newXp = (char.experience_points || 0) + args.xp_gain;
+                            updates.experience_points = newXp;
+                            console.log(`XP change: ${char.experience_points} → ${newXp} (+${args.xp_gain})`);
+                          }
+                        }
+                        
+                        // Apply updates
+                        if (Object.keys(updates).length > 0) {
+                          const { error: updateError } = await supabase
+                            .from('characters')
+                            .update(updates)
+                            .eq('id', activeCharacterId);
+                          
+                          if (updateError) {
+                            console.error('❌ Error updating character:', updateError);
+                          } else {
+                            console.log('✅ Character updated successfully');
+                          }
+                        }
+                      } else {
+                        console.warn('⚠️ No active character - skipping stats update');
+                      }
+                    } catch (e) {
+                      console.error('Error processing update_character_stats:', e);
+                    }
+                  }
+                }
+                
+                if (fullResponse.trim() && roomId) {
               if (buffer.trim()) {
                 const lines = buffer.split('\n').filter(l => l.trim());
                 for (const line of lines) {

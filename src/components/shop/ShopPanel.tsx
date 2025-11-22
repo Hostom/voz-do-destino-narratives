@@ -100,6 +100,14 @@ export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
           });
         }
       )
+      .on(
+        "broadcast",
+        { event: "SHOP_CLOSED" },
+        () => {
+          console.log("🛒 Shop closed");
+          setShopState(null);
+        }
+      )
       .subscribe();
 
     // Also subscribe to database changes
@@ -108,7 +116,7 @@ export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "UPDATE",
           schema: "public",
           table: "shop_states",
           filter: `room_id=eq.${roomId}`,
@@ -138,6 +146,19 @@ export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
               updated_at: data.updated_at,
             });
           }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "shop_states",
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => {
+          console.log("🛒 Shop state deleted from DB");
+          setShopState(null);
         }
       )
       .subscribe();
