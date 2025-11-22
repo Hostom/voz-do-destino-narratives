@@ -888,9 +888,6 @@ PERSONAGEM: ${char.name}
                     console.log("🛒 [SHOP] block detected! Processing shop items...");
                     const shopContent = shopMatch[1].trim();
                     
-                    // Remove shop block from narrative
-                    narrativeText = narrativeText.replace(shopBlockRegex, '').trim();
-                    
                     const shopLines = shopContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                     
                     let npcName = "Mercador";
@@ -1005,13 +1002,36 @@ PERSONAGEM: ${char.name}
                         
                         if (updateShopResponse.ok) {
                           console.log("✅ Shop updated successfully via update-shop function");
+                          
+                          // Generate automatic narrative about shop opening
+                          const personalityGreeting = {
+                            friendly: "com um sorriso acolhedor",
+                            neutral: "profissionalmente",
+                            hostile: "com um olhar desconfiado"
+                          };
+                          
+                          const itemsPreview = shopItems.slice(0, 3).map(item => item.name).join(", ");
+                          const moreItems = shopItems.length > 3 ? ` e mais ${shopItems.length - 3} itens` : "";
+                          
+                          const shopNarrative = `${npcName} recebe os aventureiros ${personalityGreeting[npcPersonality]}. "Bem-vindos à minha loja," diz o mercador. "Tenho ${itemsPreview}${moreItems} disponíveis. Deem uma olhada e vejam o que lhes interessa."`;
+                          
+                          // Replace [SHOP] block with narrative
+                          narrativeText = narrativeText.replace(shopBlockRegex, shopNarrative).trim();
+                          console.log("✅ Shop narrative generated and inserted");
                         } else {
                           const errorText = await updateShopResponse.text();
                           console.error("❌ Error calling update-shop:", errorText);
+                          // Remove shop block even on error
+                          narrativeText = narrativeText.replace(shopBlockRegex, '').trim();
                         }
                       } catch (shopError) {
                         console.error("❌ Exception calling update-shop:", shopError);
+                        // Remove shop block even on error
+                        narrativeText = narrativeText.replace(shopBlockRegex, '').trim();
                       }
+                    } else {
+                      // No items parsed, just remove the block
+                      narrativeText = narrativeText.replace(shopBlockRegex, '').trim();
                     }
                   }
                   
