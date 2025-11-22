@@ -637,6 +637,7 @@ PERSONAGEM: ${char.name}
     
     // Collect the full response to save to database
     let fullResponse = "";
+    let shopCreatedData: any = null; // Store shop data when set_shop is called
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
     
@@ -776,6 +777,14 @@ PERSONAGEM: ${char.name}
                   const args = JSON.parse(toolCall.function?.arguments || '{}');
                   console.log('🏪 Setting up shop:', args);
                   
+                  // Store shop data for narrative generation
+                  shopCreatedData = {
+                    npcName: args.npc_name || "Mercador",
+                    npcPersonality: args.npc_personality || "neutral",
+                    npcReputation: args.npc_reputation || 0,
+                    items: args.items || []
+                  };
+                  
                   const setShopResponse = await fetch(`${supabaseUrl}/functions/v1/set-shop`, {
                     method: 'POST',
                     headers: {
@@ -784,21 +793,23 @@ PERSONAGEM: ${char.name}
                     },
                     body: JSON.stringify({
                       roomId,
-                      npcName: args.npc_name || 'Mercador',
+                      npcName: shopCreatedData.npcName,
                       npcDescription: args.npc_description || 'Um comerciante experiente',
-                      npcPersonality: args.npc_personality || 'neutral',
-                      npcReputation: args.npc_reputation || 0,
-                      items: args.items || []
+                      npcPersonality: shopCreatedData.npcPersonality,
+                      npcReputation: shopCreatedData.npcReputation,
+                      items: shopCreatedData.items
                     })
                   });
                   
                   if (setShopResponse.ok) {
-                    console.log("✅ Shop configured successfully:", await setShopResponse.json());
+                    console.log('✅ Shop set successfully');
                   } else {
-                    console.error("❌ Error configuring shop:", await setShopResponse.text());
+                    console.error('❌ Error setting shop:', await setShopResponse.text());
+                    shopCreatedData = null; // Clear if failed
                   }
                 } catch (e) {
-                  console.error("❌ Exception setting up shop:", e);
+                  console.error('❌ Exception setting up shop:', e);
+                  shopCreatedData = null; // Clear if exception
                 }
               }
               
@@ -872,8 +883,29 @@ PERSONAGEM: ${char.name}
                 } else if (room) {
                   console.log("Room found. GM ID:", room.gm_id);
                   
-                  // Detect and process [SHOP] blocks with new format
+                  // Generate narrative for shop if set_shop was called
                   let narrativeText = fullResponse.trim();
+                  
+                  // Check if shop was created via tool call
+                  if (shopCreatedData && shopCreatedData.items.length > 0) {
+                    console.log("🛒 Generating narrative for shop created via set_shop tool...");
+                    
+                    const personalityGreeting = {
+                      friendly: "com um sorriso acolhedor",
+                      neutral: "profissionalmente", 
+                      hostile: "com um olhar desconfiado"
+                    };
+                    
+                    const itemsPreview = shopCreatedData.items.slice(0, 3).map((item: any) => item.name).join(", ");
+                    const moreItems = shopCreatedData.items.length > 3 ? ` e mais ${shopCreatedData.items.length - 3} itens` : "";
+                    
+                    const shopNarrative = `${shopCreatedData.npcName} recebe os aventureiros ${personalityGreeting[shopCreatedData.npcPersonality as keyof typeof personalityGreeting]}. "Bem-vindos à minha loja," diz ${shopCreatedData.npcPersonality === 'hostile' ? 'friamente' : 'o mercador'}. "Tenho ${itemsPreview}${moreItems} disponíveis. Deem uma olhada e vejam o que lhes interessa."`;
+                    
+                    // Replace the generic message with shop narrative
+                    narrativeText = shopNarrative;
+                    console.log("✅ Shop narrative generated from tool call");
+                  }
+                  
                   console.log("🔍 Checking for [SHOP] block in response...");
                   console.log("Response first 200 chars:", narrativeText.substring(0, 200));
                   
