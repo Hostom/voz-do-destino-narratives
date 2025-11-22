@@ -135,11 +135,11 @@ RESULTADO: Jogador vê os 10 itens na aba "Loja" + recebe narrativa fluida no ch
 🛒 LOJA E COMÉRCIO
 • Os jogadores têm acesso a uma aba "Loja" na interface para comprar itens
 • A loja é configurada pelo GM através de uma interface dedicada
-• Você apenas narra a atmosfera e o lojista - NUNCA liste itens ou preços
-• Quando o jogador SAI da loja ou diz que vai fazer outra coisa, a loja deve ser fechada
-• Use close_shop quando a narrativa indicar que o jogador deixou a loja ou mudou de atividade
-• Exemplo: Jogador entra na ferraria → GM configura loja → Narra a cena
-• Exemplo: Jogador sai da ferraria → Use close_shop → Narre a saída
+• Você SEMPRE DEVE narrar a atmosfera, o ambiente e o lojista - NUNCA liste itens ou preços
+• SEMPRE narre ANTES de usar qualquer ferramenta (ex: fechar loja)
+• Quando o jogador SAI da loja ou diz que vai fazer outra coisa, NARRE a saída e então use close_shop
+• Exemplo: Jogador entra na ferraria → Narre: "As brasas crepitam enquanto o ferreiro..." [depois o GM configura]
+• Exemplo: Jogador sai → Narre: "Você se despede e sai da ferraria..." [depois close_shop]
 
 💬 INTERAÇÃO COM O JOGADOR
 • Nunca avance sem a ação do jogador
@@ -698,17 +698,11 @@ PERSONAGEM: ${char.name}
                         const data = JSON.parse(dataStr);
                         const delta = data.choices?.[0]?.delta;
                         
-                        // Capture content from both 'content' and 'reasoning' fields
+                        // Capture only content field (reasoning is internal and should not be displayed)
                         const content = delta?.content;
-                        const reasoning = delta?.reasoning;
                         
                         if (content) {
                           fullResponse += content;
-                        }
-                        // Gemini Pro sometimes only sends reasoning when using tools
-                        if (reasoning && !content) {
-                          console.log("📝 Capturing reasoning as narrative (no content field)");
-                          fullResponse += reasoning;
                         }
                         
                         // Collect tool calls progressively
@@ -1090,17 +1084,11 @@ PERSONAGEM: ${char.name}
                     const data = JSON.parse(dataStr);
                     const delta = data.choices?.[0]?.delta;
                     
-                    // Capture content from both 'content' and 'reasoning' fields
+                    // Capture only content field (reasoning is internal and should not be displayed)
                     const content = delta?.content;
-                    const reasoning = delta?.reasoning;
                     
                     if (content) {
                       fullResponse += content;
-                    }
-                    // Gemini Pro sometimes only sends reasoning when using tools
-                    if (reasoning && !content) {
-                      console.log("📝 Capturing reasoning as narrative (no content field)");
-                      fullResponse += reasoning;
                     }
                     
                     // Collect tool calls progressively
