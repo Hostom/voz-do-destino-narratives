@@ -157,6 +157,11 @@ RESULTADO: Jogador vê os 10 itens na aba "Loja" + recebe narrativa fluida no ch
   - hp_change: NEGATIVO para dano (ex: -8), POSITIVO para cura (ex: +10)
   - xp_gain: sempre positivo (ex: 50)
   - SEMPRE narre ANTES de chamar a ferramenta
+• set_shop: Configura os itens da loja quando o jogador entrar
+  - Use quando narrar a entrada do jogador em uma loja/mercado/ferraria/joalheria/etc
+  - Exemplo: "Você entra na joalheria e vê prateleiras cheias de gemas..." → set_shop
+  - SEMPRE narre a atmosfera ANTES de chamar a ferramenta
+  - Configure itens temáticos apropriados para o tipo de estabelecimento
 • close_shop: Limpa/fecha a loja quando o jogador sair ou mudar de atividade
   - Use quando o jogador deixar a loja ou disser que vai fazer outra coisa
   - Exemplo: "Você sai da ferraria e segue pela rua" → close_shop
@@ -485,6 +490,70 @@ PERSONAGEM: ${char.name}
       {
         type: "function",
         function: {
+          name: "set_shop",
+          description: "Configura os itens da loja quando o jogador entrar em um estabelecimento comercial. Use quando narrar a entrada do personagem em lojas, mercados, ferrarias, joalherias, etc.",
+          parameters: {
+            type: "object",
+            properties: {
+              npc_name: {
+                type: "string",
+                description: "Nome do comerciante/lojista (ex: 'Gareth, o Ferreiro', 'Lúcia, a Joalheira')"
+              },
+              npc_personality: {
+                type: "string",
+                description: "Personalidade do NPC (ex: 'amigável', 'suspeito', 'honesto', 'ganancioso')"
+              },
+              npc_reputation: {
+                type: "number",
+                description: "Nível de reputação do lojista (-10 a +10, afeta preços). 0 = neutro, positivo = amigo, negativo = hostil"
+              },
+              items: {
+                type: "array",
+                description: "Lista de itens disponíveis na loja",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: {
+                      type: "string",
+                      description: "ID único do item (ex: 'sword_1', 'potion_healing')"
+                    },
+                    name: {
+                      type: "string",
+                      description: "Nome do item (ex: 'Espada Longa', 'Poção de Cura')"
+                    },
+                    base_price: {
+                      type: "number",
+                      description: "Preço base em peças de ouro (ex: 50)"
+                    },
+                    description: {
+                      type: "string",
+                      description: "Descrição do item"
+                    },
+                    rarity: {
+                      type: "string",
+                      description: "Raridade: 'common', 'uncommon', 'rare', 'very_rare', 'legendary'"
+                    },
+                    item_type: {
+                      type: "string",
+                      description: "Tipo: 'weapon', 'armor', 'potion', 'misc'"
+                    },
+                    stock: {
+                      type: "number",
+                      description: "Quantidade disponível (-1 = ilimitado)"
+                    }
+                  },
+                  required: ["id", "name", "base_price", "description", "rarity"]
+                }
+              }
+            },
+            required: ["npc_name", "items"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
           name: "close_shop",
           description: "Fecha/limpa a loja quando o jogador sair ou mudar de atividade. Use quando a narrativa indicar que o personagem deixou a loja.",
           parameters: {
@@ -623,6 +692,46 @@ PERSONAGEM: ${char.name}
                       } catch (shopError) {
                         console.error("❌ Exception closing shop:", shopError);
                       }
+                    }
+                  }
+                  
+                  if (toolName === 'set_shop') {
+                    try {
+                      const args = JSON.parse(toolCall.function?.arguments || '{}');
+                      console.log('🏪 Setting up shop:', args);
+                      
+                      if (!roomId) {
+                        console.error("❌ Cannot set shop: no room ID");
+                        continue;
+                      }
+                      
+                      // Call set-shop edge function
+                      const setShopResponse = await fetch(
+                        `${supabaseUrl}/functions/v1/set-shop`,
+                        {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${supabaseKey}`
+                          },
+                          body: JSON.stringify({
+                            roomId,
+                            npcName: args.npc_name || 'Mercador',
+                            npcPersonality: args.npc_personality || 'neutral',
+                            npcReputation: args.npc_reputation || 0,
+                            items: args.items || []
+                          })
+                        }
+                      );
+                      
+                      if (setShopResponse.ok) {
+                        console.log("✅ Shop configured successfully");
+                      } else {
+                        const errorText = await setShopResponse.text();
+                        console.error("❌ Error configuring shop:", errorText);
+                      }
+                    } catch (shopError) {
+                      console.error("❌ Exception setting up shop:", shopError);
                     }
                   }
                   
