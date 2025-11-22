@@ -41,9 +41,13 @@ serve(async (req) => {
   }
 
   try {
+    // Check if it's a service role call (from game-master) or user call
+    const authHeader = req.headers.get('Authorization') || '';
+    const isServiceRole = authHeader.includes(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      isServiceRole ? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' : Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
           headers: { Authorization: req.headers.get('Authorization')! },
@@ -51,18 +55,23 @@ serve(async (req) => {
       }
     );
 
-    // Verify authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.getUser();
+    let userId: string | null = null;
 
-    if (authError || !user) {
-      console.error('Auth error:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!isServiceRole) {
+      // Verify authentication for user calls
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseClient.auth.getUser();
+
+      if (authError || !user) {
+        console.error('Auth error:', authError);
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      userId = user.id;
     }
 
     const body: SetShopRequest = await req.json();
@@ -77,26 +86,28 @@ serve(async (req) => {
 
     console.log(`Setting shop for room ${roomId} with ${items.length} items`);
 
-    // Verify user is GM of this room
-    const { data: room, error: roomError } = await supabaseClient
-      .from('rooms')
-      .select('gm_id')
-      .eq('id', roomId)
-      .single();
+    // Verify user is GM of this room (skip check for service role calls)
+    if (!isServiceRole && userId) {
+      const { data: room, error: roomError } = await supabaseClient
+        .from('rooms')
+        .select('gm_id')
+        .eq('id', roomId)
+        .single();
 
-    if (roomError || !room) {
-      console.error('Room error:', roomError);
-      return new Response(
-        JSON.stringify({ error: 'Room not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      if (roomError || !room) {
+        console.error('Room error:', roomError);
+        return new Response(
+          JSON.stringify({ error: 'Room not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    if (room.gm_id !== user.id) {
-      return new Response(
-        JSON.stringify({ error: 'Only the GM can set the shop' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (room.gm_id !== userId) {
+        return new Response(
+          JSON.stringify({ error: 'Only the GM can set the shop' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Upsert shop state
