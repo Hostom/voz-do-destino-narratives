@@ -658,6 +658,7 @@ PERSONAGEM: ${char.name}
     // Collect the full response to save to database
     let fullResponse = "";
     let shopCreatedData: any = null; // Store shop data when set_shop is called
+    let shopClosingData: any = null; // Store shop data when close_shop is called for farewell
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
     
@@ -771,6 +772,23 @@ PERSONAGEM: ${char.name}
               if (toolName === 'close_shop' && roomId) {
                 console.log('🛒 Closing shop...');
                 try {
+                  // Fetch current shop data BEFORE closing for farewell narrative
+                  const { data: shopData } = await supabase
+                    .from('shop_states')
+                    .select('*')
+                    .eq('room_id', roomId)
+                    .single();
+                  
+                  if (shopData) {
+                    shopClosingData = {
+                      npcName: shopData.npc_name,
+                      npcPersonality: shopData.npc_personality,
+                      npcReputation: shopData.npc_reputation,
+                      items: shopData.items
+                    };
+                    console.log('📦 Shop data retrieved for farewell:', shopClosingData.npcName);
+                  }
+                  
                   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
                   const closeShopResponse = await fetch(`${supabaseUrl}/functions/v1/close-shop`, {
                     method: 'POST',
@@ -786,9 +804,11 @@ PERSONAGEM: ${char.name}
                     console.log("✅ Shop closed successfully");
                   } else {
                     console.error("❌ Error closing shop:", await closeShopResponse.text());
+                    shopClosingData = null; // Clear if failed
                   }
                 } catch (e) {
                   console.error("❌ Exception closing shop:", e);
+                  shopClosingData = null; // Clear if exception
                 }
               }
               
@@ -1138,10 +1158,10 @@ PERSONAGEM: ${char.name}
                       toolCallsCount: toolCalls.length
                     });
                     
-                    // If we have tool calls but no narrative, create a default message
+                    // If we have tool calls but no narrative, generate contextual narratives
                     if (toolCalls.length > 0 && roomId) {
-                      console.log("⚠️ No narrative text but tool calls present. Creating default message.");
-                      const toolNames = toolCalls.map(tc => tc.function?.name).join(", ");
+                      console.log("⚠️ No narrative text but tool calls present. Generating contextual narrative.");
+                      const toolName = toolCalls[0].function?.name;
                       
                       const { data: room } = await supabase
                         .from("rooms")
@@ -1150,17 +1170,81 @@ PERSONAGEM: ${char.name}
                         .single();
                       
                       if (room) {
-                        await supabase
-                          .from("gm_messages")
-                          .insert({
-                            room_id: roomId,
-                            player_id: room.gm_id,
-                            sender: "GM",
-                            character_name: "Voz do Destino",
-                            content: `_O Mestre está preparando algo... (ações executadas: ${toolNames})_`,
-                            type: "gm",
-                          });
-                        console.log("✅ Default message saved for tool-only response");
+                        let narrativeContent = "";
+                        
+                        // Generate shop opening narrative
+                        if (toolName === 'set_shop' && shopCreatedData) {
+                          console.log("🏪 Generating shop opening narrative for:", shopCreatedData.npcName);
+                          const personality = shopCreatedData.npcPersonality || "neutral";
+                          const npcName = shopCreatedData.npcName || "Mercador";
+                          const items = shopCreatedData.items || [];
+                          
+                          // Generate greeting based on personality
+                          let greeting = "";
+                          if (personality === "friendly") {
+                            greeting = `"Bem-vindos, amigos! Entrem, entrem!" ${npcName} gesticula com entusiasmo, convidando vocês a explorar os tesouros de sua loja.`;
+                          } else if (personality === "greedy") {
+                            greeting = `${npcName} ergue o olhar com um brilho nos olhos. "Ah, clientes! Vocês vieram ao lugar certo. Tenho exatamente o que precisam... pelo preço certo, é claro."`;
+                          } else if (personality === "suspicious") {
+                            greeting = `${npcName} observa vocês com olhos cautelosos. "Hmm... sejam bem-vindos, suponho. Mas não toquem em nada sem perguntar primeiro."`;
+                          } else if (personality === "hostile") {
+                            greeting = `${npcName} mal levanta os olhos. "O que vocês querem? Não tenho o dia todo. Comprem algo ou saiam."`;
+                          } else {
+                            greeting = `${npcName} acena com a cabeça. "Sejam bem-vindos à minha loja. Sintam-se à vontade para olhar."`;
+                          }
+                          
+                          // Add item preview if items exist
+                          if (items.length > 0) {
+                            const itemCount = items.length;
+                            const rarityMap: any = {};
+                            items.forEach((item: any) => {
+                              const rarity = item.rarity || "comum";
+                              rarityMap[rarity] = (rarityMap[rarity] || 0) + 1;
+                            });
+                            
+                            const rarityDesc = Object.entries(rarityMap)
+                              .map(([rarity, count]) => `${count} ${count === 1 ? 'item' : 'itens'} ${rarity}${count === 1 ? '' : 's'}`)
+                              .join(", ");
+                            
+                            greeting += ` As prateleiras exibem ${itemCount} ${itemCount === 1 ? 'item' : 'itens'} à venda${rarityDesc ? ` (${rarityDesc})` : ''}.`;
+                          }
+                          
+                          narrativeContent = greeting;
+                        }
+                        // Generate shop closing narrative
+                        else if (toolName === 'close_shop' && shopClosingData) {
+                          console.log("👋 Generating shop closing narrative for:", shopClosingData.npcName);
+                          const personality = shopClosingData.npcPersonality || "neutral";
+                          const npcName = shopClosingData.npcName || "Mercador";
+                          
+                          // Generate farewell based on personality
+                          if (personality === "friendly") {
+                            narrativeContent = `"Foi um prazer fazer negócios com vocês!" ${npcName} acena calorosamente enquanto vocês se preparam para sair. "Voltem sempre que precisarem de algo!"`;
+                          } else if (personality === "greedy") {
+                            narrativeContent = `${npcName} conta as moedas com satisfação. "Excelente negócio. Quando tiverem mais ouro, sabem onde me encontrar."`;
+                          } else if (personality === "suspicious") {
+                            narrativeContent = `${npcName} observa vocês saindo com olhar desconfiado. "Hmph. Até a próxima, suponho. E não esqueçam de pagar por tudo que levarem."`;
+                          } else if (personality === "hostile") {
+                            narrativeContent = `${npcName} faz um gesto de impaciência. "Já era hora. Podem ir." Ele retorna ao seu trabalho sem mais palavras.`;
+                          } else {
+                            narrativeContent = `${npcName} acena educadamente. "Agradeço pela visita. Até a próxima."`;
+                          }
+                        }
+                        
+                        // Only save if we generated a narrative
+                        if (narrativeContent) {
+                          await supabase
+                            .from("gm_messages")
+                            .insert({
+                              room_id: roomId,
+                              player_id: room.gm_id,
+                              sender: "GM",
+                              character_name: "Voz do Destino",
+                              content: narrativeContent,
+                              type: "gm",
+                            });
+                          console.log("✅ Contextual narrative saved for", toolName);
+                        }
                       }
                     }
                   }
