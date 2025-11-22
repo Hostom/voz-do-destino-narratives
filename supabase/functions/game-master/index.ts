@@ -644,9 +644,8 @@ PERSONAGEM: ${char.name}
       throw new Error("No response body");
     }
 
-    // Create a custom stream that both passes through and collects the response
+    // Create a readable stream that processes SSE chunks
     let buffer = '';
-    let toolCalls: any[] = [];
     let toolCallsById = new Map(); // Track tool calls by index and id
     
     let chunkCount = 0;
@@ -656,10 +655,16 @@ PERSONAGEM: ${char.name}
       async start(controller) {
         try {
           console.log("📖 Starting to read stream...");
+          
           while (true) {
             const { done, value } = await reader.read();
-            chunkCount++;
             
+            if (done) {
+              console.log("Stream finished");
+              break;
+            }
+            
+            chunkCount++;
             if (chunkCount === 1) {
               console.log("✅ First chunk received!");
             }
@@ -670,295 +675,197 @@ PERSONAGEM: ${char.name}
               lastChunkTime = now;
             }
             
-                console.log("Stream finished, processing collected tool calls...");
+            // Decode chunk and add to buffer
+            buffer += decoder.decode(value, { stream: true });
+            
+            // Process complete lines from buffer
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+            
+            for (const line of lines) {
+              if (!line.trim() || line.startsWith(':')) continue; // Skip empty lines and comments
+              
+              if (line.startsWith('data: ')) {
+                const dataStr = line.slice(6).trim();
                 
-                // Convert toolCallsById Map to array
-                toolCalls = Array.from(toolCallsById.values());
-                console.log("Collected tool calls:", toolCalls.length);
+                if (dataStr === '[DONE]') {
+                  continue;
+                }
                 
-                // Process tool calls
-                for (const toolCall of toolCalls) {
-                  const toolName = toolCall.function?.name;
-                  console.log(`Processing tool call: ${toolName}`);
+                try {
+                  const data = JSON.parse(dataStr);
+                  const delta = data.choices?.[0]?.delta;
                   
-                  if (toolName === 'close_shop') {
-                    console.log('🛒 Closing shop...');
-                    
-                    if (roomId) {
-                      try {
-                        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-                        const closeShopUrl = `${supabaseUrl}/functions/v1/close-shop`;
-                        const closeShopResponse = await fetch(closeShopUrl, {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-                            'apikey': Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-                          },
-                          body: JSON.stringify({ roomId }),
+                  // Extract text content
+                  if (delta?.content) {
+                    fullResponse += delta.content;
+                    controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
+                  }
+                  
+                  // Collect tool calls progressively
+                  if (delta?.tool_calls) {
+                    for (const tc of delta.tool_calls) {
+                      const key = `${tc.index || 0}_${tc.id || 'default'}`;
+                      if (!toolCallsById.has(key)) {
+                        toolCallsById.set(key, {
+                          index: tc.index || 0,
+                          id: tc.id || null,
+                          type: tc.type || 'function',
+                          function: {
+                            name: tc.function?.name || '',
+                            arguments: tc.function?.arguments || ''
+                          }
                         });
-                        
-                        if (closeShopResponse.ok) {
-                          console.log("✅ Shop closed successfully");
-                        } else {
-                          const errorText = await closeShopResponse.text();
-                          console.error("❌ Error closing shop:", errorText);
-                        }
-                      } catch (shopError) {
-                        console.error("❌ Exception closing shop:", shopError);
-                      }
-                    }
-                  }
-                  
-                  if (toolName === 'set_shop') {
-                    try {
-                      const args = JSON.parse(toolCall.function?.arguments || '{}');
-                      console.log('🏪 Setting up shop:', args);
-                      
-                      if (!roomId) {
-                        console.error("❌ Cannot set shop: no room ID");
-                        continue;
-                      }
-                      
-                      // Call set-shop edge function
-                      const setShopResponse = await fetch(
-                        `${supabaseUrl}/functions/v1/set-shop`,
-                        {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${supabaseKey}`
-                          },
-                          body: JSON.stringify({
-                            roomId,
-                            npcName: args.npc_name || 'Mercador',
-                            npcDescription: args.npc_description || 'Um comerciante experiente',
-                            npcPersonality: args.npc_personality || 'neutral',
-                            npcReputation: args.npc_reputation || 0,
-                            items: args.items || []
-                          })
-                        }
-                      );
-                      
-                      if (setShopResponse.ok) {
-                        const result = await setShopResponse.json();
-                        console.log("✅ Shop configured successfully:", result);
                       } else {
-                        const errorText = await setShopResponse.text();
-                        console.error("❌ Error configuring shop:", errorText);
+                        // Append to existing tool call
+                        const existing = toolCallsById.get(key);
+                        if (tc.function?.name) {
+                          existing.function.name += tc.function.name;
+                        }
+                        if (tc.function?.arguments) {
+                          existing.function.arguments += tc.function.arguments;
+                        }
                       }
-                    } catch (shopError) {
-                      console.error("❌ Exception setting up shop:", shopError);
                     }
                   }
+                } catch (e) {
+                  // Skip malformed JSON chunks
+                  console.error("Error parsing SSE data:", e);
+                }
+              }
+            }
+          }
+          
+          // Stream complete - process tool calls
+          const toolCalls = Array.from(toolCallsById.values());
+          console.log(`📋 Total tool calls collected: ${toolCalls.length}`);
+          
+          if (toolCalls.length > 0 && activeCharacterId) {
+            console.log("🔄 Processing tool calls:", toolCalls.length);
+            
+            for (const toolCall of toolCalls) {
+              const toolName = toolCall.function?.name;
+              console.log(`Processing tool: ${toolName}`);
+              
+              if (toolName === 'close_shop' && roomId) {
+                console.log('🛒 Closing shop...');
+                try {
+                  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+                  const closeShopResponse = await fetch(`${supabaseUrl}/functions/v1/close-shop`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                      'apikey': Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+                    },
+                    body: JSON.stringify({ roomId }),
+                  });
                   
-                  if (toolName === 'update_character_stats') {
-                    try {
-                      const args = JSON.parse(toolCall.function?.arguments || '{}');
-                      console.log('📊 Update character stats:', args);
+                  if (closeShopResponse.ok) {
+                    console.log("✅ Shop closed successfully");
+                  } else {
+                    console.error("❌ Error closing shop:", await closeShopResponse.text());
+                  }
+                } catch (e) {
+                  console.error("❌ Exception closing shop:", e);
+                }
+              }
+              
+              if (toolName === 'set_shop' && roomId) {
+                try {
+                  const args = JSON.parse(toolCall.function?.arguments || '{}');
+                  console.log('🏪 Setting up shop:', args);
+                  
+                  const setShopResponse = await fetch(`${supabaseUrl}/functions/v1/set-shop`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${supabaseKey}`
+                    },
+                    body: JSON.stringify({
+                      roomId,
+                      npcName: args.npc_name || 'Mercador',
+                      npcDescription: args.npc_description || 'Um comerciante experiente',
+                      npcPersonality: args.npc_personality || 'neutral',
+                      npcReputation: args.npc_reputation || 0,
+                      items: args.items || []
+                    })
+                  });
+                  
+                  if (setShopResponse.ok) {
+                    console.log("✅ Shop configured successfully:", await setShopResponse.json());
+                  } else {
+                    console.error("❌ Error configuring shop:", await setShopResponse.text());
+                  }
+                } catch (e) {
+                  console.error("❌ Exception setting up shop:", e);
+                }
+              }
+              
+              if (toolName === 'update_character_stats') {
+                try {
+                  const args = JSON.parse(toolCall.function?.arguments || '{}');
+                  console.log('📊 Update character stats:', args);
+                  
+                  if (activeCharacterId) {
+                    const updates: any = {};
+                    
+                    if (args.hp_change !== undefined && args.hp_change !== 0) {
+                      const { data: char } = await supabase
+                        .from('characters')
+                        .select('current_hp')
+                        .eq('id', activeCharacterId)
+                        .single();
                       
-                      // Only process if we have an active character
-                      if (activeCharacterId) {
-                        const updates: any = {};
-                        
-                        // Handle HP change
-                        if (args.hp_change !== undefined && args.hp_change !== 0) {
-                          const { data: char } = await supabase
-                            .from('characters')
-                            .select('current_hp')
-                            .eq('id', activeCharacterId)
-                            .single();
-                          
-                          if (char) {
-                            const newHp = Math.max(0, char.current_hp + args.hp_change);
-                            updates.current_hp = newHp;
-                            console.log(`HP change: ${char.current_hp} → ${newHp} (${args.hp_change})`);
-                          }
-                        }
-                        
-                        // Handle XP gain
-                        if (args.xp_gain && args.xp_gain > 0) {
-                          const { data: char } = await supabase
-                            .from('characters')
-                            .select('experience_points')
-                            .eq('id', activeCharacterId)
-                            .single();
-                          
-                          if (char) {
-                            const newXp = (char.experience_points || 0) + args.xp_gain;
-                            updates.experience_points = newXp;
-                            console.log(`XP change: ${char.experience_points} → ${newXp} (+${args.xp_gain})`);
-                          }
-                        }
-                        
-                        // Apply updates
-                        if (Object.keys(updates).length > 0) {
-                          const { error: updateError } = await supabase
-                            .from('characters')
-                            .update(updates)
-                            .eq('id', activeCharacterId);
-                          
-                          if (updateError) {
-                            console.error('❌ Error updating character:', updateError);
-                          } else {
-                            console.log('✅ Character updated successfully');
-                          }
-                        }
-                      } else {
-                        console.warn('⚠️ No active character - skipping stats update');
-                      }
-                    } catch (e) {
-                      console.error('Error processing update_character_stats:', e);
-                    }
-                  }
-                }
-                
-                if (fullResponse.trim() && roomId) {
-              if (buffer.trim()) {
-                const lines = buffer.split('\n').filter(l => l.trim());
-                for (const line of lines) {
-                  if (line.startsWith('data: ')) {
-                    const dataStr = line.slice(6).trim();
-                    if (dataStr && dataStr !== '[DONE]') {
-                      try {
-                        const data = JSON.parse(dataStr);
-                        const delta = data.choices?.[0]?.delta;
-                        
-                        // Capture only content field (reasoning is internal and should not be displayed)
-                        const content = delta?.content;
-                        
-                        if (content) {
-                          fullResponse += content;
-                        }
-                        
-                        // Collect tool calls progressively
-                        if (delta?.tool_calls) {
-                          console.log("🔧 Tool call detected in stream:", JSON.stringify(delta.tool_calls));
-                          for (const tc of delta.tool_calls) {
-                            const key = `${tc.index || 0}_${tc.id || 'default'}`;
-                            if (!toolCallsById.has(key)) {
-                              console.log(`🆕 New tool call: ${key} - ${tc.function?.name}`);
-                              toolCallsById.set(key, {
-                                index: tc.index || 0,
-                                id: tc.id || null,
-                                type: tc.type || 'function',
-                                function: {
-                                  name: tc.function?.name || '',
-                                  arguments: tc.function?.arguments || ''
-                                }
-                              });
-                            } else {
-                              // Append to existing tool call (streaming chunks)
-                              const existing = toolCallsById.get(key);
-                              if (tc.function?.name) {
-                                existing.function.name += tc.function.name;
-                              }
-                              if (tc.function?.arguments) {
-                                existing.function.arguments += tc.function.arguments;
-                              }
-                            }
-                          }
-                        }
-                      } catch (e) {
-                        console.error("Error parsing final buffer line:", e, "Line:", dataStr);
+                      if (char) {
+                        updates.current_hp = Math.max(0, char.current_hp + args.hp_change);
+                        console.log(`HP: ${char.current_hp} → ${updates.current_hp}`);
                       }
                     }
-                  }
-                }
-              }
-              
-              // Convert map to array
-              toolCalls = Array.from(toolCallsById.values());
-              console.log(`📋 Total tool calls collected: ${toolCalls.length}`);
-              if (toolCalls.length > 0) {
-                console.log("Tool calls details:", JSON.stringify(toolCalls, null, 2));
-              }
-              
-              // Process tool calls BEFORE saving message
-              if (toolCalls.length > 0 && activeCharacterId) {
-                console.log("🔄 Processing tool calls:", toolCalls.length);
-                for (const toolCall of toolCalls) {
-                  console.log(`Processing tool: ${toolCall.function?.name}`);
-                  if (toolCall.function?.name === "update_character_stats") {
-                    try {
-                      const args = JSON.parse(toolCall.function.arguments);
-                      const { hp_change, xp_gain, reason } = args;
+                    
+                    if (args.xp_gain && args.xp_gain > 0) {
+                      const { data: char } = await supabase
+                        .from('characters')
+                        .select('experience_points')
+                        .eq('id', activeCharacterId)
+                        .single();
                       
-                      console.log("Tool call args:", args);
-                      console.log("Using active character ID:", activeCharacterId);
-
-                      // Update HP if specified
-                      if (hp_change !== undefined && hp_change !== 0) {
-                        const { data: char } = await supabase
-                          .from('characters')
-                          .select('current_hp, max_hp, name')
-                          .eq('id', activeCharacterId)
-                          .single();
-
-                        if (char) {
-                          console.log(`[HP Update] Character: ${char.name}, Current HP: ${char.current_hp}/${char.max_hp}, Change: ${hp_change}`);
-                          const newHP = Math.max(0, Math.min(char.max_hp, char.current_hp + hp_change));
-                          console.log(`[HP Update] Calculated new HP: ${newHP} (formula: max(0, min(${char.max_hp}, ${char.current_hp} + ${hp_change})))`);
-                          
-                          await supabase
-                            .from('characters')
-                            .update({ current_hp: newHP })
-                            .eq('id', activeCharacterId);
-
-                          console.log(`✅ Updated ${char.name} HP: ${char.current_hp} -> ${newHP} (${hp_change > 0 ? '+' : ''}${hp_change}) - ${reason}`);
-                        } else {
-                          console.error(`❌ Character not found with ID: ${activeCharacterId}`);
-                        }
+                      if (char) {
+                        updates.experience_points = (char.experience_points || 0) + args.xp_gain;
+                        console.log(`XP: +${args.xp_gain} (Total: ${updates.experience_points})`);
                       }
-
-                      // Update XP if specified
-                      if (xp_gain !== undefined && xp_gain > 0) {
-                        const { data: char } = await supabase
-                          .from('characters')
-                          .select('experience_points, level, name')
-                          .eq('id', activeCharacterId)
-                          .single();
-
-                        if (char) {
-                          const newXP = (char.experience_points || 0) + xp_gain;
-                          await supabase
-                            .from('characters')
-                            .update({ experience_points: newXP })
-                            .eq('id', activeCharacterId);
-
-                          console.log(`✅ Updated ${char.name} XP: +${xp_gain} (Total: ${newXP}) - ${reason}`);
-                        }
-                      }
-                    } catch (toolError) {
-                      console.error("❌ Error processing tool call:", toolError);
-                      console.error("Tool call details:", JSON.stringify(toolCall, null, 2));
+                    }
+                    
+                    if (Object.keys(updates).length > 0) {
+                      await supabase
+                        .from('characters')
+                        .update(updates)
+                        .eq('id', activeCharacterId);
+                      console.log('✅ Character updated');
                     }
                   }
-                }
-              } else {
-                if (toolCalls.length === 0) {
-                  console.log("⚠️ No tool calls received from AI");
-                }
-                if (!activeCharacterId) {
-                  console.log("⚠️ No active character ID found");
+                } catch (e) {
+                  console.error('Error processing update_character_stats:', e);
                 }
               }
-              
-              
-              // CRITICAL: ALWAYS save the complete GM response ONLY to gm_messages table
-              // NEVER save to room_chat_messages or any other collection
-              // This function MUST NEVER insert into room_chat_messages
-              if (fullResponse && roomId) {
-                console.log("Stream complete. Full response length:", fullResponse.length);
-                console.log("Saving GM response to gm_messages ONLY...");
-                console.log("⚠️ CRITICAL: This function will NEVER save to room_chat_messages");
-                
-                // Get the GM user id from the room
-                const { data: room, error: roomError } = await supabase
-                  .from('rooms')
-                  .select('gm_id')
-                  .eq('id', roomId)
-                  .single();
+            }
+          } else {
+            if (toolCalls.length === 0) console.log("⚠️ No tool calls");
+            if (!activeCharacterId) console.log("⚠️ No active character");
+          }
+          
+          // Save GM response to database
+          if (fullResponse.trim() && roomId) {
+            console.log("Stream complete. Full response length:", fullResponse.length);
+            console.log("Saving GM response to gm_messages ONLY...");
+            console.log("⚠️ CRITICAL: This function will NEVER save to room_chat_messages");
+            
+            // Get the GM user id from the room
+            const { data: room, error: roomError} = await supabase
+              .from('rooms')
+              .select('gm_id')
+              .eq('id', roomId)
+              .single();
 
                 if (roomError) {
                   console.error("Error fetching room:", roomError);
@@ -1190,70 +1097,7 @@ PERSONAGEM: ${char.name}
                   }
                 }
               controller.close();
-              break;
-            }
-            
-            // Decode and collect the response
-            const chunk = decoder.decode(value, { stream: true });
-            buffer += chunk;
-            
-            // Process complete lines
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || ''; // Keep incomplete line in buffer
-            
-            for (const line of lines) {
-              const trimmedLine = line.trim();
-              if (trimmedLine.startsWith('data: ')) {
-                const dataStr = trimmedLine.slice(6).trim();
-                if (dataStr && dataStr !== '[DONE]') {
-                  try {
-                    const data = JSON.parse(dataStr);
-                    const delta = data.choices?.[0]?.delta;
-                    
-                    // Capture only content field (reasoning is internal and should not be displayed)
-                    const content = delta?.content;
-                    
-                    if (content) {
-                      fullResponse += content;
-                    }
-                    
-                    // Collect tool calls progressively
-                    if (delta?.tool_calls) {
-                      for (const tc of delta.tool_calls) {
-                        const key = `${tc.index || 0}_${tc.id || 'default'}`;
-                        if (!toolCallsById.has(key)) {
-                          toolCallsById.set(key, {
-                            index: tc.index || 0,
-                            id: tc.id || null,
-                            type: tc.type || 'function',
-                            function: {
-                              name: tc.function?.name || '',
-                              arguments: tc.function?.arguments || ''
-                            }
-                          });
-                        } else {
-                          // Append to existing tool call (streaming chunks)
-                          const existing = toolCallsById.get(key);
-                          if (tc.function?.name) {
-                            existing.function.name += tc.function.name;
-                          }
-                          if (tc.function?.arguments) {
-                            existing.function.arguments += tc.function.arguments;
-                          }
-                        }
-                      }
-                    }
-                  } catch (e) {
-                    console.error("Error parsing SSE line:", e, "Line:", dataStr);
-                  }
-                }
-              }
-            }
-            
-            // Pass through the chunk
-            controller.enqueue(value);
-          }
-        } catch (error) {
+            } catch (error) {
           console.error("Stream error:", error);
           controller.error(error);
         }
