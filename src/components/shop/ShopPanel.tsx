@@ -12,9 +12,10 @@ import { Badge } from "@/components/ui/badge";
 
 interface ShopPanelProps {
   roomId: string;
+  characterId: string;
 }
 
-export const ShopPanel = ({ roomId }: ShopPanelProps) => {
+export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
   const [shopState, setShopState] = useState<ShopState | null>(null);
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -285,6 +286,8 @@ export const ShopPanel = ({ roomId }: ShopPanelProps) => {
         item={selectedItem}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
+        characterId={characterId}
+        roomId={roomId}
       />
     </>
   );

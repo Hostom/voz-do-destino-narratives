@@ -1101,7 +1101,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
 
                           <TabsContent value="shop" className="mt-4">
                             {room ? (
-                              <ShopPanel roomId={room.id} />
+                              <ShopPanel roomId={room.id} characterId={character.id} />
                             ) : (
                               <p className="text-sm text-muted-foreground text-center py-8">
                                 Entre em uma sala para acessar a loja
@@ -1143,7 +1143,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                       </SheetHeader>
                       <div className="mt-4">
                         {room ? (
-                          <ShopPanel roomId={room.id} />
+                          <ShopPanel roomId={room.id} characterId={character.id} />
                         ) : (
                           <p className="text-sm text-muted-foreground text-center py-8">
                             Entre em uma sala para acessar a loja
@@ -1434,7 +1434,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
 
                       <TabsContent value="shop" className="mt-4">
                         {room ? (
-                          <ShopPanel roomId={room.id} />
+                          <ShopPanel roomId={room.id} characterId={character.id} />
                         ) : (
                           <p className="text-sm text-muted-foreground text-center py-8">
                             Entre em uma sala para acessar a loja
@@ -1470,7 +1470,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                   </SheetHeader>
                   <div className="mt-4">
                     {room ? (
-                      <ShopPanel roomId={room.id} />
+                      <ShopPanel roomId={room.id} characterId={character.id} />
                     ) : (
                       <p className="text-sm text-muted-foreground text-center py-8">
                         Entre em uma sala para acessar a loja

@@ -10,19 +10,125 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getRarityColor, getRarityBorderColor, getQualityStars } from "@/lib/shop-pricing";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 interface ShopItemModalProps {
   item: ShopItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  characterId: string;
+  roomId: string;
 }
 
-export const ShopItemModal = ({ item, open, onOpenChange }: ShopItemModalProps) => {
+export const ShopItemModal = ({ item, open, onOpenChange, characterId, roomId }: ShopItemModalProps) => {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+
   if (!item) return null;
 
   const rarityColor = getRarityColor(item.rarity);
   const borderColor = getRarityBorderColor(item.rarity);
   const qualityStars = getQualityStars(item.quality);
+
+  const handleBuy = async () => {
+    if (!characterId || !roomId) return;
+    
+    setLoading(true);
+    try {
+      // Get character data
+      const { data: character, error: charError } = await supabase
+        .from("characters")
+        .select("gold_pieces")
+        .eq("id", characterId)
+        .single();
+
+      if (charError) throw charError;
+
+      const currentGold = character.gold_pieces || 0;
+
+      // Check if enough gold
+      if (currentGold < item.finalPrice) {
+        toast({
+          title: "Ouro insuficiente",
+          description: `Você precisa de ${item.finalPrice} PO, mas só tem ${currentGold} PO.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check stock
+      if (item.stock === 0) {
+        toast({
+          title: "Sem estoque",
+          description: "Este item não está mais disponível.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Deduct gold
+      const { error: updateError } = await supabase
+        .from("characters")
+        .update({ gold_pieces: currentGold - item.finalPrice })
+        .eq("id", characterId);
+
+      if (updateError) throw updateError;
+
+      // Add item to inventory
+      const { error: itemError } = await supabase
+        .from("character_items")
+        .insert({
+          character_id: characterId,
+          item_name: item.name,
+          item_type: item.category || "misc",
+          description: item.description,
+          quantity: 1,
+          weight: 0,
+          properties: item.attributes,
+        });
+
+      if (itemError) throw itemError;
+
+      // Update shop stock if limited
+      if (item.stock > 0) {
+        const { data: shopState } = await supabase
+          .from("shop_states")
+          .select("items")
+          .eq("room_id", roomId)
+          .single();
+
+        if (shopState) {
+          const items = shopState.items as any[];
+          const updatedItems = items.map((i: any) => 
+            i.id === item.id ? { ...i, stock: i.stock - 1 } : i
+          );
+
+          await supabase
+            .from("shop_states")
+            .update({ items: updatedItems })
+            .eq("room_id", roomId);
+        }
+      }
+
+      toast({
+        title: "Compra realizada!",
+        description: `${item.name} foi adicionado ao seu inventário.`,
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error buying item:", error);
+      toast({
+        title: "Erro na compra",
+        description: "Não foi possível completar a compra.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -117,8 +223,13 @@ export const ShopItemModal = ({ item, open, onOpenChange }: ShopItemModalProps) 
           
           <Separator />
           
-          <Button className="w-full" size="lg" disabled>
-            Comprar (Em breve)
+          <Button 
+            className="w-full" 
+            size="lg" 
+            onClick={handleBuy}
+            disabled={loading || item.stock === 0}
+          >
+            {loading ? "Comprando..." : item.stock === 0 ? "Sem estoque" : `Comprar por ${item.finalPrice} PO`}
           </Button>
         </div>
       </DialogContent>
