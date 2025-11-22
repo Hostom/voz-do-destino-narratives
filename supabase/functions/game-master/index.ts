@@ -1107,43 +1107,118 @@ PERSONAGEM: ${char.name}
                     }
                   }
                   
+                  // DETECT AND REPLACE TECHNICAL MESSAGES WITH CONTEXTUAL NARRATIVES
+                  // Check if the response contains technical/meta messages that break immersion
+                  const hasTechnicalMessage = narrativeText.includes("ações executadas:") || 
+                                             narrativeText.includes("preparando algo") ||
+                                             narrativeText.includes("Executando comando") ||
+                                             narrativeText.includes("Processando");
+                  
+                  if (hasTechnicalMessage && toolCalls.length > 0) {
+                    console.log("⚠️ Technical message detected in response. Replacing with contextual narrative...");
+                    console.log("Original message:", narrativeText);
+                    
+                    const toolName = toolCalls[0].function?.name;
+                    
+                    // Generate shop opening narrative
+                    if (toolName === 'set_shop' && shopCreatedData) {
+                      console.log("🏪 Replacing with shop opening narrative for:", shopCreatedData.npcName);
+                      const personality = shopCreatedData.npcPersonality || "neutral";
+                      const npcName = shopCreatedData.npcName || "Mercador";
+                      const items = shopCreatedData.items || [];
+                      
+                      let greeting = "";
+                      if (personality === "friendly") {
+                        greeting = `*${npcName} abre as portas com um sorriso caloroso*\n\n"Bem-vindos, bem-vindos, meus amigos! Entrem, entrem!" ${npcName} gesticula entusiasticamente, convidando vocês a explorar sua loja.`;
+                      } else if (personality === "greedy") {
+                        greeting = `*${npcName} ergue o olhar com um brilho calculista nos olhos*\n\n"Ah, clientes! Vocês vieram ao lugar certo." ${npcName} esfrega as mãos. "Tenho exatamente o que precisam... pelo preço certo, é claro."`;
+                      } else if (personality === "suspicious") {
+                        greeting = `*${npcName} observa vocês com olhos cautelosos enquanto destrava a porta*\n\n"Hmm... sejam bem-vindos, suponho. Mas não toquem em nada sem perguntar primeiro."`;
+                      } else if (personality === "hostile") {
+                        greeting = `*${npcName} abre a porta bruscamente*\n\n"O que vocês querem? Não tenho o dia todo. Comprem algo ou saiam."`;
+                      } else {
+                        greeting = `*${npcName} abre a loja e acena calmamente*\n\n"Sejam bem-vindos à minha loja. Sintam-se à vontade para olhar."`;
+                      }
+                      
+                      if (items.length > 0) {
+                        const itemCount = items.length;
+                        greeting += `\n\n*As prateleiras exibem ${itemCount} ${itemCount === 1 ? 'item' : 'itens'} à venda*`;
+                      }
+                      
+                      narrativeText = greeting;
+                      console.log("✅ Replaced with shop opening narrative");
+                    }
+                    // Generate shop closing narrative
+                    else if (toolName === 'close_shop' && shopClosingData) {
+                      console.log("🚪 Replacing with shop closing narrative for:", shopClosingData.npcName);
+                      const personality = shopClosingData.npcPersonality || "neutral";
+                      const npcName = shopClosingData.npcName || "Mercador";
+                      
+                      let farewell = "";
+                      if (personality === "friendly") {
+                        farewell = `*${npcName} acena alegremente enquanto vocês saem*\n\n"Foi um prazer fazer negócios com vocês! Voltem sempre, amigos!"`;
+                      } else if (personality === "greedy") {
+                        farewell = `*${npcName} conta as moedas enquanto vocês se afastam*\n\n"Até a próxima. E lembrem-se: sempre tenho novos tesouros chegando..."`;
+                      } else if (personality === "suspicious") {
+                        farewell = `*${npcName} observa vocês saírem com um olhar desconfiado*\n\n"Hmm. Cuidado por aí."`;
+                      } else if (personality === "hostile") {
+                        farewell = `*${npcName} praticamente empurra vocês para fora*\n\n"Já era hora. Podem ir."`;
+                      } else {
+                        farewell = `*${npcName} acena educadamente*\n\n"Agradeço pela visita. Boa jornada."`;
+                      }
+                      
+                      narrativeText = farewell;
+                      console.log("✅ Replaced with shop closing narrative");
+                    }
+                    // For other tools, remove the message entirely
+                    else {
+                      console.log("🔇 Tool call detected but no contextual narrative available. Removing technical message.");
+                      narrativeText = "";
+                    }
+                  }
+                  
                   console.log("Attempting to insert GM response to gm_messages...");
                   console.log("Response length:", narrativeText.length);
                   console.log("Response preview (first 200 chars):", narrativeText.substring(0, 200));
                   
-                  // CRITICAL: Insert ONLY into gm_messages - this is the single source of truth for GM narrations
-                  // NEVER insert into room_chat_messages from this function
-                  // Shop blocks are removed from narrative - they appear only in ShopPanel
-                  const { data: insertedData, error: insertError } = await supabase
-                    .from("gm_messages")
-                    .insert({
-                      room_id: roomId,
-                      player_id: room.gm_id,
-                      sender: "GM",
-                      character_name: "Voz do Destino",
-                      content: narrativeText,
-                      type: "gm",
-                    })
-                    .select();
-                  
-                  if (insertError) {
-                    console.error("❌ Error saving GM message to gm_messages:", insertError);
-                    console.error("Error details:", JSON.stringify(insertError, null, 2));
-                    console.error("Attempted insert data:", {
-                      room_id: roomId,
-                      player_id: room.gm_id,
-                      sender: "GM",
-                      character_name: "Voz do Destino",
-                      content_length: fullResponse.trim().length,
-                      type: "gm",
-                    });
-                    // CRITICAL: Do NOT fallback to room_chat_messages - fail instead
-                    console.error("⚠️ CRITICAL: Will NOT save to room_chat_messages as fallback");
+                  // Only save if there's actual content to save
+                  if (narrativeText.trim()) {
+                    // CRITICAL: Insert ONLY into gm_messages - this is the single source of truth for GM narrations
+                    // NEVER insert into room_chat_messages from this function
+                    // Shop blocks are removed from narrative - they appear only in ShopPanel
+                    const { data: insertedData, error: insertError } = await supabase
+                      .from("gm_messages")
+                      .insert({
+                        room_id: roomId,
+                        player_id: room.gm_id,
+                        sender: "GM",
+                        character_name: "Voz do Destino",
+                        content: narrativeText,
+                        type: "gm",
+                      })
+                      .select();
+                    
+                    if (insertError) {
+                      console.error("❌ Error saving GM message to gm_messages:", insertError);
+                      console.error("Error details:", JSON.stringify(insertError, null, 2));
+                      console.error("Attempted insert data:", {
+                        room_id: roomId,
+                        player_id: room.gm_id,
+                        sender: "GM",
+                        character_name: "Voz do Destino",
+                        content_length: narrativeText.length,
+                        type: "gm",
+                      });
+                      // CRITICAL: Do NOT fallback to room_chat_messages - fail instead
+                      console.error("⚠️ CRITICAL: Will NOT save to room_chat_messages as fallback");
+                    } else {
+                      console.log("✅ GM response saved to gm_messages successfully. ID:", insertedData?.[0]?.id);
+                      console.log("Inserted data:", JSON.stringify(insertedData?.[0], null, 2));
+                      console.log("Response preview:", narrativeText.substring(0, 100) + "...");
+                      console.log("✅ Confirmed: Message saved ONLY to gm_messages, NOT to room_chat_messages");
+                    }
                   } else {
-                    console.log("✅ GM response saved to gm_messages successfully. ID:", insertedData?.[0]?.id);
-                    console.log("Inserted data:", JSON.stringify(insertedData?.[0], null, 2));
-                    console.log("Response preview:", fullResponse.substring(0, 100) + "...");
-                    console.log("✅ Confirmed: Message saved ONLY to gm_messages, NOT to room_chat_messages");
+                    console.log("⚠️ No narrative content to save (empty or tool-only response)");
                   }
                 } else {
                   console.error("Room not found for roomId:", roomId);
