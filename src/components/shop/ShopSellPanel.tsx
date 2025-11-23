@@ -158,43 +158,44 @@ export const ShopSellPanel = ({ characterId, roomId }: ShopSellPanelProps) => {
           return (
             <div
               key={item.id}
-              className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+              className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
             >
-              <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
-                <Package className="h-5 w-5 text-primary" />
+              <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Package className="h-4 w-4 text-primary" />
               </div>
               
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-semibold text-sm truncate">{item.item_name}</h4>
-                  <Badge variant="outline" className="text-xs">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h4 className="font-semibold text-xs truncate max-w-[120px]">{item.item_name}</h4>
+                  <Badge variant="outline" className="text-[10px] px-1 py-0">
                     {item.item_type}
                   </Badge>
                   {item.quantity > 1 && (
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="text-[10px] px-1 py-0">
                       x{item.quantity}
                     </Badge>
                   )}
                 </div>
                 {item.description && (
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-[10px] text-muted-foreground truncate">
                     {item.description}
                   </p>
                 )}
               </div>
               
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <Coins className="h-4 w-4 text-yellow-500" />
-                  <span className="text-sm font-bold">{sellPrice}</span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-0.5">
+                  <Coins className="h-3 w-3 text-yellow-500" />
+                  <span className="text-xs font-bold">{sellPrice}</span>
                 </div>
                 
                 <Button
                   size="sm"
                   onClick={() => handleSell(item)}
                   disabled={loading === item.id}
+                  className="h-7 px-2 text-xs"
                 >
-                  {loading === item.id ? "Vendendo..." : "Vender"}
+                  {loading === item.id ? "..." : "Vender"}
                 </Button>
               </div>
             </div>
