@@ -349,20 +349,6 @@ const Index = () => {
             .single();
 
           const campaignType = roomData?.campaign_type || 'fantasy';
-          
-          // Mapear tipo de campanha para descrição
-          const campaignDescriptions: Record<string, string> = {
-            'fantasy': 'fantasia medieval com magia, dragões e aventuras épicas',
-            'cyberpunk': 'cyberpunk futurista com tecnologia avançada, implantes cibernéticos e corporações poderosas',
-            'horror': 'terror psicológico com criaturas sobrenaturais e atmosfera sombria',
-            'sci-fi': 'ficção científica com viagens espaciais, alienígenas e tecnologia futurista',
-            'post-apocalyptic': 'pós-apocalíptico com sobrevivência em um mundo devastado',
-            'steampunk': 'steampunk vitoriano com máquinas a vapor e engenhocas fantásticas',
-            'western': 'velho oeste com pistoleiros, bandidos e cidades fronteiriças',
-            'modern': 'mundo moderno contemporâneo com tecnologia atual'
-          };
-
-          const campaignDesc = campaignDescriptions[campaignType] || 'aventura épica';
 
           // Enviar para o GM com o contexto de TODOS os personagens e tipo de campanha
           const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
@@ -375,23 +361,11 @@ const Index = () => {
             body: JSON.stringify({
               messages: [{ 
                 role: 'user', 
-                content: `[INÍCIO DA SESSÃO - TIPO DE CAMPANHA: ${campaignType.toUpperCase()}]
+                content: `[INÍCIO DA SESSÃO]
 
 ${allCharactersSheet}
 
-Apresente-se como "Voz do Destino" e dê as boas-vindas aos aventureiros. 
-
-CONTEXTO IMPORTANTE: Esta é uma campanha de ${campaignDesc}.
-
-Adapte sua narrativa, itens, NPCs e desafios ao cenário ${campaignType}. Por exemplo:
-- Se for cyberpunk: use termos como "net", "corpo", "implantes", armas de fogo, hackers
-- Se for fantasia: use magia, espadas, dragões, tavernas
-- Se for terror: crie atmosfera sombria, ameaças desconhecidas
-- E assim por diante para cada tipo de campanha
-
-IMPORTANTE: Após se apresentar, você DEVE iniciar a aventura diretamente no cenário apropriado. Crie uma cena de abertura interessante e imersiva que estabeleça o tom da campanha ${campaignType}. Não pergunte que tipo de aventura eles querem - a campanha já foi escolhida como ${campaignType}.
-
-Use as características, backgrounds e classes dos personagens para criar uma introdução que faça sentido para o grupo. Inicie a narrativa com ação ou intriga!` 
+Inicie a aventura agora.` 
               }],
               roomId: room.id,
               characterName: character.name,
