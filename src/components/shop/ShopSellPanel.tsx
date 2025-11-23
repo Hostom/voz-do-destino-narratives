@@ -158,42 +158,39 @@ export const ShopSellPanel = ({ characterId, roomId }: ShopSellPanelProps) => {
           return (
             <div
               key={item.id}
-              className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+              className="flex items-center gap-1.5 p-1.5 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
             >
-              <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Package className="h-4 w-4 text-primary" />
+              <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Package className="h-3 w-3 text-primary" />
               </div>
               
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="font-semibold text-xs truncate max-w-[120px]">{item.item_name}</h4>
-                  <Badge variant="outline" className="text-[10px] px-1 py-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="flex items-center gap-1 flex-nowrap">
+                  <h4 className="font-semibold text-[11px] truncate max-w-[80px]" title={item.item_name}>
+                    {item.item_name}
+                  </h4>
+                  <Badge variant="outline" className="text-[9px] px-0.5 py-0 leading-tight flex-shrink-0">
                     {item.item_type}
                   </Badge>
                   {item.quantity > 1 && (
-                    <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                    <Badge variant="secondary" className="text-[9px] px-0.5 py-0 leading-tight flex-shrink-0">
                       x{item.quantity}
                     </Badge>
                   )}
                 </div>
-                {item.description && (
-                  <p className="text-[10px] text-muted-foreground truncate">
-                    {item.description}
-                  </p>
-                )}
               </div>
               
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-1.5 flex-shrink-0">
                 <div className="flex items-center gap-0.5">
                   <Coins className="h-3 w-3 text-yellow-500" />
-                  <span className="text-xs font-bold">{sellPrice}</span>
+                  <span className="text-[11px] font-bold">{sellPrice}</span>
                 </div>
                 
                 <Button
                   size="sm"
                   onClick={() => handleSell(item)}
                   disabled={loading === item.id}
-                  className="h-7 px-2 text-xs"
+                  className="h-6 px-2 text-[10px] flex-shrink-0"
                 >
                   {loading === item.id ? "..." : "Vender"}
                 </Button>
