@@ -51,22 +51,22 @@ export function ShopItemCard({ item, onClick }: ShopItemCardProps) {
       className={`cursor-pointer hover:shadow-lg transition-all border-2 ${rarityClass}`}
       onClick={onClick}
     >
-      <CardContent className="p-3 space-y-2">
+      <CardContent className="p-2.5 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <TypeIcon className="w-4 h-4 flex-shrink-0" />
-            <h3 className={`font-semibold text-sm ${rarityClass.split(' ')[0]} truncate`}>
+            <h3 className={`font-semibold text-xs ${rarityClass.split(' ')[0]} truncate`} title={item.name}>
               {item.name}
             </h3>
           </div>
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
-            <Badge variant="outline" className={`${rarityClass} text-[10px] px-1.5 py-0`}>
+          <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+            <Badge variant="outline" className={`${rarityClass} text-[9px] px-1 py-0 leading-tight`}>
               {rarityLabels[item.rarity]}
             </Badge>
             {item.stock !== undefined && item.stock !== -1 && (
               <Badge 
                 variant={item.stock > 5 ? "outline" : item.stock > 0 ? "secondary" : "destructive"}
-                className="text-[10px] px-1.5 py-0"
+                className="text-[9px] px-1 py-0 leading-tight"
               >
                 {item.stock > 0 ? `${item.stock}` : "0"}
               </Badge>
@@ -74,12 +74,12 @@ export function ShopItemCard({ item, onClick }: ShopItemCardProps) {
           </div>
         </div>
 
-        <p className="text-xs text-muted-foreground line-clamp-1">
+        <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight" title={item.description}>
           {item.description}
         </p>
 
         <div className="flex items-center justify-between pt-1 border-t">
-          <div className="flex gap-2 text-xs">
+          <div className="flex gap-1.5 text-[10px]">
             {item.atk > 0 && (
               <span className="text-red-400">⚔️{item.atk}</span>
             )}
@@ -87,7 +87,7 @@ export function ShopItemCard({ item, onClick }: ShopItemCardProps) {
               <span className="text-blue-400">🛡️{item.def}</span>
             )}
           </div>
-          <span className="text-sm font-bold text-yellow-500">
+          <span className="text-xs font-bold text-yellow-500 whitespace-nowrap">
             {item.price}🪙
           </span>
         </div>

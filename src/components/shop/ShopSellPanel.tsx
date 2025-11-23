@@ -150,8 +150,8 @@ export const ShopSellPanel = ({ characterId, roomId }: ShopSellPanelProps) => {
   }
 
   return (
-    <ScrollArea className="h-[500px]">
-      <div className="space-y-2 pr-4">
+    <ScrollArea className="h-[450px]">
+      <div className="space-y-1.5 pr-4">
         {items.map((item) => {
           const sellPrice = calculateSellPrice(item);
           
