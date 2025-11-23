@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dices, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { LootCheckNotification } from "./LootCheckNotification";
 
 interface Character {
   id: string;
@@ -272,6 +273,9 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 px-4 pb-4">
+        {/* Loot Check Notifications */}
+        <LootCheckNotification characterId={character.id} roomId={roomId} />
+
         {/* Pending Requests */}
         {pendingRequests.length > 0 && (
           <div className="space-y-2">
