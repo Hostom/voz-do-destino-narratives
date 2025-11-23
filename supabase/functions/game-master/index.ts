@@ -919,6 +919,29 @@ PERSONAGEM: ${char.name}
                   // Use only the response content for players
                   let narrativeText = parsed.response.trim();
                   
+                  // AGGRESSIVE ANTI-LEAK: Remove any internal logic leaks before validation
+                  const narrativeLeakPatterns = [
+                    /\[?actions?\s+executed?:.*?\]?/gi,
+                    /_O\s+Mestre\s+está\s+preparando.*?_/gi,
+                    /pense\s+seriamente/gi,
+                    /preciso\s+chamar/gi,
+                    /vou\s+(executar|chamar)/gi,
+                    /tool|função|ferramenta/gi,
+                    /set_shop|close_shop|update_character/gi,
+                    /<\/?thinking>/gi,
+                    /ações\s+executadas:/gi,
+                    /preparando\s+algo/gi,
+                    /executando\s+comando/gi,
+                    /processando/gi
+                  ];
+                  
+                  for (const pattern of narrativeLeakPatterns) {
+                    narrativeText = narrativeText.replace(pattern, '');
+                  }
+                  
+                  // Clean up extra whitespace after removal
+                  narrativeText = narrativeText.replace(/\n{3,}/g, '\n\n').trim();
+                  
                   // Check if shop was created via tool call
                   if (shopCreatedData && shopCreatedData.items.length > 0) {
                     console.log("🛒 Generating narrative for shop created via set_shop tool...");
@@ -1100,22 +1123,8 @@ PERSONAGEM: ${char.name}
                     }
                   }
                   
-                  // ANTI-LEAK VALIDATION: Detect any leaks of internal logic
-                  const leakPatterns = [
-                    /pense seriamente/i,
-                    /preciso chamar/i,
-                    /vou executar/i,
-                    /vou chamar/i,
-                    /tool|função|ferramenta/i,
-                    /set_shop|close_shop|update_character/i,
-                    /<thinking>/i, // If tags leaked
-                    /ações executadas:/i,
-                    /preparando algo/i,
-                    /executando comando/i,
-                    /processando/i
-                  ];
-                  
-                  const hasLeak = leakPatterns.some(pattern => pattern.test(narrativeText));
+                  // ANTI-LEAK VALIDATION: Detect and remove any leaks of internal logic
+                  const hasLeak = narrativeLeakPatterns.some(pattern => pattern.test(narrativeText));
                   
                   if (hasLeak) {
                     console.error("🚨 VAZAMENTO DE LÓGICA INTERNA DETECTADO!");
