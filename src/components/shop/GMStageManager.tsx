@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowUp, Store } from "lucide-react";
+import { ArrowUp, Store, Package } from "lucide-react";
 
 interface GMStageManagerProps {
   roomId: string;
@@ -17,6 +17,7 @@ interface GMStageManagerProps {
 
 export function GMStageManager({ roomId, currentStage, campaignType, onStageUpdate }: GMStageManagerProps) {
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isRestocking, setIsRestocking] = useState(false);
   const [newStage, setNewStage] = useState(currentStage);
   const [selectedShopType, setSelectedShopType] = useState<string>("blacksmith");
 
@@ -42,6 +43,24 @@ export function GMStageManager({ roomId, currentStage, campaignType, onStageUpda
 
   const handleOpenShop = () => {
     toast.info(`Loja aberta: ${selectedShopType}. Os jogadores podem acessar na aba "Loja".`);
+  };
+
+  const handleRestock = async () => {
+    setIsRestocking(true);
+    try {
+      const { error } = await supabase.functions.invoke('restock-shop', {
+        body: { roomId }
+      });
+
+      if (error) throw error;
+
+      toast.success('Todas as lojas foram reabastecidas!');
+    } catch (error) {
+      console.error('Error restocking:', error);
+      toast.error('Erro ao reabastecer lojas');
+    } finally {
+      setIsRestocking(false);
+    }
   };
 
   return (
@@ -114,6 +133,23 @@ export function GMStageManager({ roomId, currentStage, campaignType, onStageUpda
           </div>
           <p className="text-xs text-muted-foreground">
             Os itens da loja são carregados automaticamente do banco de dados
+          </p>
+        </div>
+
+        {/* Restock Button */}
+        <div className="space-y-3 pt-4 border-t">
+          <Label>Gerenciar Estoque</Label>
+          <Button 
+            onClick={handleRestock} 
+            disabled={isRestocking}
+            variant="secondary"
+            className="w-full"
+          >
+            <Package className="w-4 h-4 mr-2" />
+            {isRestocking ? 'Reabastecendo...' : 'Reabastecer Todas as Lojas'}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Restaura o estoque de todos os itens nas lojas da campanha
           </p>
         </div>
       </CardContent>

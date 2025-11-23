@@ -17,6 +17,7 @@ interface ShopItem {
   price: number;
   description: string;
   lore: string;
+  stock?: number; // -1 for unlimited, number for limited stock
 }
 
 interface ShopItemModalProps {
@@ -57,6 +58,13 @@ export function ShopItemModal({
   const handleBuy = async () => {
     setIsLoading(true);
     try {
+      // Check stock availability first
+      if (item.stock !== undefined && item.stock !== -1 && item.stock <= 0) {
+        toast.error('Item fora de estoque!');
+        setIsLoading(false);
+        return;
+      }
+
       // Get current character gold
       const { data: character, error: charError } = await supabase
         .from('characters')
@@ -102,6 +110,18 @@ export function ShopItemModal({
 
       if (itemError) throw itemError;
 
+      // Decrement shop stock if not unlimited
+      if (item.stock !== undefined && item.stock !== -1) {
+        const { error: stockError } = await supabase
+          .from('shop_items')
+          .update({ stock: item.stock - 1 })
+          .eq('item_id', item.id);
+
+        if (stockError) {
+          console.error('Failed to update stock:', stockError);
+        }
+      }
+
       // Record transaction
       const { error: transError } = await supabase
         .from('shop_transactions')
@@ -138,9 +158,18 @@ export function ShopItemModal({
             {item.name}
           </DialogTitle>
           <DialogDescription>
-            <Badge variant="outline" className={`${rarityClass} mt-2`}>
-              {rarityLabels[item.rarity]}
-            </Badge>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="outline" className={`${rarityClass}`}>
+                {rarityLabels[item.rarity]}
+              </Badge>
+              {item.stock !== undefined && item.stock !== -1 && (
+                <Badge 
+                  variant={item.stock > 5 ? "default" : item.stock > 0 ? "secondary" : "destructive"}
+                >
+                  {item.stock > 0 ? `${item.stock} em estoque` : "Sem estoque"}
+                </Badge>
+              )}
+            </div>
           </DialogDescription>
         </DialogHeader>
 
@@ -193,8 +222,11 @@ export function ShopItemModal({
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button onClick={handleBuy} disabled={isLoading}>
-            {isLoading ? 'Comprando...' : 'Comprar'}
+          <Button 
+            onClick={handleBuy} 
+            disabled={isLoading || (item.stock !== undefined && item.stock !== -1 && item.stock <= 0)}
+          >
+            {isLoading ? 'Comprando...' : item.stock === 0 ? 'Sem Estoque' : 'Comprar'}
           </Button>
         </DialogFooter>
       </DialogContent>
