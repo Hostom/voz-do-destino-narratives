@@ -63,7 +63,7 @@ export const useRoom = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const createRoom = async (characterId: string) => {
+  const createRoom = async (characterId: string, campaignType: string = 'fantasy') => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -76,12 +76,14 @@ export const useRoom = () => {
       const { data: codeData, error: codeError } = await supabase.rpc('generate_room_code');
       if (codeError) throw codeError;
 
-      // Create room
+      // Create room with campaign type
       const { data: roomData, error: roomError } = await supabase
         .from('rooms')
         .insert({
           room_code: codeData,
           gm_id: user.id,
+          campaign_type: campaignType,
+          story_stage: 1,
         })
         .select()
         .single();
