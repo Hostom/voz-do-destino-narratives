@@ -1,3 +1,5 @@
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 interface NarrativeMessageProps {
   role: "user" | "assistant";
   content: string;
@@ -35,9 +37,18 @@ export const NarrativeMessage = ({ role, content, characterName }: NarrativeMess
             )}
             <div className="flex-1 min-w-0">
               {role === "user" && characterName && (
-                <div className="mb-1 text-xs font-semibold text-muted-foreground truncate">
-                  {characterName}
-                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="mb-1 text-xs font-semibold text-muted-foreground truncate cursor-help">
+                        {characterName}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{characterName}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm md:text-base break-words">
                 {content}

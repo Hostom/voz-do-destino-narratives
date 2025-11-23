@@ -2,6 +2,7 @@ import { Users, Heart, Shield } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RoomPlayer } from "@/hooks/useRoom";
 
 interface PlayersPanelProps {
@@ -42,9 +43,18 @@ export const PlayersPanel = ({ players, currentUserId, gmId }: PlayersPanelProps
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-sm truncate">
-                        {player.characters?.name}
-                      </p>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <p className="font-semibold text-sm truncate cursor-help">
+                              {player.characters?.name}
+                            </p>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{player.characters?.name}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                       {isGM && (
                         <Badge variant="outline" className="text-[10px] px-1 py-0">
                           GM
@@ -56,9 +66,18 @@ export const PlayersPanel = ({ players, currentUserId, gmId }: PlayersPanelProps
                         </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {player.characters?.race} {player.characters?.class} Nv.{player.characters?.level}
-                    </p>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="text-xs text-muted-foreground truncate cursor-help">
+                            {player.characters?.race} {player.characters?.class} Nv.{player.characters?.level}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{player.characters?.race} {player.characters?.class} - Nível {player.characters?.level}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
 

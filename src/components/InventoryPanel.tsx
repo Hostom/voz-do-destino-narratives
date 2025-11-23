@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { Coins, Package, Plus, Trash2, Weight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -383,15 +384,35 @@ export const InventoryPanel = ({ characterId, carryingCapacity, roomId, players 
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-medium text-xs truncate max-w-[150px]">{item.item_name}</span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="font-medium text-xs truncate max-w-[150px] cursor-help">
+                                  {item.item_name}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs">{item.item_name}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                             ({itemTypeLabels[item.item_type]})
                           </span>
                         </div>
                         {item.description && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
-                            {item.description}
-                          </p>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1 cursor-help">
+                                  {item.description}
+                                </p>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs">{item.description}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                         <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
                           <span>Qtd: {item.quantity}</span>

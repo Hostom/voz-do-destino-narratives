@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sword, Shield, Beaker, Package } from "lucide-react";
 
 interface ShopItem {
@@ -55,9 +56,18 @@ export function ShopItemCard({ item, onClick }: ShopItemCardProps) {
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <TypeIcon className="w-4 h-4 flex-shrink-0" />
-            <h3 className={`font-semibold text-xs ${rarityClass.split(' ')[0]} truncate`} title={item.name}>
-              {item.name}
-            </h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <h3 className={`font-semibold text-xs ${rarityClass.split(' ')[0]} truncate cursor-help`}>
+                    {item.name}
+                  </h3>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">{item.name}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
             <Badge variant="outline" className={`${rarityClass} text-[9px] px-1 py-0 leading-tight`}>
@@ -74,9 +84,18 @@ export function ShopItemCard({ item, onClick }: ShopItemCardProps) {
           </div>
         </div>
 
-        <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight" title={item.description}>
-          {item.description}
-        </p>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight cursor-help">
+                {item.description}
+              </p>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs">{item.description}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         <div className="flex items-center justify-between pt-1 border-t">
           <div className="flex gap-1.5 text-[10px]">

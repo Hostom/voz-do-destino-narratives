@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Scroll, Plus, Trash2, Sword, Shield, Heart, ArrowLeft } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -126,13 +127,22 @@ export const CharacterSelect = ({ characters, onSelect, onCreateNew, onCharacter
             >
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between text-xl">
-                  <span className="truncate">{char.name}</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="truncate cursor-help max-w-[200px]">{char.name}</span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{char.name}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

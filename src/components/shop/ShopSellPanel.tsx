@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { Coins, Package } from "lucide-react";
 
@@ -166,9 +167,18 @@ export const ShopSellPanel = ({ characterId, roomId }: ShopSellPanelProps) => {
               
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1 flex-nowrap">
-                  <h4 className="font-semibold text-[11px] truncate max-w-[80px]" title={item.item_name}>
-                    {item.item_name}
-                  </h4>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <h4 className="font-semibold text-[11px] truncate max-w-[80px] cursor-help">
+                          {item.item_name}
+                        </h4>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">{item.item_name}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <Badge variant="outline" className="text-[9px] px-0.5 py-0 leading-tight flex-shrink-0">
                     {item.item_type}
                   </Badge>
