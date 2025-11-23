@@ -47,6 +47,7 @@ export function ShopPanel({ roomId, characterId }: ShopPanelProps) {
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [shopType, setShopType] = useState<string>("blacksmith");
   const [currentStage, setCurrentStage] = useState<number>(1);
+  const [campaignType, setCampaignType] = useState<string>("fantasy");
   const [availableShops, setAvailableShops] = useState<any[]>([]);
 
   useEffect(() => {
@@ -56,21 +57,22 @@ export function ShopPanel({ roomId, characterId }: ShopPanelProps) {
   const loadRoomStage = async () => {
     const { data: room } = await supabase
       .from('rooms')
-      .select('story_stage')
+      .select('story_stage, campaign_type')
       .eq('id', roomId)
       .single();
     
     if (room) {
       setCurrentStage(room.story_stage || 1);
-      loadAvailableShops(room.story_stage || 1);
+      setCampaignType(room.campaign_type || 'fantasy');
+      loadAvailableShops(room.story_stage || 1, room.campaign_type || 'fantasy');
     }
   };
 
-  const loadAvailableShops = async (stage: number) => {
+  const loadAvailableShops = async (stage: number, campType: string) => {
     const { data: shops } = await supabase
       .from('shops')
       .select('id, name, description, shop_type, stage')
-      .eq('campaign_type', 'fantasy')
+      .eq('campaign_type', campType)
       .order('shop_type')
       .order('stage');
     
