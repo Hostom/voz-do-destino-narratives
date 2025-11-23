@@ -66,13 +66,18 @@ export const ShopSellPanel = ({ characterId, roomId }: ShopSellPanelProps) => {
   };
 
   const calculateSellPrice = (item: InventoryItem): number => {
-    // Base price estimation
+    // Check if item has original price in properties
     let basePrice = 10;
     
-    if (item.item_type === "weapon") basePrice = 50;
-    if (item.item_type === "armor") basePrice = 75;
-    if (item.item_type === "consumable") basePrice = 25;
-    if (item.item_type === "misc") basePrice = 10;
+    if (item.properties?.price) {
+      basePrice = item.properties.price;
+    } else {
+      // Fallback to type-based estimation
+      if (item.item_type === "weapon") basePrice = 50;
+      if (item.item_type === "armor") basePrice = 75;
+      if (item.item_type === "consumable") basePrice = 25;
+      if (item.item_type === "misc") basePrice = 10;
+    }
 
     // Sell at 50% of value
     const sellPrice = Math.floor(basePrice * 0.5);

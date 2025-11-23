@@ -105,6 +105,7 @@ export function ShopItemModal({
             def: item.def,
             rarity: item.rarity,
             lore: item.lore,
+            price: item.price, // Save original price for selling
           },
         });
 
