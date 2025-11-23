@@ -341,7 +341,30 @@ const Index = () => {
 
           console.log('Sending character sheets to GM:', allCharactersSheet);
 
-          // Enviar para o GM com o contexto de TODOS os personagens
+          // Buscar informações da sala para obter o tipo de campanha
+          const { data: roomData, error: roomError } = await supabase
+            .from('rooms')
+            .select('campaign_type')
+            .eq('id', room.id)
+            .single();
+
+          const campaignType = roomData?.campaign_type || 'fantasy';
+          
+          // Mapear tipo de campanha para descrição
+          const campaignDescriptions: Record<string, string> = {
+            'fantasy': 'fantasia medieval com magia, dragões e aventuras épicas',
+            'cyberpunk': 'cyberpunk futurista com tecnologia avançada, implantes cibernéticos e corporações poderosas',
+            'horror': 'terror psicológico com criaturas sobrenaturais e atmosfera sombria',
+            'sci-fi': 'ficção científica com viagens espaciais, alienígenas e tecnologia futurista',
+            'post-apocalyptic': 'pós-apocalíptico com sobrevivência em um mundo devastado',
+            'steampunk': 'steampunk vitoriano com máquinas a vapor e engenhocas fantásticas',
+            'western': 'velho oeste com pistoleiros, bandidos e cidades fronteiriças',
+            'modern': 'mundo moderno contemporâneo com tecnologia atual'
+          };
+
+          const campaignDesc = campaignDescriptions[campaignType] || 'aventura épica';
+
+          // Enviar para o GM com o contexto de TODOS os personagens e tipo de campanha
           const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
             method: 'POST',
             headers: {
@@ -352,22 +375,29 @@ const Index = () => {
             body: JSON.stringify({
               messages: [{ 
                 role: 'user', 
-                content: `[INÍCIO DA SESSÃO]\n\n${allCharactersSheet}\n\nApresente-se como "Voz do Destino" e dê as boas-vindas aos aventureiros. 
+                content: `[INÍCIO DA SESSÃO - TIPO DE CAMPANHA: ${campaignType.toUpperCase()}]
 
-IMPORTANTE: Após se apresentar, você DEVE perguntar aos jogadores que tipo de aventura eles gostariam de experimentar. Ofereça 4-5 opções interessantes, por exemplo:
+${allCharactersSheet}
 
-• Uma exploração épica por masmorras antigas repletas de tesouros e perigos
-• Um mistério sombrio em uma cidade corrupta onde nada é o que parece
-• Uma jornada heróica para salvar o reino de uma ameaça devastadora
-• Uma investigação sobrenatural envolvendo cultos, rituais e forças além da compreensão
-• Uma aventura de sobrevivência em terras selvagens e hostis
+Apresente-se como "Voz do Destino" e dê as boas-vindas aos aventureiros. 
 
-Use as características, backgrounds e classes dos personagens para sugerir aventuras que se encaixem perfis deles. Depois de apresentar as opções, pergunte qual tipo de história os aventureiros preferem e aguarde a resposta deles antes de iniciar a narrativa.` 
+CONTEXTO IMPORTANTE: Esta é uma campanha de ${campaignDesc}.
+
+Adapte sua narrativa, itens, NPCs e desafios ao cenário ${campaignType}. Por exemplo:
+- Se for cyberpunk: use termos como "net", "corpo", "implantes", armas de fogo, hackers
+- Se for fantasia: use magia, espadas, dragões, tavernas
+- Se for terror: crie atmosfera sombria, ameaças desconhecidas
+- E assim por diante para cada tipo de campanha
+
+IMPORTANTE: Após se apresentar, você DEVE iniciar a aventura diretamente no cenário apropriado. Crie uma cena de abertura interessante e imersiva que estabeleça o tom da campanha ${campaignType}. Não pergunte que tipo de aventura eles querem - a campanha já foi escolhida como ${campaignType}.
+
+Use as características, backgrounds e classes dos personagens para criar uma introdução que faça sentido para o grupo. Inicie a narrativa com ação ou intriga!` 
               }],
               roomId: room.id,
               characterName: character.name,
               characterId: character.id,
               isSessionStart: true,
+              campaignType: campaignType,
             }),
           });
 
@@ -618,7 +648,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
     setShowCharacterSelection(true);
   };
 
-  const handleCreateRoom = async () => {
+  const handleCreateRoom = async (campaignType: string) => {
     if (!character) {
       toast({
         title: "Erro",
@@ -627,7 +657,7 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
       });
       return;
     }
-    const newRoom = await createRoom(character.id);
+    const newRoom = await createRoom(character.id, campaignType);
     if (newRoom) {
       setView('lobby');
     }

@@ -1,14 +1,19 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Plus, ArrowLeft } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 
 interface CreateRoomProps {
-  onCreateRoom: () => void;
+  onCreateRoom: (campaignType: string) => void;
   loading: boolean;
   onBack?: () => void;
 }
 
 export const CreateRoom = ({ onCreateRoom, loading, onBack }: CreateRoomProps) => {
+  const [campaignType, setCampaignType] = useState<string>("fantasy");
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-6">
       <Card className="w-full max-w-md bg-card/80 backdrop-blur border-primary/20">
@@ -31,12 +36,31 @@ export const CreateRoom = ({ onCreateRoom, loading, onBack }: CreateRoomProps) =
           </div>
           <CardTitle className="text-3xl">Criar Nova Sala</CardTitle>
           <CardDescription>
-            Crie uma sala de combate e convide seus amigos para jogar D&D 5e
+            Crie uma sala e convide seus amigos para jogar RPG
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="campaign-type">Tipo de Campanha</Label>
+            <Select value={campaignType} onValueChange={setCampaignType}>
+              <SelectTrigger id="campaign-type">
+                <SelectValue placeholder="Selecione o tipo de campanha" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fantasy">Fantasia Medieval</SelectItem>
+                <SelectItem value="cyberpunk">Cyberpunk</SelectItem>
+                <SelectItem value="horror">Terror</SelectItem>
+                <SelectItem value="sci-fi">Ficção Científica</SelectItem>
+                <SelectItem value="post-apocalyptic">Pós-Apocalíptico</SelectItem>
+                <SelectItem value="steampunk">Steampunk</SelectItem>
+                <SelectItem value="western">Velho Oeste</SelectItem>
+                <SelectItem value="modern">Moderno</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           <Button 
-            onClick={onCreateRoom} 
+            onClick={() => onCreateRoom(campaignType)} 
             disabled={loading}
             className="w-full"
             size="lg"
