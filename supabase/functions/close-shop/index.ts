@@ -45,8 +45,8 @@ serve(async (req) => {
 
     console.log('Shop closed successfully');
 
-    // Broadcast realtime update
-    const channel = supabaseClient.channel(`shop:${roomId}`);
+    // Broadcast realtime update - MUST match frontend channel name
+    const channel = supabaseClient.channel(`room-shop:${roomId}`);
     await channel.send({
       type: 'broadcast',
       event: 'SHOP_CLOSED',
