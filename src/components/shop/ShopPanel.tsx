@@ -1,351 +1,239 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Store, Search, Filter } from "lucide-react";
 import { ShopItemCard } from "./ShopItemCard";
 import { ShopItemModal } from "./ShopItemModal";
-import { ShopState, ShopItem, Rarity, Quality, Personality, calculateFinalPrice } from "@/lib/shop-pricing";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShopSellPanel } from "./ShopSellPanel";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Store, Search } from "lucide-react";
+
+interface ShopItem {
+  id: string;
+  name: string;
+  rarity: string;
+  type: string;
+  atk: number;
+  def: number;
+  price: number;
+  description: string;
+  lore: string;
+}
+
+interface ShopData {
+  shopId: string;
+  name: string;
+  description: string;
+  items: ShopItem[];
+}
 
 interface ShopPanelProps {
   roomId: string;
   characterId: string;
 }
 
-export const ShopPanel = ({ roomId, characterId }: ShopPanelProps) => {
-  const { toast } = useToast();
-  const [shopState, setShopState] = useState<ShopState | null>(null);
+export function ShopPanel({ roomId, characterId }: ShopPanelProps) {
+  const [shopData, setShopData] = useState<ShopData | null>(null);
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [rarityFilter, setRarityFilter] = useState<Rarity | "all">("all");
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
+  const [rarityFilter, setRarityFilter] = useState<string>("all");
+  const [shopType, setShopType] = useState<string>("blacksmith");
 
-  // Load initial shop state from database
-  useEffect(() => {
-    if (!roomId) return;
+  const openShop = async (type: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('open-shop', {
+        body: { roomId, shopType: type }
+      });
 
-    const loadShopState = async () => {
-      const { data, error } = await supabase
-        .from("shop_states")
-        .select("*")
-        .eq("room_id", roomId)
-        .single();
+      if (error) throw error;
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error loading shop state:", error);
-        return;
-      }
-
-      if (data) {
-        // Recalculate final prices with current NPC modifiers
-        const items = Array.isArray(data.items) ? data.items : [];
-        const itemsWithPrices = items.map((item: any) => ({
-          ...item,
-          finalPrice: calculateFinalPrice(
-            item.basePrice,
-            item.rarity as Rarity,
-            item.quality as Quality,
-            data.npc_personality as Personality,
-            data.npc_reputation
-          ),
-        }));
-        
-        setShopState({
-          room_id: data.room_id,
-          npc_name: data.npc_name,
-          npc_personality: data.npc_personality as Personality,
-          npc_reputation: data.npc_reputation,
-          items: itemsWithPrices,
-          updated_at: data.updated_at,
-        });
-      }
-    };
-
-    loadShopState();
-
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel(`room-shop:${roomId}`)
-      .on(
-        "broadcast",
-        { event: "SHOP_UPDATE" },
-        (payload) => {
-          console.log("🛒 Shop update received:", payload);
-          const shopData = payload.payload;
-          
-          // Recalculate final prices
-          const items = Array.isArray(shopData.items) ? shopData.items : [];
-          const itemsWithPrices = items.map((item: any) => ({
-            ...item,
-            finalPrice: calculateFinalPrice(
-              item.basePrice,
-              item.rarity as Rarity,
-              item.quality as Quality,
-              shopData.npcPersonality as Personality,
-              shopData.npcReputation
-            ),
-          }));
-          
-          setShopState({
-            room_id: shopData.roomId,
-            npc_name: shopData.npcName,
-            npc_personality: shopData.npcPersonality as Personality,
-            npc_reputation: shopData.npcReputation,
-            items: itemsWithPrices,
-            updated_at: shopData.updatedAt,
-          });
-
-          toast({
-            title: "🛒 Loja Atualizada",
-            description: `${shopData.npcName} atualizou o inventário da loja!`,
-          });
-        }
-      )
-      .on(
-        "broadcast",
-        { event: "SHOP_CLOSED" },
-        () => {
-          console.log("🛒 Shop closed");
-          setShopState(null);
-          
-          toast({
-            title: "🚪 Loja Fechada",
-            description: "A loja foi fechada pelo Mestre.",
-            variant: "destructive",
-          });
-        }
-      )
-      .subscribe();
-
-    // Also subscribe to database changes
-    const dbChannel = supabase
-      .channel(`shop-states-${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "shop_states",
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          console.log("🛒 Shop state changed in DB:", payload);
-          if (payload.new) {
-            const data = payload.new as any;
-            const items = Array.isArray(data.items) ? data.items : [];
-            const itemsWithPrices = items.map((item: any) => ({
-              ...item,
-              finalPrice: calculateFinalPrice(
-                item.basePrice,
-                item.rarity as Rarity,
-                item.quality as Quality,
-                data.npc_personality as Personality,
-                data.npc_reputation
-              ),
-            }));
-            
-            setShopState({
-              room_id: data.room_id,
-              npc_name: data.npc_name,
-              npc_personality: data.npc_personality as Personality,
-              npc_reputation: data.npc_reputation,
-              items: itemsWithPrices,
-              updated_at: data.updated_at,
-            });
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "shop_states",
-          filter: `room_id=eq.${roomId}`,
-        },
-        () => {
-          console.log("🛒 Shop state deleted from DB");
-          setShopState(null);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      supabase.removeChannel(dbChannel);
-    };
-  }, [roomId]);
+      setShopData(data);
+      toast.success(`${data.name} aberta!`);
+    } catch (error: any) {
+      console.error('Error opening shop:', error);
+      toast.error(error.message || 'Erro ao abrir loja');
+      setShopData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleItemClick = (item: ShopItem) => {
     setSelectedItem(item);
     setIsModalOpen(true);
   };
 
-  // Filter items
-  const filteredItems = shopState?.items.filter((item) => {
-    // Search filter
-    if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !item.description.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
+  const handleBuySuccess = () => {
+    // Refresh shop data to update stock if needed
+    if (shopData) {
+      openShop(shopType);
     }
+  };
 
-    // Rarity filter
-    if (rarityFilter !== "all" && item.rarity !== rarityFilter) {
-      return false;
-    }
-
-    // Price filter
-    if (priceMin && item.finalPrice < parseInt(priceMin)) {
-      return false;
-    }
-    if (priceMax && item.finalPrice > parseInt(priceMax)) {
-      return false;
-    }
-
-    return true;
+  // Filter items based on search and rarity
+  const filteredItems = shopData?.items.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRarity = rarityFilter === "all" || item.rarity === rarityFilter;
+    return matchesSearch && matchesRarity;
   }) || [];
-
-  if (!shopState) {
-    return (
-      <Card className="h-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Store className="h-5 w-5" />
-            Loja
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center text-muted-foreground py-8">
-            <p>Nenhuma loja disponível no momento.</p>
-            <p className="text-sm mt-2">Aguarde o Mestre abrir uma loja na narrativa.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <>
-      <Card className="h-full flex flex-col">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Store className="h-5 w-5" />
-            {shopState.npc_name}
+            <Store className="w-5 h-5" />
+            Sistema de Lojas
           </CardTitle>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="outline">
-              {shopState.npc_personality === "friendly" && "Amigável"}
-              {shopState.npc_personality === "neutral" && "Neutro"}
-              {shopState.npc_personality === "hostile" && "Hostil"}
-            </Badge>
-            {shopState.npc_reputation !== 0 && (
-              <Badge variant="secondary">
-                Reputação: {shopState.npc_reputation > 0 ? "+" : ""}{shopState.npc_reputation}
-              </Badge>
-            )}
-          </div>
+          <CardDescription>
+            Compre e venda itens. Os itens disponíveis dependem do estágio da campanha.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
-          <Tabs defaultValue="buy" className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="buy">Comprar</TabsTrigger>
-              <TabsTrigger value="sell">Vender</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="buy" className="flex-1 flex flex-col gap-4 overflow-hidden mt-4">
-          {/* Filters */}
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar itens..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            
-            <div className="grid grid-cols-3 gap-2">
-              <Select value={rarityFilter} onValueChange={(value) => setRarityFilter(value as Rarity | "all")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Raridade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="common">Comum</SelectItem>
-                  <SelectItem value="uncommon">Incomum</SelectItem>
-                  <SelectItem value="rare">Raro</SelectItem>
-                  <SelectItem value="epic">Épico</SelectItem>
-                  <SelectItem value="legendary">Lendário</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Input
-                type="number"
-                placeholder="Min PO"
-                value={priceMin}
-                onChange={(e) => setPriceMin(e.target.value)}
-              />
-              
-              <Input
-                type="number"
-                placeholder="Max PO"
-                value={priceMax}
-                onChange={(e) => setPriceMax(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Items Grid */}
-          <ScrollArea className="flex-1">
-            {filteredItems.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
-                <p>Nenhum item encontrado com os filtros selecionados.</p>
+        <CardContent>
+          {!shopData ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Selecione uma loja para começar:</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={() => {
+                    setShopType("blacksmith");
+                    openShop("blacksmith");
+                  }}
+                  disabled={isLoading}
+                  variant="outline"
+                >
+                  🔨 Ferreiro
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShopType("jewelry");
+                    openShop("jewelry");
+                  }}
+                  disabled={isLoading}
+                  variant="outline"
+                >
+                  💎 Joalheria
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShopType("general");
+                    openShop("general");
+                  }}
+                  disabled={isLoading}
+                  variant="outline"
+                >
+                  🏪 Mercado Geral
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShopType("alchemist");
+                    openShop("alchemist");
+                  }}
+                  disabled={isLoading}
+                  variant="outline"
+                >
+                  ⚗️ Alquimia
+                </Button>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {filteredItems.map((item) => (
-                  <ShopItemCard
-                    key={item.id}
-                    item={item}
-                    onClick={() => handleItemClick(item)}
-                  />
-                ))}
+            </div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <h3 className="text-xl font-semibold">{shopData.name}</h3>
+                <p className="text-sm text-muted-foreground">{shopData.description}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShopData(null)}
+                  className="mt-2"
+                >
+                  ← Voltar para seleção de lojas
+                </Button>
               </div>
-            )}
-          </ScrollArea>
-            </TabsContent>
 
-            <TabsContent value="sell" className="flex-1 overflow-hidden mt-4">
-              <ShopSellPanel 
-                characterId={characterId} 
-                roomId={roomId}
-                npcPersonality={shopState.npc_personality}
-                npcReputation={shopState.npc_reputation}
-              />
-            </TabsContent>
-          </Tabs>
+              <Tabs defaultValue="buy">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="buy">Comprar</TabsTrigger>
+                  <TabsTrigger value="sell">Vender</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="buy" className="space-y-4">
+                  {/* Filters */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar itens..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                    <Select value={rarityFilter} onValueChange={setRarityFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas Raridades</SelectItem>
+                        <SelectItem value="common">Comum</SelectItem>
+                        <SelectItem value="uncommon">Incomum</SelectItem>
+                        <SelectItem value="rare">Raro</SelectItem>
+                        <SelectItem value="very_rare">Muito Raro</SelectItem>
+                        <SelectItem value="legendary">Lendário</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Items Grid */}
+                  <ScrollArea className="h-[500px]">
+                    {filteredItems.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Nenhum item encontrado
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pr-4">
+                        {filteredItems.map((item) => (
+                          <ShopItemCard
+                            key={item.id}
+                            item={item}
+                            onClick={() => handleItemClick(item)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="sell">
+                  <ShopSellPanel characterId={characterId} roomId={roomId} />
+                </TabsContent>
+              </Tabs>
+            </>
+          )}
         </CardContent>
       </Card>
 
-      <ShopItemModal
-        item={selectedItem}
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        characterId={characterId}
-        roomId={roomId}
-        npcPersonality={shopState?.npc_personality}
-        npcReputation={shopState?.npc_reputation}
-      />
+      {selectedItem && (
+        <ShopItemModal
+          item={selectedItem}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedItem(null);
+          }}
+          characterId={characterId}
+          roomId={roomId}
+          onBuySuccess={handleBuySuccess}
+        />
+      )}
     </>
   );
-};
-
+}

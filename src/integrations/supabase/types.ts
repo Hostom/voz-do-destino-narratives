@@ -674,6 +674,45 @@ export type Database = {
         }
         Relationships: []
       }
+      items: {
+        Row: {
+          atk: number | null
+          created_at: string | null
+          def: number | null
+          description: string | null
+          id: string
+          lore: string | null
+          name: string
+          price: number
+          rarity: string
+          type: string
+        }
+        Insert: {
+          atk?: number | null
+          created_at?: string | null
+          def?: number | null
+          description?: string | null
+          id?: string
+          lore?: string | null
+          name: string
+          price: number
+          rarity: string
+          type: string
+        }
+        Update: {
+          atk?: number | null
+          created_at?: string | null
+          def?: number | null
+          description?: string | null
+          id?: string
+          lore?: string | null
+          name?: string
+          price?: number
+          rarity?: string
+          type?: string
+        }
+        Relationships: []
+      }
       merchant_auctions: {
         Row: {
           created_at: string
@@ -1135,6 +1174,7 @@ export type Database = {
       }
       rooms: {
         Row: {
+          campaign_type: string | null
           combat_active: boolean
           created_at: string
           current_turn: number | null
@@ -1144,8 +1184,10 @@ export type Database = {
           merchant_active: boolean
           room_code: string
           session_active: boolean
+          story_stage: number | null
         }
         Insert: {
+          campaign_type?: string | null
           combat_active?: boolean
           created_at?: string
           current_turn?: number | null
@@ -1155,8 +1197,10 @@ export type Database = {
           merchant_active?: boolean
           room_code: string
           session_active?: boolean
+          story_stage?: number | null
         }
         Update: {
+          campaign_type?: string | null
           combat_active?: boolean
           created_at?: string
           current_turn?: number | null
@@ -1166,6 +1210,7 @@ export type Database = {
           merchant_active?: boolean
           room_code?: string
           session_active?: boolean
+          story_stage?: number | null
         }
         Relationships: []
       }
@@ -1207,43 +1252,44 @@ export type Database = {
           },
         ]
       }
-      shop_states: {
+      shop_items: {
         Row: {
           created_at: string | null
           id: string
-          items: Json
-          npc_name: string
-          npc_personality: string
-          npc_reputation: number
-          room_id: string
-          updated_at: string | null
+          item_id: string | null
+          max_stage: number | null
+          min_stage: number
+          shop_id: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
-          items?: Json
-          npc_name?: string
-          npc_personality?: string
-          npc_reputation?: number
-          room_id: string
-          updated_at?: string | null
+          item_id?: string | null
+          max_stage?: number | null
+          min_stage?: number
+          shop_id?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
-          items?: Json
-          npc_name?: string
-          npc_personality?: string
-          npc_reputation?: number
-          room_id?: string
-          updated_at?: string | null
+          item_id?: string | null
+          max_stage?: number | null
+          min_stage?: number
+          shop_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "shop_states_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: true
-            referencedRelation: "rooms"
+            foreignKeyName: "shop_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_items_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
             referencedColumns: ["id"]
           },
         ]
@@ -1298,6 +1344,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shops: {
+        Row: {
+          campaign_type: string
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          shop_type: string
+          stage: number
+        }
+        Insert: {
+          campaign_type: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          shop_type: string
+          stage?: number
+        }
+        Update: {
+          campaign_type?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          shop_type?: string
+          stage?: number
+        }
+        Relationships: []
       }
     }
     Views: {

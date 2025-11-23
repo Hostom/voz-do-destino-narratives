@@ -1,270 +1,203 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ShopItem, Personality } from "@/lib/shop-pricing";
-import { Package, Coins, Star } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { getRarityColor, getRarityBorderColor, getQualityStars } from "@/lib/shop-pricing";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
-import { ShopBargainButton } from "./ShopBargainButton";
+import { toast } from "sonner";
+import { Sword, Shield, Coins } from "lucide-react";
 
-interface ShopItemModalProps {
-  item: ShopItem | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  characterId: string;
-  roomId: string;
-  npcPersonality?: Personality;
-  npcReputation?: number;
+interface ShopItem {
+  id: string;
+  name: string;
+  rarity: string;
+  type: string;
+  atk: number;
+  def: number;
+  price: number;
+  description: string;
+  lore: string;
 }
 
-export const ShopItemModal = ({ 
-  item, 
-  open, 
-  onOpenChange, 
-  characterId, 
+interface ShopItemModalProps {
+  item: ShopItem;
+  isOpen: boolean;
+  onClose: () => void;
+  characterId: string;
+  roomId: string;
+  onBuySuccess?: () => void;
+}
+
+const rarityColors: Record<string, string> = {
+  common: "text-gray-400 border-gray-500",
+  uncommon: "text-green-400 border-green-500",
+  rare: "text-blue-400 border-blue-500",
+  very_rare: "text-purple-400 border-purple-500",
+  legendary: "text-yellow-400 border-yellow-500",
+};
+
+const rarityLabels: Record<string, string> = {
+  common: "Comum",
+  uncommon: "Incomum",
+  rare: "Raro",
+  very_rare: "Muito Raro",
+  legendary: "Lendário",
+};
+
+export function ShopItemModal({
+  item,
+  isOpen,
+  onClose,
+  characterId,
   roomId,
-  npcPersonality = "neutral",
-  npcReputation = 0 
-}: ShopItemModalProps) => {
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [currentPrice, setCurrentPrice] = useState(0);
-
-  useEffect(() => {
-    if (item) {
-      setCurrentPrice(item.finalPrice);
-    }
-  }, [item]);
-
-  if (!item) return null;
-
-  const rarityColor = getRarityColor(item.rarity);
-  const borderColor = getRarityBorderColor(item.rarity);
-  const qualityStars = getQualityStars(item.quality);
+  onBuySuccess,
+}: ShopItemModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleBuy = async () => {
-    if (!characterId || !roomId) return;
-    
-    setLoading(true);
+    setIsLoading(true);
     try {
-      // Get character data
+      // Get current character gold
       const { data: character, error: charError } = await supabase
-        .from("characters")
-        .select("gold_pieces")
-        .eq("id", characterId)
+        .from('characters')
+        .select('gold_pieces')
+        .eq('id', characterId)
         .single();
 
       if (charError) throw charError;
 
       const currentGold = character.gold_pieces || 0;
 
-      // Check if enough gold (use currentPrice which may have discount)
-      if (currentGold < currentPrice) {
-        toast({
-          title: "Ouro insuficiente",
-          description: `Você precisa de ${currentPrice} PO, mas só tem ${currentGold} PO.`,
-          variant: "destructive",
-        });
+      if (currentGold < item.price) {
+        toast.error('Ouro insuficiente!');
+        setIsLoading(false);
         return;
       }
 
-      // Check stock
-      if (item.stock === 0) {
-        toast({
-          title: "Sem estoque",
-          description: "Este item não está mais disponível.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Deduct gold
+      const { error: goldError } = await supabase
+        .from('characters')
+        .update({ gold_pieces: currentGold - item.price })
+        .eq('id', characterId);
 
-      // Deduct gold (use currentPrice which may have discount)
-      const { error: updateError } = await supabase
-        .from("characters")
-        .update({ gold_pieces: currentGold - currentPrice })
-        .eq("id", characterId);
-
-      if (updateError) throw updateError;
+      if (goldError) throw goldError;
 
       // Add item to inventory
       const { error: itemError } = await supabase
-        .from("character_items")
+        .from('character_items')
         .insert({
           character_id: characterId,
           item_name: item.name,
-          item_type: item.category || "misc",
+          item_type: item.type,
           description: item.description,
           quantity: 1,
           weight: 0,
-          properties: item.attributes,
+          properties: {
+            atk: item.atk,
+            def: item.def,
+            rarity: item.rarity,
+            lore: item.lore,
+          },
         });
 
       if (itemError) throw itemError;
 
-      // Update shop stock if limited
-      if (item.stock > 0) {
-        const { data: shopState } = await supabase
-          .from("shop_states")
-          .select("items")
-          .eq("room_id", roomId)
-          .single();
+      // Record transaction
+      const { error: transError } = await supabase
+        .from('shop_transactions')
+        .insert({
+          character_id: characterId,
+          room_id: roomId,
+          player_id: (await supabase.auth.getUser()).data.user?.id || '',
+          item_id: item.id,
+          item_name: item.name,
+          price: item.price,
+          quantity: 1,
+        });
 
-        if (shopState) {
-          const items = shopState.items as any[];
-          const updatedItems = items.map((i: any) => 
-            i.id === item.id ? { ...i, stock: i.stock - 1 } : i
-          );
+      if (transError) console.error('Transaction log error:', transError);
 
-          await supabase
-            .from("shop_states")
-            .update({ items: updatedItems })
-            .eq("room_id", roomId);
-        }
-      }
-
-      toast({
-        title: "Compra realizada!",
-        description: `${item.name} foi adicionado ao seu inventário.`,
-      });
-
-      onOpenChange(false);
+      toast.success(`${item.name} comprado por ${item.price} 🪙!`);
+      onBuySuccess?.();
+      onClose();
     } catch (error) {
-      console.error("Error buying item:", error);
-      toast({
-        title: "Erro na compra",
-        description: "Não foi possível completar a compra.",
-        variant: "destructive",
-      });
+      console.error('Buy error:', error);
+      toast.error('Erro ao comprar item');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  const rarityClass = rarityColors[item.rarity] || rarityColors.common;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className={`w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center border-2 ${borderColor}`}>
-              <Package className={`h-8 w-8 ${rarityColor}`} />
-            </div>
-            <div className="flex-1">
-              <DialogTitle className={`text-2xl ${rarityColor} mb-2`}>
-                {item.name}
-              </DialogTitle>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-sm">
-                  {item.rarity}
-                </Badge>
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${
-                        i < qualityStars
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-gray-400"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </DialogHeader>
-        
-        <div className="space-y-4 pt-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Coins className="h-5 w-5 text-yellow-500" />
-              <span className="text-lg font-bold">Preço</span>
-            </div>
-            <Badge variant="outline" className="text-lg px-4 py-2">
-              {currentPrice !== item.finalPrice && (
-                <span className="line-through text-muted-foreground mr-2">
-                  {item.finalPrice}
-                </span>
-              )}
-              {currentPrice} PO
+          <DialogTitle className={`text-2xl ${rarityClass.split(' ')[0]}`}>
+            {item.name}
+          </DialogTitle>
+          <DialogDescription>
+            <Badge variant="outline" className={`${rarityClass} mt-2`}>
+              {rarityLabels[item.rarity]}
             </Badge>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Stats */}
+          <div className="flex gap-6">
+            {item.atk > 0 && (
+              <div className="flex items-center gap-2">
+                <Sword className="w-5 h-5 text-red-400" />
+                <span className="text-lg font-semibold">{item.atk} Ataque</span>
+              </div>
+            )}
+            {item.def > 0 && (
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-400" />
+                <span className="text-lg font-semibold">{item.def} Defesa</span>
+              </div>
+            )}
           </div>
-          
+
           <Separator />
-          
-          {item.description && (
+
+          {/* Description */}
+          <div>
+            <h4 className="font-semibold mb-2">Descrição</h4>
+            <p className="text-sm text-muted-foreground">{item.description}</p>
+          </div>
+
+          {/* Lore */}
+          {item.lore && (
             <div>
-              <h4 className="text-sm font-semibold text-foreground mb-2">
-                Descrição
-              </h4>
-              <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                {item.description}
-              </p>
+              <h4 className="font-semibold mb-2">História</h4>
+              <p className="text-sm text-muted-foreground italic">{item.lore}</p>
             </div>
           )}
-          
-          {item.attributes && Object.keys(item.attributes).length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h4 className="text-sm font-semibold text-foreground mb-2">
-                  Atributos
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(item.attributes).map(([key, value]) => (
-                    <div key={key} className="bg-muted/50 p-2 rounded-md">
-                      <span className="text-xs text-muted-foreground capitalize">
-                        {key}:
-                      </span>
-                      <span className="text-sm font-semibold ml-1">
-                        {String(value)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-          
-          {item.stock >= 0 && (
-            <>
-              <Separator />
-              <div>
-                <span className="text-sm text-muted-foreground">
-                  Estoque disponível: <strong>{item.stock}</strong>
-                </span>
-              </div>
-            </>
-          )}
-          
+
           <Separator />
-          
-          <ShopBargainButton
-            item={item}
-            characterId={characterId}
-            roomId={roomId}
-            npcPersonality={npcPersonality}
-            npcReputation={npcReputation}
-            onSuccess={(newPrice) => setCurrentPrice(newPrice)}
-          />
-          
-          <Button 
-            className="w-full" 
-            size="lg" 
-            onClick={handleBuy}
-            disabled={loading || item.stock === 0}
-          >
-            {loading ? "Comprando..." : item.stock === 0 ? "Sem estoque" : `Comprar por ${currentPrice} PO`}
-          </Button>
+
+          {/* Price */}
+          <div className="flex items-center justify-between text-lg font-bold">
+            <span>Preço:</span>
+            <span className="flex items-center gap-2 text-yellow-500">
+              <Coins className="w-5 h-5" />
+              {item.price} 🪙
+            </span>
+          </div>
         </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            Cancelar
+          </Button>
+          <Button onClick={handleBuy} disabled={isLoading}>
+            {isLoading ? 'Comprando...' : 'Comprar'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-};
+}
