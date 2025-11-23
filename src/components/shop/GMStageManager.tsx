@@ -19,7 +19,6 @@ export function GMStageManager({ roomId, currentStage, campaignType, onStageUpda
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRestocking, setIsRestocking] = useState(false);
   const [newStage, setNewStage] = useState(currentStage);
-  const [selectedShopType, setSelectedShopType] = useState<string>("blacksmith");
 
   const handleAdvanceStage = async () => {
     setIsUpdating(true);
@@ -41,9 +40,6 @@ export function GMStageManager({ roomId, currentStage, campaignType, onStageUpda
     }
   };
 
-  const handleOpenShop = () => {
-    toast.info(`Loja aberta: ${selectedShopType}. Os jogadores podem acessar na aba "Loja".`);
-  };
 
   const handleRestock = async () => {
     setIsRestocking(true);
@@ -110,30 +106,6 @@ export function GMStageManager({ roomId, currentStage, campaignType, onStageUpda
               Estágios mais altos desbloqueiam itens mais poderosos
             </p>
           </div>
-        </div>
-
-        {/* Shop Type Selector */}
-        <div className="space-y-3 pt-4 border-t">
-          <Label>Ativar Loja para Jogadores</Label>
-          <div className="flex gap-2">
-            <Select value={selectedShopType} onValueChange={setSelectedShopType}>
-              <SelectTrigger className="flex-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="blacksmith">🔨 Ferreiro</SelectItem>
-                <SelectItem value="jewelry">💎 Joalheria</SelectItem>
-                <SelectItem value="general">🏪 Mercado Geral</SelectItem>
-                <SelectItem value="alchemist">⚗️ Alquimia</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={handleOpenShop} variant="outline">
-              Abrir
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Os itens da loja são carregados automaticamente do banco de dados
-          </p>
         </div>
 
         {/* Restock Button */}
