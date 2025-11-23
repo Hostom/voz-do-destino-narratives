@@ -1,70 +1,86 @@
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, Coins, Star } from "lucide-react";
-import { ShopItem } from "@/lib/shop-pricing";
-import { getRarityColor, getRarityBorderColor, getQualityStars } from "@/lib/shop-pricing";
+import { Sword, Shield, Beaker, Package } from "lucide-react";
+
+interface ShopItem {
+  id: string;
+  name: string;
+  rarity: string;
+  type: string;
+  atk: number;
+  def: number;
+  price: number;
+  description: string;
+}
 
 interface ShopItemCardProps {
   item: ShopItem;
   onClick: () => void;
 }
 
-export const ShopItemCard = ({ item, onClick }: ShopItemCardProps) => {
-  const rarityColor = getRarityColor(item.rarity);
-  const borderColor = getRarityBorderColor(item.rarity);
-  const qualityStars = getQualityStars(item.quality);
+const rarityColors: Record<string, string> = {
+  common: "text-gray-400 border-gray-500",
+  uncommon: "text-green-400 border-green-500",
+  rare: "text-blue-400 border-blue-500",
+  very_rare: "text-purple-400 border-purple-500",
+  legendary: "text-yellow-400 border-yellow-500",
+};
+
+const rarityLabels: Record<string, string> = {
+  common: "Comum",
+  uncommon: "Incomum",
+  rare: "Raro",
+  very_rare: "Muito Raro",
+  legendary: "Lendário",
+};
+
+const typeIcons: Record<string, any> = {
+  weapon: Sword,
+  armor: Shield,
+  consumable: Beaker,
+  misc: Package,
+};
+
+export function ShopItemCard({ item, onClick }: ShopItemCardProps) {
+  const rarityClass = rarityColors[item.rarity] || rarityColors.common;
+  const TypeIcon = typeIcons[item.type] || Package;
 
   return (
-    <Card
-      className={`p-4 cursor-pointer hover:bg-accent/50 transition-all duration-200 border-2 ${borderColor} hover:shadow-lg hover:scale-[1.02]`}
+    <Card 
+      className={`cursor-pointer hover:shadow-lg transition-all border-2 ${rarityClass}`}
       onClick={onClick}
     >
-      <div className="flex items-start gap-3">
-        <div className={`flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center border-2 ${borderColor}`}>
-          <Package className={`h-6 w-6 ${rarityColor}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <h4 className={`font-bold text-base ${rarityColor} flex-1`}>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            <TypeIcon className="w-5 h-5" />
+            <h3 className={`font-semibold ${rarityClass.split(' ')[0]}`}>
               {item.name}
-            </h4>
-            <Badge variant="outline" className="flex items-center gap-1 text-sm shrink-0">
-              <Coins className="h-3 w-3" />
-              {item.finalPrice} PO
-            </Badge>
+            </h3>
           </div>
-          
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="secondary" className="text-xs">
-              {item.rarity}
-            </Badge>
-            <div className="flex items-center gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`h-3 w-3 ${
-                    i < qualityStars
-                      ? "fill-yellow-400 text-yellow-400"
-                      : "text-gray-400"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-          
-          {item.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {item.description}
-            </p>
-          )}
-          
-          {item.stock >= 0 && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Estoque: {item.stock}
-            </p>
-          )}
+          <Badge variant="outline" className={rarityClass}>
+            {rarityLabels[item.rarity]}
+          </Badge>
         </div>
-      </div>
+
+        <p className="text-sm text-muted-foreground line-clamp-2">
+          {item.description}
+        </p>
+
+        <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex gap-3 text-sm">
+            {item.atk > 0 && (
+              <span className="text-red-400">⚔️ {item.atk}</span>
+            )}
+            {item.def > 0 && (
+              <span className="text-blue-400">🛡️ {item.def}</span>
+            )}
+          </div>
+          <span className="text-lg font-bold text-yellow-500">
+            {item.price} 🪙
+          </span>
+        </div>
+      </CardContent>
     </Card>
   );
-};
+}

@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { GMXPDistribution } from "./GMXPDistribution";
 import { GMItemDistribution } from "./GMItemDistribution";
 import { GMAuctionManager } from "./GMAuctionManager";
-import { GMShopManager } from "./shop/GMShopManager";
+import { GMStageManager } from "./shop/GMStageManager";
 
 interface NPC {
   id: string;
@@ -54,6 +54,8 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [gmId, setGmId] = useState<string>("");
+  const [storyStage, setStoryStage] = useState(1);
+  const [campaignType, setCampaignType] = useState("fantasy");
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -102,12 +104,14 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
   const loadGmId = async () => {
     const { data } = await supabase
       .from("rooms")
-      .select("gm_id")
+      .select("gm_id, story_stage, campaign_type")
       .eq("id", roomId)
       .single();
 
     if (data) {
       setGmId(data.gm_id);
+      setStoryStage(data.story_stage || 1);
+      setCampaignType(data.campaign_type || "fantasy");
     }
   };
 
@@ -538,7 +542,12 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
               character_name: p.characters!.name
             }))} 
           />
-          <GMShopManager roomId={roomId} />
+          <GMStageManager 
+            roomId={roomId} 
+            currentStage={storyStage} 
+            campaignType={campaignType}
+            onStageUpdate={(newStage) => setStoryStage(newStage)}
+          />
           <GMAuctionManager roomId={roomId} gmId={gmId} />
         </div>
       )}

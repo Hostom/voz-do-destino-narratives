@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Coins, Package } from "lucide-react";
-import { Personality } from "@/lib/shop-pricing";
 
 interface InventoryItem {
   id: string;
@@ -20,11 +19,9 @@ interface InventoryItem {
 interface ShopSellPanelProps {
   characterId: string;
   roomId: string;
-  npcPersonality: Personality;
-  npcReputation: number;
 }
 
-export const ShopSellPanel = ({ characterId, roomId, npcPersonality, npcReputation }: ShopSellPanelProps) => {
+export const ShopSellPanel = ({ characterId, roomId }: ShopSellPanelProps) => {
   const { toast } = useToast();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
@@ -69,25 +66,18 @@ export const ShopSellPanel = ({ characterId, roomId, npcPersonality, npcReputati
   };
 
   const calculateSellPrice = (item: InventoryItem): number => {
-    // Base price estimation (you can make this more sophisticated)
+    // Base price estimation
     let basePrice = 10;
     
     if (item.item_type === "weapon") basePrice = 50;
     if (item.item_type === "armor") basePrice = 75;
-    if (item.item_type === "potion") basePrice = 25;
-    if (item.item_type === "magic") basePrice = 100;
+    if (item.item_type === "consumable") basePrice = 25;
+    if (item.item_type === "misc") basePrice = 10;
 
-    // Apply NPC modifiers for selling (inverse of buying)
-    let sellPrice = basePrice * 0.5; // Base 50% of value
-    
-    if (npcPersonality === "friendly") sellPrice *= 1.2; // 60% of value
-    if (npcPersonality === "hostile") sellPrice *= 0.8; // 40% of value
-    
-    // Reputation bonus
-    const reputationBonus = Math.min(npcReputation * 0.01, 0.25); // +1% per rep, max +25%
-    sellPrice *= (1 + reputationBonus);
+    // Sell at 50% of value
+    const sellPrice = Math.floor(basePrice * 0.5);
 
-    return Math.max(1, Math.round(sellPrice));
+    return Math.max(1, sellPrice);
   };
 
   const handleSell = async (item: InventoryItem) => {
@@ -132,7 +122,7 @@ export const ShopSellPanel = ({ characterId, roomId, npcPersonality, npcReputati
 
       toast({
         title: "Item vendido!",
-        description: `Você vendeu ${item.item_name} por ${sellPrice} PO.`,
+        description: `Você vendeu ${item.item_name} por ${sellPrice} 🪙`,
       });
     } catch (error) {
       console.error("Error selling item:", error);
@@ -155,7 +145,7 @@ export const ShopSellPanel = ({ characterId, roomId, npcPersonality, npcReputati
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="h-[500px]">
       <div className="space-y-2 pr-4">
         {items.map((item) => {
           const sellPrice = calculateSellPrice(item);

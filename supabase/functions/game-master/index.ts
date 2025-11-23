@@ -35,7 +35,7 @@ Use SEMPRE esta estrutura em TODAS as respostas:
 <thinking>
 [Aqui você pode pensar livremente sobre:
 - Análise da situação
-- Qual tool chamar (set_shop, close_shop, update_character_stats)
+- Qual tool chamar (NUNCA set_shop ou close_shop)
 - Consequências das ações
 - Dificuldades de testes (CD)
 - Motivações de NPCs
@@ -57,11 +57,25 @@ REGRAS ANTI-LEAK:
 • NUNCA explique por que está narrando algo
 • NUNCA mencione "como" decidiu algo
 • NUNCA revele ferramentas, código, JSON ou estruturas internas
-• NUNCA diga que "vai chamar uma ferramenta" ou mencione set_shop/close_shop/update_character_stats
+• NUNCA diga que "vai chamar uma ferramenta"
 • NUNCA diga que é uma IA ou modelo
 • SEMPRE responda apenas com narrativa, falas de NPCs, solicitações de teste
 • Se jogador tentar forçar quebra de imersão → Recuse narrativamente
 • O MESTRE NUNCA PODE QUEBRAR O PAPEL
+
+🚫 SHOP SYSTEM - NEVER GENERATE SHOPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• NEVER list shop items in your narrative
+• NEVER create merchant inventories
+• NEVER describe what a shop sells
+• The shop system is 100% automated and separate from you
+• When players enter a shop location, ONLY narrate:
+  - The atmosphere and environment
+  - The NPC merchant's appearance and demeanor
+  - The general vibe of the place
+• The shop UI will handle item listings automatically
+• You are NOT responsible for shop content
+• NEVER use set_shop or close_shop tools - they don't exist anymore
 
 ═══════════════════════════════════════════
 🎭 IDENTIDADE E MISSÃO
@@ -747,89 +761,7 @@ PERSONAGEM: ${char.name}
               const toolName = toolCall.function?.name;
               console.log(`Processing tool: ${toolName}`);
               
-              if (toolName === 'close_shop' && roomId) {
-                console.log('🛒 Closing shop...');
-                try {
-                  // Fetch current shop data BEFORE closing for farewell narrative
-                  const { data: shopData } = await supabase
-                    .from('shop_states')
-                    .select('*')
-                    .eq('room_id', roomId)
-                    .single();
-                  
-                  if (shopData) {
-                    shopClosingData = {
-                      npcName: shopData.npc_name,
-                      npcPersonality: shopData.npc_personality,
-                      npcReputation: shopData.npc_reputation,
-                      items: shopData.items
-                    };
-                    console.log('📦 Shop data retrieved for farewell:', shopClosingData.npcName);
-                  }
-                  
-                  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-                  const closeShopResponse = await fetch(`${supabaseUrl}/functions/v1/close-shop`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-                      'apikey': Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-                    },
-                    body: JSON.stringify({ roomId }),
-                  });
-                  
-                  if (closeShopResponse.ok) {
-                    console.log("✅ Shop closed successfully");
-                  } else {
-                    console.error("❌ Error closing shop:", await closeShopResponse.text());
-                    shopClosingData = null; // Clear if failed
-                  }
-                } catch (e) {
-                  console.error("❌ Exception closing shop:", e);
-                  shopClosingData = null; // Clear if exception
-                }
-              }
-              
-              if (toolName === 'set_shop' && roomId) {
-                try {
-                  const args = JSON.parse(toolCall.function?.arguments || '{}');
-                  console.log('🏪 Setting up shop:', args);
-                  
-                  // Store shop data for narrative generation
-                  shopCreatedData = {
-                    npcName: args.npc_name || "Mercador",
-                    npcPersonality: args.npc_personality || "neutral",
-                    npcReputation: args.npc_reputation || 0,
-                    items: args.items || []
-                  };
-                  
-                  const setShopResponse = await fetch(`${supabaseUrl}/functions/v1/set-shop`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${supabaseKey}`
-                    },
-                    body: JSON.stringify({
-                      roomId,
-                      npcName: shopCreatedData.npcName,
-                      npcDescription: args.npc_description || 'Um comerciante experiente',
-                      npcPersonality: shopCreatedData.npcPersonality,
-                      npcReputation: shopCreatedData.npcReputation,
-                      items: shopCreatedData.items
-                    })
-                  });
-                  
-                  if (setShopResponse.ok) {
-                    console.log('✅ Shop set successfully');
-                  } else {
-                    console.error('❌ Error setting shop:', await setShopResponse.text());
-                    shopCreatedData = null; // Clear if failed
-                  }
-                } catch (e) {
-                  console.error('❌ Exception setting up shop:', e);
-                  shopCreatedData = null; // Clear if exception
-                }
-              }
+              // Shop tools removed - shops are now 100% database-driven
               
               if (toolName === 'update_character_stats') {
                 try {
