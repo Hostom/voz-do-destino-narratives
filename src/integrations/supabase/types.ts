@@ -713,6 +713,117 @@ export type Database = {
         }
         Relationships: []
       }
+      loot_checks: {
+        Row: {
+          character_id: string
+          check_result: number
+          created_at: string
+          dc: number
+          id: string
+          item_description: string | null
+          item_name: string
+          item_type: string
+          npc_id: string
+          npc_name: string
+          properties: Json | null
+          quantity: number
+          room_id: string
+          success: boolean
+          weight: number
+        }
+        Insert: {
+          character_id: string
+          check_result: number
+          created_at?: string
+          dc: number
+          id?: string
+          item_description?: string | null
+          item_name: string
+          item_type?: string
+          npc_id: string
+          npc_name: string
+          properties?: Json | null
+          quantity?: number
+          room_id: string
+          success: boolean
+          weight?: number
+        }
+        Update: {
+          character_id?: string
+          check_result?: number
+          created_at?: string
+          dc?: number
+          id?: string
+          item_description?: string | null
+          item_name?: string
+          item_type?: string
+          npc_id?: string
+          npc_name?: string
+          properties?: Json | null
+          quantity?: number
+          room_id?: string
+          success?: boolean
+          weight?: number
+        }
+        Relationships: []
+      }
+      loot_requests: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          created_by: string
+          dc: number
+          expires_at: string | null
+          id: string
+          item_description: string | null
+          item_name: string
+          item_type: string
+          npc_id: string
+          npc_name: string
+          properties: Json | null
+          quantity: number
+          room_id: string
+          target_character_id: string
+          weight: number
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          created_by: string
+          dc: number
+          expires_at?: string | null
+          id?: string
+          item_description?: string | null
+          item_name: string
+          item_type?: string
+          npc_id: string
+          npc_name: string
+          properties?: Json | null
+          quantity?: number
+          room_id: string
+          target_character_id: string
+          weight?: number
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          created_by?: string
+          dc?: number
+          expires_at?: string | null
+          id?: string
+          item_description?: string | null
+          item_name?: string
+          item_type?: string
+          npc_id?: string
+          npc_name?: string
+          properties?: Json | null
+          quantity?: number
+          room_id?: string
+          target_character_id?: string
+          weight?: number
+        }
+        Relationships: []
+      }
       merchant_auctions: {
         Row: {
           created_at: string
