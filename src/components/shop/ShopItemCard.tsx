@@ -11,6 +11,7 @@ interface ShopItem {
   def: number;
   price: number;
   description: string;
+  stock?: number; // -1 for unlimited, number for limited stock
 }
 
 interface ShopItemCardProps {
@@ -58,9 +59,19 @@ export function ShopItemCard({ item, onClick }: ShopItemCardProps) {
               {item.name}
             </h3>
           </div>
-          <Badge variant="outline" className={rarityClass}>
-            {rarityLabels[item.rarity]}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant="outline" className={rarityClass}>
+              {rarityLabels[item.rarity]}
+            </Badge>
+            {item.stock !== undefined && item.stock !== -1 && (
+              <Badge 
+                variant={item.stock > 5 ? "outline" : item.stock > 0 ? "secondary" : "destructive"}
+                className="text-xs"
+              >
+                {item.stock > 0 ? `${item.stock} disponível` : "Sem estoque"}
+              </Badge>
+            )}
+          </div>
         </div>
 
         <p className="text-sm text-muted-foreground line-clamp-2">

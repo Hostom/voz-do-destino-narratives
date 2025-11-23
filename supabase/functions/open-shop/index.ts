@@ -108,6 +108,7 @@ serve(async (req) => {
       .from('shop_items')
       .select(`
         item_id,
+        stock,
         items (
           id,
           name,
@@ -122,7 +123,8 @@ serve(async (req) => {
       `)
       .eq('shop_id', shop.id)
       .lte('min_stage', story_stage)
-      .or(`max_stage.gte.${story_stage},max_stage.is.null`);
+      .or(`max_stage.gte.${story_stage},max_stage.is.null`)
+      .or('stock.gt.0,stock.eq.-1'); // Only show items in stock or unlimited
 
     if (itemsError) {
       console.error('Error fetching items:', itemsError);
@@ -132,8 +134,13 @@ serve(async (req) => {
       );
     }
 
-    // Transform data
-    const items = shopItems.map((si: any) => si.items).filter((item: any) => item !== null);
+    // Transform data and include stock
+    const items = shopItems
+      .filter((si: any) => si.items !== null)
+      .map((si: any) => ({
+        ...si.items,
+        stock: si.stock
+      }));
 
     console.log(`Found ${items.length} items for ${shop.name}`);
 

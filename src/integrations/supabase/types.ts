@@ -1257,25 +1257,31 @@ export type Database = {
           created_at: string | null
           id: string
           item_id: string | null
+          last_restock: string | null
           max_stage: number | null
           min_stage: number
           shop_id: string | null
+          stock: number | null
         }
         Insert: {
           created_at?: string | null
           id?: string
           item_id?: string | null
+          last_restock?: string | null
           max_stage?: number | null
           min_stage?: number
           shop_id?: string | null
+          stock?: number | null
         }
         Update: {
           created_at?: string | null
           id?: string
           item_id?: string | null
+          last_restock?: string | null
           max_stage?: number | null
           min_stage?: number
           shop_id?: string | null
+          stock?: number | null
         }
         Relationships: [
           {
