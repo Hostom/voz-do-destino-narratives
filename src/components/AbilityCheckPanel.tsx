@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Dices, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Character {
   id: string;
@@ -335,32 +336,59 @@ export const AbilityCheckPanel = ({ roomId, character }: AbilityCheckPanelProps)
           <div className="space-y-2">
             <Label>Modo de Rolagem</Label>
             <div className="grid grid-cols-3 gap-2">
-              <Button
-                variant={rollMode === "normal" ? "default" : "outline"}
-                onClick={() => setRollMode("normal")}
-                className="w-full"
-                size="sm"
-              >
-                Normal
-              </Button>
-              <Button
-                variant={rollMode === "advantage" ? "default" : "outline"}
-                onClick={() => setRollMode("advantage")}
-                className="w-full"
-                size="sm"
-              >
-                <TrendingUp className="h-4 w-4 mr-1" />
-                Vantagem
-              </Button>
-              <Button
-                variant={rollMode === "disadvantage" ? "default" : "outline"}
-                onClick={() => setRollMode("disadvantage")}
-                className="w-full"
-                size="sm"
-              >
-                <TrendingDown className="h-4 w-4 mr-1" />
-                Desvantagem
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={rollMode === "normal" ? "default" : "outline"}
+                      onClick={() => setRollMode("normal")}
+                      className="w-full min-w-0"
+                      size="sm"
+                    >
+                      <span className="truncate">Normal</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Rolagem Normal</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={rollMode === "advantage" ? "default" : "outline"}
+                      onClick={() => setRollMode("advantage")}
+                      className="w-full min-w-0"
+                      size="sm"
+                    >
+                      <TrendingUp className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate ml-1">Vantagem</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Vantagem (rola 2 dados e usa o maior)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={rollMode === "disadvantage" ? "default" : "outline"}
+                      onClick={() => setRollMode("disadvantage")}
+                      className="w-full min-w-0"
+                      size="sm"
+                    >
+                      <TrendingDown className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate ml-1">Desvantagem</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Desvantagem (rola 2 dados e usa o menor)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
 
