@@ -32,6 +32,7 @@ import { CraftingPanel } from "@/components/CraftingPanel";
 import { AuctionPanel } from "@/components/AuctionPanel";
 import { ShopPanel } from "@/components/shop/ShopPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InteractiveObjectsPanel } from "@/components/InteractiveObjectsPanel";
 
 interface GMMessage {
   id: string;
@@ -1077,18 +1078,24 @@ Use as características, backgrounds e classes dos personagens para sugerir aven
                           </TabsList>
 
                           <TabsContent value="inventory" className="mt-4">
-                            <InventoryPanel 
-                              characterId={character.id} 
-                              carryingCapacity={150}
-                              roomId={room?.id}
-                              players={players
-                                .filter(p => p.characters)
-                                .map(p => ({
-                                  character_id: p.character_id,
-                                  character_name: p.characters!.name
-                                }))
-                              }
-                            />
+                            <div className="space-y-4">
+                              <InteractiveObjectsPanel
+                                characterId={character.id}
+                                roomId={room.id}
+                              />
+                              <InventoryPanel 
+                                characterId={character.id} 
+                                carryingCapacity={150}
+                                roomId={room?.id}
+                                players={players
+                                  .filter(p => p.characters)
+                                  .map(p => ({
+                                    character_id: p.character_id,
+                                    character_name: p.characters!.name
+                                  }))
+                                }
+                              />
+                            </div>
                           </TabsContent>
 
                           <TabsContent value="crafting" className="mt-4">

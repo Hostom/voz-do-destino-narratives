@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Coins, Shield, Sword, Package } from "lucide-react";
+import { Coins, Shield, Sword, Package, Sparkles, Dices } from "lucide-react";
 
 interface Player {
   id: string;
@@ -19,6 +19,7 @@ interface GMLootRequestPanelProps {
   roomId: string;
   npcId: string;
   npcName: string;
+  npcType?: string;
   players: Player[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -28,6 +29,7 @@ export const GMLootRequestPanel = ({
   roomId,
   npcId,
   npcName,
+  npcType = "humanoid",
   players,
   open,
   onOpenChange,
@@ -119,6 +121,80 @@ export const GMLootRequestPanel = ({
     if ('def' in t) setDef(t.def);
   };
 
+  const generateRandomLoot = async () => {
+    try {
+      // Fetch loot table for this creature type
+      const { data: lootOptions, error } = await supabase
+        .from("loot_tables")
+        .select("*")
+        .eq("creature_type", npcType);
+
+      if (error) throw error;
+
+      if (!lootOptions || lootOptions.length === 0) {
+        toast.error(`Nenhum loot configurado para tipo: ${npcType}`);
+        return;
+      }
+
+      // Filter by drop chance
+      const availableLoot = lootOptions.filter(
+        (item) => Math.random() * 100 <= item.drop_chance
+      );
+
+      if (availableLoot.length === 0) {
+        toast.info("Nenhum loot passou na verificação de chance!");
+        return;
+      }
+
+      // Weight by rarity (legendary = rarer)
+      const rarityWeights: Record<string, number> = {
+        common: 50,
+        uncommon: 25,
+        rare: 15,
+        very_rare: 8,
+        legendary: 2,
+      };
+
+      const weightedLoot: any[] = [];
+      availableLoot.forEach((item) => {
+        const weight = rarityWeights[item.rarity] || 10;
+        for (let i = 0; i < weight; i++) {
+          weightedLoot.push(item);
+        }
+      });
+
+      // Pick random item
+      const selectedLoot = weightedLoot[Math.floor(Math.random() * weightedLoot.length)];
+
+      // Generate random quantity within range
+      const qty =
+        selectedLoot.min_quantity +
+        Math.floor(Math.random() * (selectedLoot.max_quantity - selectedLoot.min_quantity + 1));
+
+      // Apply to form
+      setItemName(selectedLoot.item_name);
+      setItemType(selectedLoot.item_type);
+      setItemDescription(selectedLoot.item_description || "");
+      setWeight(selectedLoot.weight);
+      setQuantity(qty);
+
+      if (selectedLoot.properties?.atk) setAtk(selectedLoot.properties.atk);
+      if (selectedLoot.properties?.def) setDef(selectedLoot.properties.def);
+
+      toast.success(
+        <div>
+          <div className="font-bold">Loot Aleatório Gerado!</div>
+          <div className="text-xs">
+            {selectedLoot.item_name} ({selectedLoot.rarity})
+          </div>
+        </div>
+      );
+    } catch (error) {
+      console.error("Erro ao gerar loot aleatório:", error);
+      toast.error("Erro ao gerar loot aleatório");
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -167,6 +243,19 @@ export const GMLootRequestPanel = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Random Loot Generator */}
+          <div className="space-y-2">
+            <Label>Loot Aleatório (baseado no tipo: {npcType})</Label>
+            <Button
+              variant="default"
+              onClick={generateRandomLoot}
+              className="w-full gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              Gerar Loot Aleatório
+            </Button>
           </div>
 
           {/* Item Templates */}
