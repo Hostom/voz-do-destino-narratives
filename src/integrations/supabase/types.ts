@@ -587,6 +587,66 @@ export type Database = {
           },
         ]
       }
+      interactive_objects: {
+        Row: {
+          created_at: string
+          created_by: string
+          dc: number
+          description: string | null
+          id: string
+          item_description: string | null
+          item_name: string
+          item_type: string
+          looted: boolean | null
+          looted_at: string | null
+          looted_by_character_id: string | null
+          name: string
+          object_type: string
+          properties: Json | null
+          quantity: number
+          room_id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          dc?: number
+          description?: string | null
+          id?: string
+          item_description?: string | null
+          item_name: string
+          item_type?: string
+          looted?: boolean | null
+          looted_at?: string | null
+          looted_by_character_id?: string | null
+          name: string
+          object_type: string
+          properties?: Json | null
+          quantity?: number
+          room_id: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          dc?: number
+          description?: string | null
+          id?: string
+          item_description?: string | null
+          item_name?: string
+          item_type?: string
+          looted?: boolean | null
+          looted_at?: string | null
+          looted_by_character_id?: string | null
+          name?: string
+          object_type?: string
+          properties?: Json | null
+          quantity?: number
+          room_id?: string
+          weight?: number
+        }
+        Relationships: []
+      }
       item_rewards: {
         Row: {
           auto_added: boolean
@@ -820,6 +880,51 @@ export type Database = {
           quantity?: number
           room_id?: string
           target_character_id?: string
+          weight?: number
+        }
+        Relationships: []
+      }
+      loot_tables: {
+        Row: {
+          created_at: string
+          creature_type: string
+          drop_chance: number
+          id: string
+          item_description: string | null
+          item_name: string
+          item_type: string
+          max_quantity: number
+          min_quantity: number
+          properties: Json | null
+          rarity: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          creature_type: string
+          drop_chance?: number
+          id?: string
+          item_description?: string | null
+          item_name: string
+          item_type?: string
+          max_quantity?: number
+          min_quantity?: number
+          properties?: Json | null
+          rarity: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          creature_type?: string
+          drop_chance?: number
+          id?: string
+          item_description?: string | null
+          item_name?: string
+          item_type?: string
+          max_quantity?: number
+          min_quantity?: number
+          properties?: Json | null
+          rarity?: string
           weight?: number
         }
         Relationships: []
