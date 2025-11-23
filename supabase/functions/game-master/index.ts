@@ -252,10 +252,11 @@ serve(async (req) => {
   }
 
   try {
-    const { messages: clientMessages, roomId, characterName = 'Mestre do Jogo', characterId, isSessionStart = false } = await req.json();
+    const { messages: clientMessages, roomId, characterName = 'Mestre do Jogo', characterId, isSessionStart = false, campaignType } = await req.json();
     console.log("Received client messages:", clientMessages?.length || 0);
     console.log("Room ID:", roomId, "Character:", characterName, "Character ID:", characterId);
     console.log("Is Session Start:", isSessionStart);
+    console.log("Campaign Type:", campaignType);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -284,6 +285,16 @@ serve(async (req) => {
 
     if (roomId && !isSessionStart) {
       console.log("Fetching conversation history for room:", roomId);
+      
+      // Fetch room data to get campaign type
+      const { data: roomData } = await supabase
+        .from("rooms")
+        .select("campaign_type")
+        .eq("id", roomId)
+        .single();
+      
+      const roomCampaignType = roomData?.campaign_type || campaignType || 'fantasy';
+      console.log("Room campaign type:", roomCampaignType);
       
       // CRITICAL: Fetch ALL character sheets in the room to provide full context to AI
       const { data: roomPlayers, error: roomPlayersError } = await supabase
@@ -441,9 +452,10 @@ PERSONAGEM: ${char.name}
         console.warn("⚠️ No active character ID found - tool calls will not work");
       }
       
-      // Prepend character sheets to system prompt
+      // Prepend character sheets and campaign type to system prompt
       if (characterSheetsContext) {
-        messageHistory[0].content = GAME_MASTER_PROMPT + characterSheetsContext;
+        const campaignTypeInfo = `\n\n=== TIPO DE CAMPANHA ===\nCampanha: ${roomCampaignType.toUpperCase()}\nAdapte toda narrativa, NPCs, itens e desafios a este cenário.\n=========================\n`;
+        messageHistory[0].content = GAME_MASTER_PROMPT + campaignTypeInfo + characterSheetsContext;
       }
       
       // Fetch ONLY the most recent messages to optimize token usage
@@ -487,6 +499,11 @@ PERSONAGEM: ${char.name}
       }
     } else {
       // Fallback to client-provided messages if no roomId
+      // For session start, add campaign type context if provided
+      if (isSessionStart && campaignType) {
+        const campaignTypeInfo = `\n\n=== TIPO DE CAMPANHA ===\nCampanha: ${campaignType.toUpperCase()}\nAdapte toda narrativa, NPCs, itens e desafios a este cenário.\n=========================\n`;
+        messageHistory[0].content = GAME_MASTER_PROMPT + campaignTypeInfo;
+      }
       messageHistory.push(...(clientMessages || []));
     }
 
