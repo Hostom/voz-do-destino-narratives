@@ -21,6 +21,7 @@ import { GMItemDistribution } from "./GMItemDistribution";
 import { GMAuctionManager } from "./GMAuctionManager";
 import { GMStageManager } from "./shop/GMStageManager";
 import { GMLootRequestPanel } from "./GMLootRequestPanel";
+import { GMInteractiveObjectsPanel } from "./GMInteractiveObjectsPanel";
 
 interface NPC {
   id: string;
@@ -58,7 +59,7 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
   const [storyStage, setStoryStage] = useState(1);
   const [campaignType, setCampaignType] = useState("fantasy");
   const [lootDialogOpen, setLootDialogOpen] = useState(false);
-  const [selectedNpc, setSelectedNpc] = useState<{ id: string; name: string } | null>(null);
+  const [selectedNpc, setSelectedNpc] = useState<{ id: string; name: string; creature_type: string } | null>(null);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -491,7 +492,7 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
                         variant="default"
                         size="sm"
                         onClick={() => {
-                          setSelectedNpc({ id: npc.id, name: npc.name });
+                          setSelectedNpc({ id: npc.id, name: npc.name, creature_type: npc.creature_type });
                           setLootDialogOpen(true);
                         }}
                         className="gap-1"
@@ -565,6 +566,7 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
             onStageUpdate={(newStage) => setStoryStage(newStage)}
           />
           <GMAuctionManager roomId={roomId} gmId={gmId} />
+          <GMInteractiveObjectsPanel roomId={roomId} />
         </div>
       )}
 
@@ -574,6 +576,7 @@ export const GMPanel = ({ roomId, players = [] }: GMPanelProps) => {
           roomId={roomId}
           npcId={selectedNpc.id}
           npcName={selectedNpc.name}
+          npcType={selectedNpc.creature_type}
           players={players}
           open={lootDialogOpen}
           onOpenChange={setLootDialogOpen}
