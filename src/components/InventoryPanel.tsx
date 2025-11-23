@@ -9,9 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Coins, Package, Plus, Trash2, Weight } from "lucide-react";
+import { Coins, Package, Plus, Trash2, Weight, Check } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ItemTradeOffer } from "./ItemTradeOffer";
+import { Badge } from "@/components/ui/badge";
 
 interface InventoryItem {
   id: string;
@@ -21,6 +22,7 @@ interface InventoryItem {
   weight: number;
   description: string | null;
   equipped: boolean;
+  properties?: any;
 }
 
 interface Currency {
@@ -184,6 +186,98 @@ export const InventoryPanel = ({ characterId, carryingCapacity, roomId, players 
       title: "Item removido",
       description: "Item foi removido do inventário",
     });
+  };
+
+  const toggleEquipItem = async (item: InventoryItem) => {
+    try {
+      const newEquippedState = !item.equipped;
+      
+      // Update item equipped state
+      const { error: itemError } = await supabase
+        .from("character_items")
+        .update({ equipped: newEquippedState })
+        .eq("id", item.id);
+
+      if (itemError) throw itemError;
+
+      // Get character data
+      const { data: charData, error: charError } = await supabase
+        .from("characters")
+        .select("name, armor_class, equipped_weapon")
+        .eq("id", characterId)
+        .single();
+
+      if (charError) throw charError;
+
+      let updates: any = {};
+      
+      // Handle different item types
+      if (item.item_type === "armor" || item.item_type === "armadura") {
+        const defBonus = item.properties?.def || 0;
+        updates.armor_class = newEquippedState 
+          ? (charData.armor_class + defBonus)
+          : (charData.armor_class - defBonus);
+      } else if (item.item_type === "weapon" || item.item_type === "arma") {
+        if (newEquippedState) {
+          const atkBonus = item.properties?.atk || 0;
+          updates.equipped_weapon = {
+            id: item.id,
+            name: item.item_name,
+            damage_dice: item.properties?.damage_dice || "1d6",
+            damage_type: item.properties?.damage_type || "cortante",
+            ability: item.properties?.ability || "strength",
+            atk_bonus: atkBonus
+          };
+        } else {
+          updates.equipped_weapon = {
+            name: "Ataque Desarmado",
+            ability: "strength",
+            damage_dice: "1d4",
+            damage_type: "contundente"
+          };
+        }
+      } else if (item.item_type === "shield" || item.item_type === "escudo") {
+        const defBonus = item.properties?.def || 2;
+        updates.armor_class = newEquippedState 
+          ? (charData.armor_class + defBonus)
+          : (charData.armor_class - defBonus);
+      }
+
+      // Update character if there are changes
+      if (Object.keys(updates).length > 0) {
+        const { error: updateError } = await supabase
+          .from("characters")
+          .update(updates)
+          .eq("id", characterId);
+
+        if (updateError) throw updateError;
+      }
+
+      // Send GM message if in a room
+      if (roomId) {
+        const action = newEquippedState ? "equipou" : "desequipou";
+        await supabase.from("gm_messages").insert({
+          room_id: roomId,
+          player_id: characterId,
+          character_name: charData.name,
+          sender: "system",
+          type: "system",
+          content: `${charData.name} ${action} ${item.item_name}`,
+        });
+      }
+
+      toast({
+        title: newEquippedState ? "Item equipado" : "Item desequipado",
+        description: `${item.item_name} foi ${newEquippedState ? "equipado" : "desequipado"}`,
+      });
+    } catch (error) {
+      console.error("Error toggling equip:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível equipar/desequipar o item",
+        variant: "destructive",
+      });
+    }
   };
 
   const updateCurrency = async (field: keyof Currency, value: number) => {
@@ -399,6 +493,12 @@ export const InventoryPanel = ({ characterId, carryingCapacity, roomId, players 
                           <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                             ({itemTypeLabels[item.item_type]})
                           </span>
+                          {item.equipped && (
+                            <Badge variant="default" className="text-[10px] px-1 py-0 h-4 flex items-center gap-0.5">
+                              <Check className="w-2.5 h-2.5" />
+                              Equipado
+                            </Badge>
+                          )}
                         </div>
                         {item.description && (
                           <TooltipProvider>
@@ -417,9 +517,25 @@ export const InventoryPanel = ({ characterId, carryingCapacity, roomId, players 
                         <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
                           <span>Qtd: {item.quantity}</span>
                           <span>Peso: {(item.weight * item.quantity).toFixed(1)}lb</span>
+                          {item.properties?.atk && (
+                            <span className="text-green-500 font-semibold">ATK: +{item.properties.atk}</span>
+                          )}
+                          {item.properties?.def && (
+                            <span className="text-blue-500 font-semibold">DEF: +{item.properties.def}</span>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
+                        {["weapon", "arma", "armor", "armadura", "shield", "escudo"].includes(item.item_type.toLowerCase()) && (
+                          <Button
+                            size="sm"
+                            variant={item.equipped ? "default" : "outline"}
+                            onClick={() => toggleEquipItem(item)}
+                            className="h-7 text-[10px] px-2"
+                          >
+                            {item.equipped ? "Desequipar" : "Equipar"}
+                          </Button>
+                        )}
                         {roomId && players.length > 1 && (
                           <ItemTradeOffer
                             itemId={item.id}
