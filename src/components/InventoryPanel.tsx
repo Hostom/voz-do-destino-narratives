@@ -379,26 +379,26 @@ export const InventoryPanel = ({ characterId, carryingCapacity, roomId, players 
                 </p>
               ) : (
                 items.map((item) => (
-                  <Card key={item.id} className="p-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{item.item_name}</span>
-                          <span className="text-xs text-muted-foreground">
+                  <Card key={item.id} className="p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-medium text-xs truncate max-w-[150px]">{item.item_name}</span>
+                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                             ({itemTypeLabels[item.item_type]})
                           </span>
                         </div>
                         {item.description && (
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
                             {item.description}
                           </p>
                         )}
-                        <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                        <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
                           <span>Qtd: {item.quantity}</span>
-                          <span>Peso: {(item.weight * item.quantity).toFixed(1)} lb</span>
+                          <span>Peso: {(item.weight * item.quantity).toFixed(1)}lb</span>
                         </div>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-shrink-0">
                         {roomId && players.length > 1 && (
                           <ItemTradeOffer
                             itemId={item.id}
@@ -413,9 +413,9 @@ export const InventoryPanel = ({ characterId, carryingCapacity, roomId, players 
                           size="icon"
                           variant="ghost"
                           onClick={() => deleteItem(item.id)}
-                          className="h-8 w-8"
+                          className="h-7 w-7"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>

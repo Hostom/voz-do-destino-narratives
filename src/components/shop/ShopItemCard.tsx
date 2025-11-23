@@ -51,44 +51,44 @@ export function ShopItemCard({ item, onClick }: ShopItemCardProps) {
       className={`cursor-pointer hover:shadow-lg transition-all border-2 ${rarityClass}`}
       onClick={onClick}
     >
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <TypeIcon className="w-5 h-5" />
-            <h3 className={`font-semibold ${rarityClass.split(' ')[0]}`}>
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <TypeIcon className="w-4 h-4 flex-shrink-0" />
+            <h3 className={`font-semibold text-sm ${rarityClass.split(' ')[0]} truncate`}>
               {item.name}
             </h3>
           </div>
-          <div className="flex flex-col items-end gap-1">
-            <Badge variant="outline" className={rarityClass}>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <Badge variant="outline" className={`${rarityClass} text-[10px] px-1.5 py-0`}>
               {rarityLabels[item.rarity]}
             </Badge>
             {item.stock !== undefined && item.stock !== -1 && (
               <Badge 
                 variant={item.stock > 5 ? "outline" : item.stock > 0 ? "secondary" : "destructive"}
-                className="text-xs"
+                className="text-[10px] px-1.5 py-0"
               >
-                {item.stock > 0 ? `${item.stock} disponível` : "Sem estoque"}
+                {item.stock > 0 ? `${item.stock}` : "0"}
               </Badge>
             )}
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground line-clamp-2">
+        <p className="text-xs text-muted-foreground line-clamp-1">
           {item.description}
         </p>
 
-        <div className="flex items-center justify-between pt-2 border-t">
-          <div className="flex gap-3 text-sm">
+        <div className="flex items-center justify-between pt-1 border-t">
+          <div className="flex gap-2 text-xs">
             {item.atk > 0 && (
-              <span className="text-red-400">⚔️ {item.atk}</span>
+              <span className="text-red-400">⚔️{item.atk}</span>
             )}
             {item.def > 0 && (
-              <span className="text-blue-400">🛡️ {item.def}</span>
+              <span className="text-blue-400">🛡️{item.def}</span>
             )}
           </div>
-          <span className="text-lg font-bold text-yellow-500">
-            {item.price} 🪙
+          <span className="text-sm font-bold text-yellow-500">
+            {item.price}🪙
           </span>
         </div>
       </CardContent>
