@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ShopItemCard } from "./ShopItemCard";
 import { ShopItemModal } from "./ShopItemModal";
 import { ShopSellPanel } from "./ShopSellPanel";
@@ -178,11 +179,33 @@ export function ShopPanel({ roomId, characterId }: ShopPanelProps) {
                           }}
                           disabled={isLoading}
                           variant="outline"
-                          className="w-full justify-start"
+                          className="w-full justify-start h-auto"
                         >
-                          <div className="flex flex-col items-start w-full">
-                            <span className="font-medium">{availableShop.name}</span>
-                            <span className="text-xs text-muted-foreground">{availableShop.description}</span>
+                          <div className="flex flex-col items-start w-full min-w-0 gap-1 py-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="font-medium truncate w-full text-left cursor-help">
+                                    {availableShop.name}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-xs">{availableShop.name}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-xs text-muted-foreground line-clamp-2 text-left cursor-help w-full">
+                                    {availableShop.description}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-xs">{availableShop.description}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </div>
                         </Button>
                       ) : (
@@ -193,10 +216,19 @@ export function ShopPanel({ roomId, characterId }: ShopPanelProps) {
                       
                       {nextShop && (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground pl-2">
-                          <Lock className="w-3 h-3" />
-                          <span>
-                            Próxima: <strong>{nextShop.name}</strong> (Estágio {nextShop.stage})
-                          </span>
+                          <Lock className="w-3 h-3 flex-shrink-0" />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="truncate cursor-help">
+                                  Próxima: <strong>{nextShop.name}</strong> (Estágio {nextShop.stage})
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Próxima: {nextShop.name} (Estágio {nextShop.stage})</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </div>
                       )}
                     </div>
