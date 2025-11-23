@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { ShopItemCard } from "./ShopItemCard";
 import { ShopItemModal } from "./ShopItemModal";
 import { ShopSellPanel } from "./ShopSellPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Store, Search } from "lucide-react";
+import { Store, Search, Lock, TrendingUp } from "lucide-react";
 
 interface ShopItem {
   id: string;
@@ -44,6 +45,38 @@ export function ShopPanel({ roomId, characterId }: ShopPanelProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [shopType, setShopType] = useState<string>("blacksmith");
+  const [currentStage, setCurrentStage] = useState<number>(1);
+  const [availableShops, setAvailableShops] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadRoomStage();
+  }, [roomId]);
+
+  const loadRoomStage = async () => {
+    const { data: room } = await supabase
+      .from('rooms')
+      .select('story_stage')
+      .eq('id', roomId)
+      .single();
+    
+    if (room) {
+      setCurrentStage(room.story_stage || 1);
+      loadAvailableShops(room.story_stage || 1);
+    }
+  };
+
+  const loadAvailableShops = async (stage: number) => {
+    const { data: shops } = await supabase
+      .from('shops')
+      .select('id, name, description, shop_type, stage')
+      .eq('campaign_type', 'fantasy')
+      .order('shop_type')
+      .order('stage');
+    
+    if (shops) {
+      setAvailableShops(shops);
+    }
+  };
 
   const openShop = async (type: string) => {
     setIsLoading(true);
@@ -100,55 +133,90 @@ export function ShopPanel({ roomId, characterId }: ShopPanelProps) {
         <CardContent>
           {!shopData ? (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Selecione uma loja para começar:</p>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  onClick={() => {
-                    setShopType("blacksmith");
-                    openShop("blacksmith");
-                  }}
-                  disabled={isLoading}
-                  variant="outline"
-                >
-                  🔨 Ferreiro
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShopType("jewelry");
-                    openShop("jewelry");
-                  }}
-                  disabled={isLoading}
-                  variant="outline"
-                >
-                  💎 Joalheria
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShopType("general");
-                    openShop("general");
-                  }}
-                  disabled={isLoading}
-                  variant="outline"
-                >
-                  🏪 Mercado Geral
-                </Button>
-                <Button
-                  onClick={() => {
-                    setShopType("alchemist");
-                    openShop("alchemist");
-                  }}
-                  disabled={isLoading}
-                  variant="outline"
-                >
-                  ⚗️ Alquimia
-                </Button>
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-muted-foreground">Selecione uma loja para começar:</p>
+                <Badge variant="outline" className="gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  Estágio {currentStage}
+                </Badge>
+              </div>
+              
+              <div className="space-y-6">
+                {['blacksmith', 'jewelry', 'general', 'alchemist'].map((type) => {
+                  const typeShops = availableShops.filter(s => s.shop_type === type);
+                  const availableShop = typeShops
+                    .filter(s => s.stage <= currentStage)
+                    .sort((a, b) => b.stage - a.stage)[0];
+                  const nextShop = typeShops.find(s => s.stage > currentStage);
+                  
+                  const typeIcons = {
+                    blacksmith: '🔨',
+                    jewelry: '💎',
+                    general: '🏪',
+                    alchemist: '⚗️'
+                  };
+                  
+                  const typeNames = {
+                    blacksmith: 'Ferreiro',
+                    jewelry: 'Joalheria',
+                    general: 'Mercado Geral',
+                    alchemist: 'Alquimia'
+                  };
+
+                  return (
+                    <div key={type} className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{typeIcons[type as keyof typeof typeIcons]}</span>
+                        <h3 className="font-semibold">{typeNames[type as keyof typeof typeNames]}</h3>
+                      </div>
+                      
+                      {availableShop ? (
+                        <Button
+                          onClick={() => {
+                            setShopType(type);
+                            openShop(type);
+                          }}
+                          disabled={isLoading}
+                          variant="outline"
+                          className="w-full justify-start"
+                        >
+                          <div className="flex flex-col items-start w-full">
+                            <span className="font-medium">{availableShop.name}</span>
+                            <span className="text-xs text-muted-foreground">{availableShop.description}</span>
+                          </div>
+                        </Button>
+                      ) : (
+                        <div className="w-full p-3 border border-dashed rounded-lg bg-muted/50 text-muted-foreground text-sm">
+                          Nenhuma loja disponível neste estágio
+                        </div>
+                      )}
+                      
+                      {nextShop && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground pl-2">
+                          <Lock className="w-3 h-3" />
+                          <span>
+                            Próxima: <strong>{nextShop.name}</strong> (Estágio {nextShop.stage})
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ) : (
             <>
               <div className="mb-4">
-                <h3 className="text-xl font-semibold">{shopData.name}</h3>
-                <p className="text-sm text-muted-foreground">{shopData.description}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="text-xl font-semibold">{shopData.name}</h3>
+                    <p className="text-sm text-muted-foreground">{shopData.description}</p>
+                  </div>
+                  <Badge variant="outline" className="gap-1">
+                    <TrendingUp className="w-3 h-3" />
+                    Estágio {currentStage}
+                  </Badge>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
