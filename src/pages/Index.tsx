@@ -5,6 +5,7 @@ import { Auth } from "@/components/Auth";
 import { CharacterCreation } from "@/components/CharacterCreation";
 import { CharacterSelect } from "@/components/CharacterSelect";
 import { GameHeader } from "@/components/GameHeader";
+import { AtmosphereEffect } from "@/components/AtmosphereEffect";
 import { ChatInput } from "@/components/ChatInput";
 import { ChatInputWithActions } from "@/components/ChatInputWithActions";
 import { DicePanel } from "@/components/DicePanel";
@@ -869,6 +870,9 @@ Inicie a aventura agora.`
   // Game view (original RPG interface)
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 relative overflow-hidden">
+      {/* Atmosphere effect based on campaign type */}
+      {room?.campaign_type && <AtmosphereEffect campaignType={room.campaign_type} />}
+      
       {/* XP Notification System */}
       {character && (
         <>

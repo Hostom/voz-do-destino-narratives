@@ -11,6 +11,7 @@ export interface Room {
   current_turn: number;
   initiative_order: any;
   session_active: boolean;
+  campaign_type?: string;
 }
 
 export interface RoomPlayer {

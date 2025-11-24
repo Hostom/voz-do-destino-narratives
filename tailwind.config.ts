@@ -52,6 +52,7 @@ export default {
         'gradient-epic': 'var(--gradient-epic)',
         'gradient-glow': 'var(--gradient-glow)',
         'gradient-veil': 'var(--gradient-veil)',
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
       },
       boxShadow: {
         'epic': 'var(--shadow-epic)',
