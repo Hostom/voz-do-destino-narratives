@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getXPForLevel, getXPProgressPercentage } from "@/lib/dnd-xp-progression";
 import { RoomPlayer } from "@/hooks/useRoom";
 import { PlayersPanel } from "@/components/PlayersPanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 interface GameHeaderProps {
   onLogout?: () => void;
   onBackToCharacterSelect?: () => void;
@@ -157,10 +158,12 @@ export const GameHeader = ({
                 <span className="hidden md:inline text-xs md:text-sm">Personagens</span>
               </Button>}
             
-            {onLogout && <Button variant="outline" size="sm" onClick={onLogout} className="gap-1 md:gap-2 h-7 md:h-9 px-2 md:px-3">
+            {onLogout && <Button variant="outline" size="sm" onClick={onLogout} className="gap-1 md:gap-2 h-7 md:h-9 px-2 md:px-3" aria-label="Sair da conta">
                 <LogOut className="h-3 w-3 md:h-4 md:w-4" />
                 <span className="hidden md:inline text-xs md:text-sm">Sair</span>
               </Button>}
+            
+            <ThemeToggle />
           </div>
         </div>
       </div>
