@@ -1327,6 +1327,9 @@ Inicie a aventura agora.`
               auctionsActive={auctionsActive}
               userId={user?.id || ""}
               onSend={handleSend}
+              onRefresh={async () => {
+                await refreshPlayers();
+              }}
             />
           )}
         </div>
