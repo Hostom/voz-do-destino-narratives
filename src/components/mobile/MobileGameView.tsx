@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Scroll, MessageSquare, Package, User, Dices, Send, ShoppingBag, Hammer, ArrowDown } from "lucide-react";
+import { Scroll, MessageSquare, Package, User, Dices, Send, ShoppingBag, Hammer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileFloatingAction } from "./MobileFloatingAction";
@@ -125,13 +125,7 @@ export const MobileGameView = ({
       case "narrative":
         return {
           context: "narrative" as const,
-          onSecondaryActions: [
-            {
-              label: "Ir para o fim",
-              icon: <ArrowDown className="w-4 h-4" />,
-              action: scrollToBottom,
-            },
-          ],
+          onSecondaryActions: [],
         };
       case "chat":
         return {
