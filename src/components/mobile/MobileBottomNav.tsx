@@ -1,6 +1,7 @@
-import { Scroll, MessageSquare, Package, Dices, User, Store } from "lucide-react";
+import { Scroll, MessageSquare, Package, Dices, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useHaptics } from "@/hooks/useHaptics";
 
 interface MobileBottomNavProps {
   activeTab: string;
@@ -16,7 +17,14 @@ const navItems = [
   { id: "character", icon: User, label: "Ficha" },
 ];
 
-export const MobileBottomNav = ({ activeTab, onTabChange, hasAuctions }: MobileBottomNavProps) => {
+export const MobileBottomNav = ({ activeTab, onTabChange }: MobileBottomNavProps) => {
+  const { lightTap } = useHaptics();
+
+  const handleTabChange = (tabId: string) => {
+    lightTap();
+    onTabChange(tabId);
+  };
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border safe-area-bottom">
       <div className="flex items-center justify-around h-16 px-2">
@@ -27,7 +35,7 @@ export const MobileBottomNav = ({ activeTab, onTabChange, hasAuctions }: MobileB
           return (
             <button
               key={item.id}
-              onClick={() => onTabChange(item.id)}
+              onClick={() => handleTabChange(item.id)}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full py-1 relative transition-colors",
                 isActive ? "text-primary" : "text-muted-foreground"
