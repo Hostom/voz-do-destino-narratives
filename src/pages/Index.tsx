@@ -34,6 +34,7 @@ import { AuctionPanel } from "@/components/AuctionPanel";
 import { ShopPanel } from "@/components/shop/ShopPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InteractiveObjectsPanel } from "@/components/InteractiveObjectsPanel";
+import { MobileGameView } from "@/components/mobile/MobileGameView";
 
 interface GMMessage {
   id: string;
@@ -1314,245 +1315,19 @@ Inicie a aventura agora.`
             </div>
           )}
 
-          {/* Mobile: Chat principal (narrativa) + Botões flutuantes */}
+          {/* Mobile: Nova interface com bottom nav e swipe */}
           {room && character && isMobile && (
-            <>
-              <div className="flex-1 min-h-0 flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg overflow-x-hidden max-w-full landscape:rounded-md">
-                <div className="mb-2 px-3 pt-3 landscape:mb-1 landscape:px-2 landscape:pt-2">
-                  <h3 className="text-base font-semibold flex items-center gap-2">
-                    <Scroll className="w-4 h-4" />
-                    Aventura - Narração do Mestre
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    A IA Mestre narra a história
-                  </p>
-                </div>
-                <div className="flex-1 overflow-y-auto px-3 pb-3 min-h-0">
-                  {messagesLoading && gmMessages.length === 0 && (
-                    <div className="flex justify-center py-8">
-                      <div className="text-muted-foreground text-sm">
-                        Carregando mensagens...
-                      </div>
-                    </div>
-                  )}
-                  {gmMessages.map((msg, idx) => (
-                    <NarrativeMessage
-                      key={msg.id}
-                      role={msg.sender === "GM" ? "assistant" : "user"}
-                      content={msg.content ?? msg.message ?? ""}
-                      characterName={msg.sender === "player" ? msg.character_name : undefined}
-                    />
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-center py-4">
-                      <div className="animate-pulse text-muted-foreground text-sm">
-                        A Voz do Destino está narrando...
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              </div>
-              
-              {/* Barras de HP/XP e Input fixo na parte inferior */}
-              <div className="shrink-0 space-y-3">
-                <CharacterStatsBar characterId={character.id} />
-                <ChatInputWithActions
-                  onSend={handleSend} 
-                  disabled={isLoading}
-                  onChatClick={() => setShowMobileChat(true)}
-                  onDiceClick={() => setShowMobileDice(true)}
-                  onInventoryClick={() => setShowMobileInventory(true)}
-                  onShopClick={() => setShowMobileShop(true)}
-                  onCharacterClick={() => setShowMobileCharacter(true)}
-                />
-              </div>
-              
-              {/* Sheets para mobile - controlados por estado */}
-              <Sheet open={showMobileChat} onOpenChange={setShowMobileChat}>
-                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                  <SheetHeader>
-                    <SheetTitle>Chat Social</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-4 h-[calc(100vh-8rem)]">
-                    <RoomChat 
-                      roomId={room.id} 
-                      characterName={character.name}
-                      currentTurn={room.current_turn ?? 0}
-                      initiativeOrder={(room.initiative_order as any[]) || []}
-                      isGM={room.gm_id === user?.id}
-                    />
-                  </div>
-                </SheetContent>
-              </Sheet>
-
-              <Sheet open={showMobileDice} onOpenChange={setShowMobileDice}>
-                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                  <SheetHeader>
-                    <SheetTitle>Painel de Dados</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-4">
-                    <DicePanel 
-                      roomId={room.id}
-                      characterName={character.name}
-                      characterStats={{
-                        strength: character.strength,
-                        dexterity: character.dexterity,
-                        constitution: character.constitution,
-                        intelligence: character.intelligence,
-                        wisdom: character.wisdom,
-                        charisma: character.charisma
-                      }}
-                    />
-                  </div>
-                </SheetContent>
-              </Sheet>
-
-              <Sheet open={showMobileInventory} onOpenChange={setShowMobileInventory}>
-                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                  <SheetHeader>
-                    <SheetTitle>Gerenciamento de Itens</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-4">
-                    <Tabs defaultValue="inventory">
-                      <TabsList className={`grid w-full ${auctionsActive ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                        <TabsTrigger value="inventory">Inventário</TabsTrigger>
-                        <TabsTrigger value="crafting">Crafting</TabsTrigger>
-                        <TabsTrigger value="shop">Loja</TabsTrigger>
-                        {auctionsActive && (
-                          <TabsTrigger value="auction">Leilão</TabsTrigger>
-                        )}
-                      </TabsList>
-
-                      <TabsContent value="inventory" className="mt-4">
-                        <InventoryPanel 
-                          characterId={character.id} 
-                          carryingCapacity={150}
-                          roomId={room?.id}
-                          players={players
-                            .filter(p => p.characters)
-                            .map(p => ({
-                              character_id: p.character_id,
-                              character_name: p.characters!.name
-                            }))
-                          }
-                        />
-                      </TabsContent>
-
-                      <TabsContent value="crafting" className="mt-4">
-                        <CraftingPanel
-                          characterId={character.id}
-                          intelligence={character.intelligence}
-                          wisdom={character.wisdom}
-                        />
-                      </TabsContent>
-
-                      <TabsContent value="shop" className="mt-4">
-                        {room ? (
-                          <ShopPanel roomId={room.id} characterId={character.id} />
-                        ) : (
-                          <p className="text-sm text-muted-foreground text-center py-8">
-                            Entre em uma sala para acessar a loja
-                          </p>
-                        )}
-                      </TabsContent>
-
-                      <TabsContent value="auction" className="mt-4">
-                        {room ? (
-                          <AuctionPanel
-                            characterId={character.id}
-                            roomId={room.id}
-                            goldPieces={character.gold_pieces}
-                            onGoldChange={() => {
-                              window.location.reload();
-                            }}
-                          />
-                        ) : (
-                          <p className="text-sm text-muted-foreground text-center py-8">
-                            Entre em uma sala para acessar leilões
-                          </p>
-                        )}
-                      </TabsContent>
-                    </Tabs>
-                  </div>
-                </SheetContent>
-              </Sheet>
-
-              <Sheet open={showMobileShop} onOpenChange={setShowMobileShop}>
-                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                  <SheetHeader>
-                    <SheetTitle>Loja</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-4">
-                    {room ? (
-                      <ShopPanel roomId={room.id} characterId={character.id} />
-                    ) : (
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        Entre em uma sala para acessar a loja
-                      </p>
-                    )}
-                  </div>
-                </SheetContent>
-              </Sheet>
-
-              <Sheet open={showMobileCharacter} onOpenChange={setShowMobileCharacter}>
-                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                  <SheetHeader>
-                    <SheetTitle>Ficha do Personagem</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">Nível</p>
-                        <p className="text-lg font-semibold">{character.level}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">Classe</p>
-                        <p className="text-lg font-semibold">{character.class}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">HP</p>
-                        <p className="text-lg font-semibold">{character.current_hp}/{character.max_hp}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">AC</p>
-                        <p className="text-lg font-semibold">{character.armor_class}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground font-semibold">Atributos</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="flex justify-between p-2 rounded bg-background/50">
-                          <span className="text-sm">FOR</span>
-                          <span className="font-bold">{character.strength}</span>
-                        </div>
-                        <div className="flex justify-between p-2 rounded bg-background/50">
-                          <span className="text-sm">DES</span>
-                          <span className="font-bold">{character.dexterity}</span>
-                        </div>
-                        <div className="flex justify-between p-2 rounded bg-background/50">
-                          <span className="text-sm">CON</span>
-                          <span className="font-bold">{character.constitution}</span>
-                        </div>
-                        <div className="flex justify-between p-2 rounded bg-background/50">
-                          <span className="text-sm">INT</span>
-                          <span className="font-bold">{character.intelligence}</span>
-                        </div>
-                        <div className="flex justify-between p-2 rounded bg-background/50">
-                          <span className="text-sm">SAB</span>
-                          <span className="font-bold">{character.wisdom}</span>
-                        </div>
-                        <div className="flex justify-between p-2 rounded bg-background/50">
-                          <span className="text-sm">CAR</span>
-                          <span className="font-bold">{character.charisma}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </>
+            <MobileGameView
+              room={room}
+              character={character}
+              players={players}
+              gmMessages={gmMessages}
+              messagesLoading={messagesLoading}
+              isLoading={isLoading}
+              auctionsActive={auctionsActive}
+              userId={user?.id || ""}
+              onSend={handleSend}
+            />
           )}
         </div>
       </div>

@@ -6,9 +6,10 @@ import { Send, Loader2 } from "lucide-react";
 interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
+  placeholder?: string;
 }
 
-export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
+export const ChatInput = ({ onSend, disabled, placeholder = "Descreva sua ação ou fale com o mestre..." }: ChatInputProps) => {
   const [input, setInput] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -25,7 +26,7 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Descreva sua ação ou fale com o mestre..."
+          placeholder={placeholder}
           className="flex-1 min-h-[48px] resize-none bg-background border-border focus:border-primary transition-colors rounded-lg text-sm touch-manipulation"
           disabled={disabled}
           onKeyDown={(e) => {
