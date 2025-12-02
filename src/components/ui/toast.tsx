@@ -29,6 +29,14 @@ const toastVariants = cva(
       variant: {
         default: "border bg-background text-foreground",
         destructive: "destructive group border-destructive bg-destructive text-destructive-foreground",
+        success: "border-green-500/50 bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-500 [&>svg]:text-green-500",
+        warning: "border-yellow-500/50 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 text-yellow-600 [&>svg]:text-yellow-500",
+        info: "border-blue-500/50 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 text-blue-500 [&>svg]:text-blue-500",
+        combat: "border-red-500/50 bg-gradient-to-r from-red-500/10 to-orange-500/10 text-red-500 [&>svg]:text-red-500",
+        loot: "border-purple-500/50 bg-gradient-to-r from-purple-500/10 to-violet-500/10 text-purple-500 [&>svg]:text-purple-500",
+        xp: "border-amber-500/50 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 text-amber-500 [&>svg]:text-amber-500",
+        gold: "border-yellow-500/50 bg-gradient-to-r from-yellow-600/10 to-amber-500/10 text-yellow-600 [&>svg]:text-yellow-500",
+        heal: "border-emerald-500/50 bg-gradient-to-r from-emerald-500/10 to-green-500/10 text-emerald-500 [&>svg]:text-emerald-500",
       },
     },
     defaultVariants: {

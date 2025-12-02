@@ -1,4 +1,5 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface NarrativeMessageProps {
   role: "user" | "assistant";
@@ -50,9 +51,13 @@ export const NarrativeMessage = ({ role, content, characterName }: NarrativeMess
                   </Tooltip>
                 </TooltipProvider>
               )}
-              <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm md:text-base break-words">
-                {content}
-              </p>
+              {role === "assistant" ? (
+                <MarkdownRenderer content={content} className="text-sm md:text-base" />
+              ) : (
+                <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm md:text-base break-words">
+                  {content}
+                </p>
+              )}
             </div>
           </div>
         </div>
