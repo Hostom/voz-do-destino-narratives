@@ -442,7 +442,7 @@ export const MobileGameView = ({
       
       <div
         ref={contentRef}
-        className="flex-1 min-h-0 overflow-hidden bg-card/80 backdrop-blur border border-primary/20 rounded-lg mx-2 mb-2"
+        className="flex-1 min-h-0 overflow-hidden bg-card/50 backdrop-blur-sm border border-primary/20 rounded-lg mx-2 mb-2"
         {...swipeHandlers}
       >
         <AnimatePresence mode="wait">
