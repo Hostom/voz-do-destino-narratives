@@ -7,6 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Scroll, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCollection } from "@/hooks/useCollection";
+import { GMTypingIndicator } from "./GMTypingIndicator";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface GMMessage {
   id: string;
@@ -307,12 +309,10 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
               </div>
             )}
             {isLoading && (
-              <div className="text-center space-y-2">
-                <div className="text-muted-foreground text-sm italic animate-pulse">
-                  Aguardando resposta do Mestre...
-                </div>
+              <div className="space-y-2">
+                <GMTypingIndicator />
                 {realtimeError && (
-                  <div className="text-xs text-amber-500">
+                  <div className="text-xs text-amber-500 ml-11">
                     Reconectando... (verificando a cada 2s)
                   </div>
                 )}
@@ -344,9 +344,11 @@ export const GMChat = ({ roomId, characterName, characterId, isGM }: GMChatProps
                       })}
                     </span>
                   </div>
-                  <p className={`text-sm ${msg.sender === "GM" ? "font-medium text-foreground" : "text-foreground"}`}>
-                    {content}
-                  </p>
+                  {msg.sender === "GM" ? (
+                    <MarkdownRenderer content={content} className="text-sm font-medium" />
+                  ) : (
+                    <p className="text-sm text-foreground">{content}</p>
+                  )}
                 </div>
               );
             })}

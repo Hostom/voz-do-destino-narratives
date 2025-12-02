@@ -30,6 +30,7 @@ export function ItemRewardNotification({ characterId }: ItemRewardNotificationPr
             description: `Você recebeu: ${reward.item_name} (x${reward.quantity})${
               reward.reason ? ` - ${reward.reason}` : ""
             }`,
+            variant: "loot",
             duration: 6000,
           });
         }

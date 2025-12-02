@@ -55,29 +55,31 @@ export const XPNotification = ({ characterId }: XPNotificationProps) => {
                 title: "🎉 Level Up!",
                 description: (
                   <div className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-yellow-500" />
+                    <TrendingUp className="h-5 w-5" />
                     <div>
                       <div className="font-semibold">Você subiu para o nível {newLevel}!</div>
-                      <div className="text-xs text-muted-foreground">+{xpGained} XP ganho</div>
+                      <div className="text-xs opacity-80">+{xpGained} XP ganho</div>
                     </div>
                   </div>
                 ),
+                variant: "xp",
                 duration: 6000,
               });
             } else {
               toast({
-                title: "XP Ganho!",
+                title: "⭐ XP Ganho!",
                 description: (
                   <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-primary" />
+                    <Star className="h-5 w-5" />
                     <div>
                       <div className="font-semibold">+{xpGained} XP</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs opacity-80">
                         Total: {newXP.toLocaleString()} XP
                       </div>
                     </div>
                   </div>
                 ),
+                variant: "xp",
                 duration: 4000,
               });
             }
