@@ -64,6 +64,7 @@ export const MobileGameView = ({
   onRefresh,
 }: MobileGameViewProps) => {
   const [activeTab, setActiveTab] = useState("narrative");
+  const [inventorySubTab, setInventorySubTab] = useState("inventory");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const { lightTap, successFeedback, diceRoll } = useHaptics();
@@ -137,14 +138,28 @@ export const MobileGameView = ({
           context: "shop" as const,
           onSecondaryActions: [
             {
+              label: "Inventário",
+              icon: <Package className="w-4 h-4" />,
+              action: () => {
+                lightTap();
+                setInventorySubTab("inventory");
+              },
+            },
+            {
               label: "Loja",
               icon: <ShoppingBag className="w-4 h-4" />,
-              action: () => lightTap(),
+              action: () => {
+                lightTap();
+                setInventorySubTab("shop");
+              },
             },
             {
               label: "Crafting",
               icon: <Hammer className="w-4 h-4" />,
-              action: () => lightTap(),
+              action: () => {
+                lightTap();
+                setInventorySubTab("crafting");
+              },
             },
           ],
         };
@@ -258,7 +273,7 @@ export const MobileGameView = ({
               {messagesLoading ? (
                 <InventoryItemSkeleton />
               ) : (
-                <Tabs defaultValue="inventory" className="w-full">
+                <Tabs value={inventorySubTab} onValueChange={setInventorySubTab} className="w-full">
                   <TabsList className={cn("grid w-full mb-3", auctionsActive ? "grid-cols-4" : "grid-cols-3")}>
                     <TabsTrigger value="inventory" className="text-xs">Inventário</TabsTrigger>
                     <TabsTrigger value="crafting" className="text-xs">Crafting</TabsTrigger>
