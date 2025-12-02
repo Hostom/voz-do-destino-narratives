@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Sword, Shield, Coins } from "lucide-react";
+import { Sword, Shield, Coins, ShoppingCart, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ShopStatComparison } from "./ShopStatComparison";
 
 interface ShopItem {
   id: string;
@@ -54,6 +56,49 @@ export function ShopItemModal({
   onBuySuccess,
 }: ShopItemModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isPurchased, setIsPurchased] = useState(false);
+  const [equippedItem, setEquippedItem] = useState<{ atk: number; def: number; name: string } | null>(null);
+
+  // Load equipped item for comparison
+  useEffect(() => {
+    if (isOpen && characterId) {
+      loadEquippedItem();
+    }
+  }, [isOpen, characterId, item.type]);
+
+  const loadEquippedItem = async () => {
+    try {
+      const { data: items } = await supabase
+        .from('character_items')
+        .select('item_name, properties, item_type')
+        .eq('character_id', characterId)
+        .eq('equipped', true);
+
+      if (items && items.length > 0) {
+        // Find item of same type
+        const sameTypeItem = items.find(i => 
+          i.item_type === item.type || 
+          (item.type === 'weapon' && ['weapon', 'arma'].includes(i.item_type)) ||
+          (item.type === 'armor' && ['armor', 'armadura', 'shield', 'escudo'].includes(i.item_type))
+        );
+        
+        if (sameTypeItem) {
+          const props = sameTypeItem.properties as Record<string, any> | null;
+          setEquippedItem({
+            name: sameTypeItem.item_name,
+            atk: props?.atk || 0,
+            def: props?.def || 0,
+          });
+        } else {
+          setEquippedItem(null);
+        }
+      } else {
+        setEquippedItem(null);
+      }
+    } catch (error) {
+      console.error('Error loading equipped item:', error);
+    }
+  };
 
   const handleBuy = async () => {
     setIsLoading(true);
@@ -139,8 +184,12 @@ export function ShopItemModal({
       if (transError) console.error('Transaction log error:', transError);
 
       toast.success(`${item.name} comprado por ${item.price} 🪙!`);
-      onBuySuccess?.();
-      onClose();
+      setIsPurchased(true);
+      setTimeout(() => {
+        setIsPurchased(false);
+        onBuySuccess?.();
+        onClose();
+      }, 1500);
     } catch (error) {
       console.error('Buy error:', error);
       toast.error('Erro ao comprar item');
@@ -153,83 +202,159 @@ export function ShopItemModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className={`text-2xl ${rarityClass.split(' ')[0]}`}>
-            {item.name}
-          </DialogTitle>
-          <DialogDescription>
-            <div className="flex gap-2 mt-2">
-              <Badge variant="outline" className={`${rarityClass}`}>
-                {rarityLabels[item.rarity]}
-              </Badge>
-              {item.stock !== undefined && item.stock !== -1 && (
-                <Badge 
-                  variant={item.stock > 5 ? "default" : item.stock > 0 ? "secondary" : "destructive"}
+      <DialogContent className="max-w-2xl overflow-hidden">
+        <AnimatePresence mode="wait">
+          {isPurchased ? (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="flex flex-col items-center justify-center py-12 gap-4"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
+                className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center"
+              >
+                <ShoppingCart className="w-10 h-10 text-green-500" />
+              </motion.div>
+              <motion.h3
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-xl font-bold text-green-500"
+              >
+                Compra Realizada!
+              </motion.h3>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-muted-foreground"
+              >
+                {item.name} foi adicionado ao seu inventário
+              </motion.p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="content"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <DialogHeader>
+                <DialogTitle className={`text-2xl ${rarityClass.split(' ')[0]} flex items-center gap-2`}>
+                  {item.rarity === 'legendary' && <Sparkles className="w-6 h-6 text-yellow-400 animate-pulse" />}
+                  {item.name}
+                </DialogTitle>
+                <DialogDescription>
+                  <div className="flex gap-2 mt-2">
+                    <Badge variant="outline" className={`${rarityClass}`}>
+                      {rarityLabels[item.rarity]}
+                    </Badge>
+                    {item.stock !== undefined && item.stock !== -1 && (
+                      <Badge 
+                        variant={item.stock > 5 ? "default" : item.stock > 0 ? "secondary" : "destructive"}
+                      >
+                        {item.stock > 0 ? `${item.stock} em estoque` : "Sem estoque"}
+                      </Badge>
+                    )}
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 mt-4">
+                {/* Stats */}
+                <div className="flex gap-6">
+                  {item.atk > 0 && (
+                    <motion.div 
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30"
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                    >
+                      <Sword className="w-5 h-5 text-red-400" />
+                      <span className="text-lg font-bold text-red-400">+{item.atk} Ataque</span>
+                    </motion.div>
+                  )}
+                  {item.def > 0 && (
+                    <motion.div 
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30"
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      <Shield className="w-5 h-5 text-blue-400" />
+                      <span className="text-lg font-bold text-blue-400">+{item.def} Defesa</span>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Stat Comparison */}
+                {(item.type === 'weapon' || item.type === 'armor') && (
+                  <ShopStatComparison shopItem={item} equippedItem={equippedItem} />
+                )}
+
+                <Separator />
+
+                {/* Description */}
+                <div>
+                  <h4 className="font-semibold mb-2">Descrição</h4>
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                </div>
+
+                {/* Lore */}
+                {item.lore && (
+                  <div>
+                    <h4 className="font-semibold mb-2">História</h4>
+                    <p className="text-sm text-muted-foreground italic">{item.lore}</p>
+                  </div>
+                )}
+
+                <Separator />
+
+                {/* Price */}
+                <motion.div 
+                  className="flex items-center justify-between text-lg font-bold p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30"
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
                 >
-                  {item.stock > 0 ? `${item.stock} em estoque` : "Sem estoque"}
-                </Badge>
-              )}
-            </div>
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Stats */}
-          <div className="flex gap-6">
-            {item.atk > 0 && (
-              <div className="flex items-center gap-2">
-                <Sword className="w-5 h-5 text-red-400" />
-                <span className="text-lg font-semibold">{item.atk} Ataque</span>
+                  <span>Preço:</span>
+                  <span className="flex items-center gap-2 text-yellow-500">
+                    <Coins className="w-5 h-5" />
+                    {item.price} 🪙
+                  </span>
+                </motion.div>
               </div>
-            )}
-            {item.def > 0 && (
-              <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-blue-400" />
-                <span className="text-lg font-semibold">{item.def} Defesa</span>
-              </div>
-            )}
-          </div>
 
-          <Separator />
-
-          {/* Description */}
-          <div>
-            <h4 className="font-semibold mb-2">Descrição</h4>
-            <p className="text-sm text-muted-foreground">{item.description}</p>
-          </div>
-
-          {/* Lore */}
-          {item.lore && (
-            <div>
-              <h4 className="font-semibold mb-2">História</h4>
-              <p className="text-sm text-muted-foreground italic">{item.lore}</p>
-            </div>
+              <DialogFooter className="mt-6">
+                <Button variant="outline" onClick={onClose} disabled={isLoading}>
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleBuy} 
+                  disabled={isLoading || (item.stock !== undefined && item.stock !== -1 && item.stock <= 0)}
+                  className="min-w-[120px]"
+                >
+                  {isLoading ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Coins className="w-4 h-4" />
+                    </motion.div>
+                  ) : item.stock === 0 ? 'Sem Estoque' : (
+                    <>
+                      <ShoppingCart className="w-4 h-4 mr-2" />
+                      Comprar
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </motion.div>
           )}
-
-          <Separator />
-
-          {/* Price */}
-          <div className="flex items-center justify-between text-lg font-bold">
-            <span>Preço:</span>
-            <span className="flex items-center gap-2 text-yellow-500">
-              <Coins className="w-5 h-5" />
-              {item.price} 🪙
-            </span>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleBuy} 
-            disabled={isLoading || (item.stock !== undefined && item.stock !== -1 && item.stock <= 0)}
-          >
-            {isLoading ? 'Comprando...' : item.stock === 0 ? 'Sem Estoque' : 'Comprar'}
-          </Button>
-        </DialogFooter>
+        </AnimatePresence>
       </DialogContent>
     </Dialog>
   );

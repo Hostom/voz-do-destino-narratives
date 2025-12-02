@@ -7,12 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Coins, Package, Plus, Trash2, Weight, Check } from "lucide-react";
+import { Coins, Package, Plus, Weight, Sword, Shield, Beaker, Sparkles, Grid3X3, List, Check, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ItemTradeOffer } from "./ItemTradeOffer";
 import { Badge } from "@/components/ui/badge";
+import { InventoryItemCard } from "./InventoryItemCard";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface InventoryItem {
   id: string;
@@ -50,6 +53,8 @@ export const InventoryPanel = ({ characterId, carryingCapacity, roomId, players 
     platinum_pieces: 0,
   });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [filterType, setFilterType] = useState<string>("all");
   const [newItem, setNewItem] = useState({
     item_name: "",
     item_type: "misc",
@@ -387,179 +392,159 @@ export const InventoryPanel = ({ characterId, carryingCapacity, roomId, players 
         </div>
 
         {/* Items */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold">Itens</span>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Adicionar
+        <div className="space-y-3">
+          {/* Header with controls */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-sm font-semibold">Itens ({items.length})</span>
+            <div className="flex items-center gap-2">
+              {/* Filter */}
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="h-8 text-xs w-[120px]">
+                  <SelectValue placeholder="Filtrar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="weapon">Armas</SelectItem>
+                  <SelectItem value="armor">Armaduras</SelectItem>
+                  <SelectItem value="potion">Poções</SelectItem>
+                  <SelectItem value="magic_item">Mágicos</SelectItem>
+                  <SelectItem value="misc">Diversos</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* View Mode Toggle */}
+              <div className="flex border rounded-md">
+                <Button
+                  size="sm"
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  onClick={() => setViewMode("grid")}
+                  className="h-8 px-2"
+                >
+                  <Grid3X3 className="h-4 w-4" />
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Adicionar Item</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Nome do Item</Label>
-                    <Input
-                      value={newItem.item_name}
-                      onChange={(e) => setNewItem({ ...newItem, item_name: e.target.value })}
-                      placeholder="Ex: Poção de Cura"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <Select
-                      value={newItem.item_type}
-                      onValueChange={(value) => setNewItem({ ...newItem, item_type: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="weapon">Arma</SelectItem>
-                        <SelectItem value="armor">Armadura</SelectItem>
-                        <SelectItem value="potion">Poção</SelectItem>
-                        <SelectItem value="magic_item">Item Mágico</SelectItem>
-                        <SelectItem value="misc">Diversos</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Quantidade</Label>
-                      <Input
-                        type="number"
-                        value={newItem.quantity}
-                        onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
-                        min="1"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Peso (lb)</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={newItem.weight}
-                        onChange={(e) => setNewItem({ ...newItem, weight: parseFloat(e.target.value) || 0 })}
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Descrição</Label>
-                    <Textarea
-                      value={newItem.description}
-                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                      placeholder="Descrição do item..."
-                      rows={3}
-                    />
-                  </div>
-                  <Button onClick={addItem} className="w-full">
-                    Adicionar Item
+                <Button
+                  size="sm"
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  onClick={() => setViewMode("list")}
+                  className="h-8 px-2"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Add Button */}
+              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="h-8">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Adicionar Item</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Nome do Item</Label>
+                      <Input
+                        value={newItem.item_name}
+                        onChange={(e) => setNewItem({ ...newItem, item_name: e.target.value })}
+                        placeholder="Ex: Poção de Cura"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <Select
+                        value={newItem.item_type}
+                        onValueChange={(value) => setNewItem({ ...newItem, item_type: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="weapon">Arma</SelectItem>
+                          <SelectItem value="armor">Armadura</SelectItem>
+                          <SelectItem value="potion">Poção</SelectItem>
+                          <SelectItem value="magic_item">Item Mágico</SelectItem>
+                          <SelectItem value="misc">Diversos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Quantidade</Label>
+                        <Input
+                          type="number"
+                          value={newItem.quantity}
+                          onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
+                          min="1"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Peso (lb)</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={newItem.weight}
+                          onChange={(e) => setNewItem({ ...newItem, weight: parseFloat(e.target.value) || 0 })}
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Descrição</Label>
+                      <Textarea
+                        value={newItem.description}
+                        onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                        placeholder="Descrição do item..."
+                        rows={3}
+                      />
+                    </div>
+                    <Button onClick={addItem} className="w-full">
+                      Adicionar Item
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
-          <ScrollArea className="h-[300px]">
-            <div className="space-y-2">
-              {items.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Nenhum item no inventário
-                </p>
-              ) : (
-                items.map((item) => (
-                  <Card key={item.id} className="p-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="font-medium text-xs truncate max-w-[150px] cursor-help">
-                                  {item.item_name}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs">{item.item_name}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            ({itemTypeLabels[item.item_type]})
-                          </span>
-                          {item.equipped && (
-                            <Badge variant="default" className="text-[10px] px-1 py-0 h-4 flex items-center gap-0.5">
-                              <Check className="w-2.5 h-2.5" />
-                              Equipado
-                            </Badge>
-                          )}
-                        </div>
-                        {item.description && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1 cursor-help">
-                                  {item.description}
-                                </p>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs">{item.description}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                        <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
-                          <span>Qtd: {item.quantity}</span>
-                          <span>Peso: {(item.weight * item.quantity).toFixed(1)}lb</span>
-                          {item.properties?.atk && (
-                            <span className="text-green-500 font-semibold">ATK: +{item.properties.atk}</span>
-                          )}
-                          {item.properties?.def && (
-                            <span className="text-blue-500 font-semibold">DEF: +{item.properties.def}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        {["weapon", "arma", "armor", "armadura", "shield", "escudo"].includes(item.item_type.toLowerCase()) && (
-                          <Button
-                            size="sm"
-                            variant={item.equipped ? "default" : "outline"}
-                            onClick={() => toggleEquipItem(item)}
-                            className="h-7 text-[10px] px-2"
-                          >
-                            {item.equipped ? "Desequipar" : "Equipar"}
-                          </Button>
-                        )}
-                        {roomId && players.length > 1 && (
-                          <ItemTradeOffer
-                            itemId={item.id}
-                            itemName={item.item_name}
-                            quantity={item.quantity}
-                            characterId={characterId}
-                            roomId={roomId}
-                            players={players}
-                          />
-                        )}
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => deleteItem(item.id)}
-                          className="h-7 w-7"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))
-              )}
-            </div>
+          {/* Items Grid/List */}
+          <ScrollArea className="h-[350px]">
+            {items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Package className="w-12 h-12 mb-3 opacity-50" />
+                <p className="text-sm">Nenhum item no inventário</p>
+                <p className="text-xs mt-1">Adicione itens para começar</p>
+              </div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                <motion.div 
+                  className={viewMode === "grid" 
+                    ? "grid grid-cols-1 md:grid-cols-2 gap-3 pr-4" 
+                    : "space-y-2 pr-4"
+                  }
+                  layout
+                >
+                  {items
+                    .filter(item => filterType === "all" || item.item_type === filterType || 
+                      (filterType === "weapon" && ["weapon", "arma"].includes(item.item_type.toLowerCase())) ||
+                      (filterType === "armor" && ["armor", "armadura", "shield", "escudo"].includes(item.item_type.toLowerCase())))
+                    .map((item) => (
+                      <InventoryItemCard
+                        key={item.id}
+                        item={item}
+                        onEquip={() => toggleEquipItem(item)}
+                        onDelete={() => deleteItem(item.id)}
+                        onTrade={roomId && players.length > 1 ? () => {} : undefined}
+                        canEquip={["weapon", "arma", "armor", "armadura", "shield", "escudo"].includes(item.item_type.toLowerCase())}
+                        canTrade={Boolean(roomId && players.length > 1)}
+                      />
+                    ))}
+                </motion.div>
+              </AnimatePresence>
+            )}
           </ScrollArea>
         </div>
       </CardContent>
