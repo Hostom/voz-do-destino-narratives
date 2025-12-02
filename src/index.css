@@ -52,6 +52,47 @@ All colors MUST be HSL.
     --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-epic: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
+
+  /* Light theme */
+  .light {
+    --background: 40 30% 96%;
+    --foreground: 240 10% 10%;
+
+    --card: 40 25% 92%;
+    --card-foreground: 240 10% 10%;
+
+    --popover: 40 25% 94%;
+    --popover-foreground: 240 10% 10%;
+
+    --primary: 38 92% 45%;
+    --primary-foreground: 40 30% 98%;
+
+    --secondary: 40 20% 85%;
+    --secondary-foreground: 240 10% 15%;
+
+    --muted: 40 15% 88%;
+    --muted-foreground: 240 5% 40%;
+
+    --accent: 0 72% 45%;
+    --accent-foreground: 40 30% 98%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 40 30% 98%;
+
+    --border: 40 15% 80%;
+    --input: 40 15% 82%;
+    --ring: 38 92% 45%;
+
+    /* Light gradients */
+    --gradient-epic: linear-gradient(135deg, hsl(38 92% 50% / 0.15), hsl(0 72% 51% / 0.15));
+    --gradient-glow: radial-gradient(circle at center, hsl(38 92% 50% / 0.1), transparent 70%);
+    --gradient-veil: linear-gradient(180deg, transparent, hsl(40 30% 96% / 0.9));
+    
+    /* Light shadows */
+    --shadow-epic: 0 10px 40px -10px hsl(38 92% 30% / 0.2);
+    --shadow-deep: 0 20px 60px -15px hsl(0 0% 0% / 0.15);
+    --shadow-glow: 0 0 30px hsl(38 92% 50% / 0.15);
+  }
 }
 
 @layer base {
@@ -642,6 +683,107 @@ All colors MUST be HSL.
   .animate-drift {
     animation: drift 12s ease-in-out infinite;
   }
+
+  /* ===== ACCESSIBILITY IMPROVEMENTS ===== */
+
+  /* Skip to content link for keyboard users */
+  .skip-to-content {
+    @apply absolute -top-10 left-4 z-50 px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md;
+    transition: top 0.2s ease;
+  }
+
+  .skip-to-content:focus {
+    @apply top-4;
+  }
+
+  /* Enhanced focus states for all interactive elements */
+  .focus-visible-ring:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
+  /* Improved button focus states */
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  a:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
+  /* Form input focus states */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-primary border-primary;
+  }
+
+  /* High contrast mode support */
+  @media (forced-colors: active) {
+    .border-primary {
+      border-color: CanvasText;
+    }
+    .bg-primary {
+      background-color: Highlight;
+    }
+    .text-primary {
+      color: Highlight;
+    }
+  }
+}
+
+/* Reduced motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-pulse,
+  .animate-pulse-slow,
+  .animate-glow,
+  .animate-float-slow,
+  .animate-float-delayed,
+  .animate-dice-float,
+  .animate-spin-slow,
+  .animate-spin-reverse,
+  .animate-flame-pulse,
+  .animate-flame-flicker,
+  .animate-spark-1,
+  .animate-spark-2,
+  .animate-energy-ring,
+  .animate-rain,
+  .animate-neon-flicker,
+  .animate-fog,
+  .animate-drift {
+    animation: none !important;
+  }
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Not sr-only when focused */
+.sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
 }
 
 @layer base {

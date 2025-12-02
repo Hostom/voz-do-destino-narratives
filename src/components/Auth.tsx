@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Dices } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -70,8 +71,13 @@ export const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Theme toggle in corner */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
+
       {/* Animated background */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
         {/* Gradient orbs */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-float-slow" />
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/15 rounded-full blur-3xl animate-float-delayed" />
@@ -133,7 +139,7 @@ export const Auth = () => {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-muted/50">
+            <TabsList className="grid w-full grid-cols-2 bg-muted/50" aria-label="Opções de autenticação">
               <TabsTrigger value="signin" className="data-[state=active]:bg-primary/20">
                 Entrar
               </TabsTrigger>
@@ -143,7 +149,7 @@ export const Auth = () => {
             </TabsList>
             
             <TabsContent value="signin" className="animate-fade-in">
-              <form onSubmit={handleSignIn} className="space-y-4">
+              <form onSubmit={handleSignIn} className="space-y-4" aria-label="Formulário de login">
                 <div className="space-y-2">
                   <Label htmlFor="signin-email">Email</Label>
                   <Input
@@ -153,6 +159,8 @@ export const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    aria-required="true"
+                    autoComplete="email"
                     className="bg-background/50 border-border/50 focus:border-primary transition-colors"
                   />
                 </div>
@@ -165,6 +173,8 @@ export const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    aria-required="true"
+                    autoComplete="current-password"
                     className="bg-background/50 border-border/50 focus:border-primary transition-colors"
                   />
                 </div>
@@ -172,11 +182,12 @@ export const Auth = () => {
                   type="submit" 
                   className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300 hover:shadow-glow" 
                   disabled={loading}
+                  aria-busy={loading}
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <Dices className="h-4 w-4 animate-spin" />
-                      Entrando...
+                      <Dices className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      <span>Entrando...</span>
                     </span>
                   ) : (
                     "Entrar"
@@ -186,7 +197,7 @@ export const Auth = () => {
             </TabsContent>
             
             <TabsContent value="signup" className="animate-fade-in">
-              <form onSubmit={handleSignUp} className="space-y-4">
+              <form onSubmit={handleSignUp} className="space-y-4" aria-label="Formulário de cadastro">
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
@@ -196,6 +207,8 @@ export const Auth = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    aria-required="true"
+                    autoComplete="email"
                     className="bg-background/50 border-border/50 focus:border-primary transition-colors"
                   />
                 </div>
@@ -208,19 +221,26 @@ export const Auth = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    aria-required="true"
+                    autoComplete="new-password"
                     minLength={6}
+                    aria-describedby="password-hint"
                     className="bg-background/50 border-border/50 focus:border-primary transition-colors"
                   />
+                  <p id="password-hint" className="text-xs text-muted-foreground">
+                    Mínimo de 6 caracteres
+                  </p>
                 </div>
                 <Button 
                   type="submit" 
                   className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300 hover:shadow-glow" 
                   disabled={loading}
+                  aria-busy={loading}
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
-                      <Dices className="h-4 w-4 animate-spin" />
-                      Criando conta...
+                      <Dices className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      <span>Criando conta...</span>
                     </span>
                   ) : (
                     "Criar Conta"
