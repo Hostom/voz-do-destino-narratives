@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Shield, Plus, ArrowLeft } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 
 interface CreateRoomProps {
@@ -13,6 +14,14 @@ interface CreateRoomProps {
 
 export const CreateRoom = ({ onCreateRoom, loading, onBack }: CreateRoomProps) => {
   const [campaignType, setCampaignType] = useState<string>("fantasy");
+  const [customCampaign, setCustomCampaign] = useState<string>("");
+
+  const handleCreateRoom = () => {
+    const finalCampaignType = campaignType === "other" ? customCampaign : campaignType;
+    onCreateRoom(finalCampaignType);
+  };
+
+  const isCreateDisabled = loading || (campaignType === "other" && !customCampaign.trim());
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-6">
@@ -55,13 +64,27 @@ export const CreateRoom = ({ onCreateRoom, loading, onBack }: CreateRoomProps) =
                 <SelectItem value="steampunk">Steampunk</SelectItem>
                 <SelectItem value="western">Velho Oeste</SelectItem>
                 <SelectItem value="modern">Moderno</SelectItem>
+                <SelectItem value="other">Outros...</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {campaignType === "other" && (
+            <div className="space-y-2">
+              <Label htmlFor="custom-campaign">Descreva sua campanha</Label>
+              <Textarea
+                id="custom-campaign"
+                placeholder="Ex: Piratas do Caribe, Mundo de Harry Potter, Brasil Colonial..."
+                value={customCampaign}
+                onChange={(e) => setCustomCampaign(e.target.value)}
+                className="min-h-[80px] resize-none"
+              />
+            </div>
+          )}
           
           <Button 
-            onClick={() => onCreateRoom(campaignType)} 
-            disabled={loading}
+            onClick={handleCreateRoom} 
+            disabled={isCreateDisabled}
             className="w-full"
             size="lg"
           >
