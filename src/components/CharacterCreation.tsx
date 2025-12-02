@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sword, Shield, User, Scroll, Dices } from "lucide-react";
+import { Sword, Shield, User, Scroll, Dices, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface CharacterData {
   name: string;
@@ -66,6 +67,12 @@ const BACKGROUNDS = [
   { value: "sage", label: "Sábio" },
   { value: "sailor", label: "Marinheiro" },
   { value: "soldier", label: "Soldado" },
+];
+
+const STEPS = [
+  { number: 1, label: "Básico", icon: User },
+  { number: 2, label: "Atributos", icon: Sword },
+  { number: 3, label: "História", icon: Scroll },
 ];
 
 export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
@@ -135,10 +142,75 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
     onComplete(character);
   };
 
+  const isStep1Valid = character.name.trim() && character.race && character.class;
+  const isStep2Valid = allAttributesRolled();
+
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto">
-        <Card className="border-primary/20">
+    <div className="min-h-screen bg-background p-4 relative overflow-hidden">
+      {/* Background effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-float-slow" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-float-delayed" />
+      </div>
+
+      <div className="max-w-4xl mx-auto relative z-10">
+        {/* Progress Stepper */}
+        <div className="mb-8 px-4">
+          <div className="flex items-center justify-between relative">
+            {/* Progress line background */}
+            <div className="absolute top-6 left-0 right-0 h-0.5 bg-border" />
+            {/* Progress line active */}
+            <div 
+              className="absolute top-6 left-0 h-0.5 bg-gradient-to-r from-primary to-primary/60 transition-all duration-500 ease-out"
+              style={{ width: `${((step - 1) / (STEPS.length - 1)) * 100}%` }}
+            />
+            
+            {STEPS.map((s, index) => {
+              const Icon = s.icon;
+              const isCompleted = step > s.number;
+              const isCurrent = step === s.number;
+              
+              return (
+                <div key={s.number} className="relative flex flex-col items-center z-10">
+                  <div
+                    className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border-2",
+                      isCompleted 
+                        ? "bg-primary border-primary text-primary-foreground scale-100" 
+                        : isCurrent 
+                          ? "bg-primary/20 border-primary text-primary scale-110 shadow-glow animate-pulse-slow"
+                          : "bg-muted border-border text-muted-foreground"
+                    )}
+                  >
+                    {isCompleted ? (
+                      <Check className="h-5 w-5 animate-scale-in" />
+                    ) : (
+                      <Icon className="h-5 w-5" />
+                    )}
+                  </div>
+                  <span 
+                    className={cn(
+                      "mt-2 text-sm font-medium transition-colors duration-300",
+                      isCurrent ? "text-primary" : isCompleted ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    {s.label}
+                  </span>
+                  <span 
+                    className={cn(
+                      "text-xs transition-colors duration-300",
+                      isCurrent || isCompleted ? "text-muted-foreground" : "text-muted-foreground/50"
+                    )}
+                  >
+                    Passo {s.number}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <Card className="border-primary/20 bg-card/80 backdrop-blur-xl shadow-2xl animate-fade-in">
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               Criação de Personagem
@@ -150,9 +222,11 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
           <CardContent className="space-y-6">
             {/* Step 1: Basic Info */}
             {step === 1 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+              <div className="space-y-4 animate-slide-in-right">
                 <div className="flex items-center gap-2 mb-4">
-                  <User className="h-5 w-5 text-primary" />
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
                   <h3 className="text-xl font-semibold">Informações Básicas</h3>
                 </div>
 
@@ -164,6 +238,7 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                     onChange={(e) => setCharacter({ ...character, name: e.target.value })}
                     placeholder="Digite o nome do seu personagem"
                     maxLength={50}
+                    className="bg-background/50 border-border/50 focus:border-primary transition-all"
                   />
                 </div>
 
@@ -171,7 +246,7 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                   <div className="space-y-2">
                     <Label>Raça *</Label>
                     <Select value={character.race} onValueChange={(value) => setCharacter({ ...character, race: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-background/50">
                         <SelectValue placeholder="Selecione uma raça" />
                       </SelectTrigger>
                       <SelectContent>
@@ -187,7 +262,7 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                   <div className="space-y-2">
                     <Label>Classe *</Label>
                     <Select value={character.class} onValueChange={(value) => setCharacter({ ...character, class: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-background/50">
                         <SelectValue placeholder="Selecione uma classe" />
                       </SelectTrigger>
                       <SelectContent>
@@ -201,7 +276,11 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                   </div>
                 </div>
 
-                <Button onClick={() => setStep(2)} className="w-full">
+                <Button 
+                  onClick={() => setStep(2)} 
+                  className="w-full bg-gradient-to-r from-primary to-primary/80 hover:shadow-glow transition-all"
+                  disabled={!isStep1Valid}
+                >
                   Próximo: Atributos
                 </Button>
               </div>
@@ -209,13 +288,15 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
 
             {/* Step 2: Attributes */}
             {step === 2 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+              <div className="space-y-4 animate-slide-in-right">
                 <div className="flex items-center gap-2 mb-4">
-                  <Sword className="h-5 w-5 text-primary" />
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Sword className="h-5 w-5 text-primary" />
+                  </div>
                   <h3 className="text-xl font-semibold">Atributos</h3>
                 </div>
 
-                <div className="bg-muted/50 p-4 rounded-lg text-center">
+                <div className="bg-muted/50 p-4 rounded-lg text-center border border-border/50">
                   <p className="text-sm text-muted-foreground">Role 4d6 para cada atributo</p>
                   <p className="text-xs text-muted-foreground mt-1">O dado mais baixo será descartado automaticamente</p>
                 </div>
@@ -233,7 +314,13 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                     const modifier = value > 0 ? getAttributeModifier(value) : 0;
                     const isRolling = rollingAttribute === key;
                     return (
-                      <div key={key} className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
+                      <div 
+                        key={key} 
+                        className={cn(
+                          "flex items-center justify-between p-3 bg-card border border-border rounded-lg transition-all duration-300",
+                          value > 0 && "border-primary/30 bg-primary/5"
+                        )}
+                      >
                         <div className="flex-1">
                           <p className="font-medium">{label}</p>
                           <p className="text-sm text-muted-foreground">
@@ -243,12 +330,13 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                         <div className="flex items-center gap-2">
                           {value > 0 ? (
                             <>
-                              <span className="text-2xl font-bold w-12 text-center text-primary">{value}</span>
+                              <span className="text-2xl font-bold w-12 text-center text-primary animate-scale-in">{value}</span>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => rollAttribute(key as keyof CharacterData)}
                                 disabled={isRolling}
+                                className="hover:border-primary"
                               >
                                 <Dices className="h-4 w-4" />
                               </Button>
@@ -260,7 +348,7 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                               className="w-full"
                             >
                               {isRolling ? (
-                                <Dices className="h-4 w-4 animate-spin" />
+                                <Dices className="h-4 w-4 animate-dice-roll" />
                               ) : (
                                 <>
                                   <Dices className="mr-2 h-4 w-4" />
@@ -279,7 +367,11 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                   <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
                     Voltar
                   </Button>
-                  <Button onClick={() => setStep(3)} className="flex-1" disabled={!allAttributesRolled()}>
+                  <Button 
+                    onClick={() => setStep(3)} 
+                    className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:shadow-glow transition-all" 
+                    disabled={!isStep2Valid}
+                  >
                     Próximo: História
                   </Button>
                 </div>
@@ -288,16 +380,18 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
 
             {/* Step 3: Background */}
             {step === 3 && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+              <div className="space-y-4 animate-slide-in-right">
                 <div className="flex items-center gap-2 mb-4">
-                  <Scroll className="h-5 w-5 text-primary" />
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Scroll className="h-5 w-5 text-primary" />
+                  </div>
                   <h3 className="text-xl font-semibold">História e Antecedentes</h3>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Antecedente *</Label>
                   <Select value={character.background} onValueChange={(value) => setCharacter({ ...character, background: value })}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-background/50">
                       <SelectValue placeholder="Selecione um antecedente" />
                     </SelectTrigger>
                     <SelectContent>
@@ -319,6 +413,7 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                     placeholder="Conte a história do seu personagem: de onde veio, o que o motiva, seus objetivos..."
                     rows={6}
                     maxLength={1000}
+                    className="bg-background/50 border-border/50 focus:border-primary transition-all"
                   />
                   <p className="text-xs text-muted-foreground text-right">
                     {character.backstory.length}/1000
@@ -329,7 +424,10 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                   <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                     Voltar
                   </Button>
-                  <Button onClick={handleSubmit} className="flex-1">
+                  <Button 
+                    onClick={handleSubmit} 
+                    className="flex-1 bg-gradient-to-r from-primary to-accent hover:shadow-glow transition-all"
+                  >
                     <Shield className="mr-2 h-4 w-4" />
                     Iniciar Aventura
                   </Button>

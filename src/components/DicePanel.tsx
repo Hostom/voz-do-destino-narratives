@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dices, Plus, Minus, X } from "lucide-react";
+import { Dices, Plus, Minus, X, Sparkles, Skull } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import { useHaptics } from "@/hooks/useHaptics";
 
 interface DiceType {
   sides: number;
@@ -48,9 +50,16 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
   const [diceCount, setDiceCount] = useState(1);
   const [selectedDice, setSelectedDice] = useState<SelectedDice[]>([]);
   const [rolling, setRolling] = useState(false);
-  const [lastRoll, setLastRoll] = useState<{ dice: string; results: number[]; total: number } | null>(null);
+  const [lastRoll, setLastRoll] = useState<{ 
+    dice: string; 
+    results: number[]; 
+    total: number;
+    isNat20?: boolean;
+    isNat1?: boolean;
+  } | null>(null);
   const [selectedModifier, setSelectedModifier] = useState<string>("none");
   const { toast } = useToast();
+  const { diceRoll, successFeedback, errorFeedback } = useHaptics();
 
   const addDiceToSelection = (sides: number, label: string) => {
     const existing = selectedDice.find(d => d.sides === sides);
@@ -72,9 +81,12 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
     
     setRolling(true);
     setLastRoll(null);
+    diceRoll();
 
     const allResults: { label: string; results: number[] }[] = [];
     let totalSum = 0;
+    let isNat20 = false;
+    let isNat1 = false;
 
     for (const dice of selectedDice) {
       const results: number[] = [];
@@ -82,6 +94,12 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
         const roll = Math.floor(Math.random() * dice.sides) + 1;
         results.push(roll);
         totalSum += roll;
+        
+        // Check for nat 20 or nat 1 on d20
+        if (dice.sides === 20) {
+          if (roll === 20) isNat20 = true;
+          if (roll === 1) isNat1 = true;
+        }
       }
       allResults.push({ label: `${dice.count}${dice.label}`, results });
     }
@@ -112,20 +130,46 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
       setLastRoll({ 
         dice: diceDescription, 
         results: allResults.flatMap(r => r.results), 
-        total: finalTotal 
+        total: finalTotal,
+        isNat20,
+        isNat1
       });
       setRolling(false);
       
-      toast({
-        title: `🎲 ${diceDescription}${modifierText}`,
-        description: `Resultados: ${resultsDescription}${modifierText} = ${finalTotal}`,
-      });
+      // Haptic feedback based on result
+      if (isNat20) {
+        successFeedback();
+      } else if (isNat1) {
+        errorFeedback();
+      }
+
+      // Custom toast for special rolls
+      if (isNat20) {
+        toast({
+          title: "🎉 CRÍTICO! NAT 20!",
+          description: `${diceDescription}${modifierText} = ${finalTotal}`,
+          className: "border-yellow-500 bg-yellow-500/10",
+        });
+      } else if (isNat1) {
+        toast({
+          title: "💀 Falha Crítica! NAT 1!",
+          description: `${diceDescription}${modifierText} = ${finalTotal}`,
+          className: "border-red-500 bg-red-500/10",
+        });
+      } else {
+        toast({
+          title: `🎲 ${diceDescription}${modifierText}`,
+          description: `Resultados: ${resultsDescription}${modifierText} = ${finalTotal}`,
+        });
+      }
 
       // Envia para o chat do GM E notifica os jogadores
       if (roomId && characterName) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const message = `🎲 Rolou ${diceDescription}: ${resultsDescription}${modifierText} = **${finalTotal}**`;
+          let message = `🎲 Rolou ${diceDescription}: ${resultsDescription}${modifierText} = **${finalTotal}**`;
+          if (isNat20) message = `🎉 **CRÍTICO! NAT 20!** ${message}`;
+          if (isNat1) message = `💀 **FALHA CRÍTICA! NAT 1!** ${message}`;
           
           // 1. Envia para o chat dos jogadores (notificação pública)
           await supabase.from("room_chat_messages").insert({
@@ -183,7 +227,7 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
 
       // Limpa a seleção após rolar
       setSelectedDice([]);
-    }, 800);
+    }, 1200);
   };
 
   const adjustDiceCount = (increment: boolean) => {
@@ -260,9 +304,9 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
                 onClick={() => addDiceToSelection(sides, label)}
                 disabled={rolling}
                 variant="outline"
-                className="h-16 flex flex-col items-center justify-center gap-1 hover:border-primary transition-all"
+                className="h-16 flex flex-col items-center justify-center gap-1 hover:border-primary hover:bg-primary/10 transition-all group"
               >
-                <Dices className="h-5 w-5" />
+                <Dices className="h-5 w-5 group-hover:scale-110 transition-transform" />
                 <span className="text-xs font-bold">{label}</span>
               </Button>
             ))}
@@ -277,7 +321,7 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
               {selectedDice.map((dice) => (
                 <div
                   key={dice.sides}
-                  className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 bg-primary/10 border border-primary/30 rounded-md"
+                  className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 bg-primary/10 border border-primary/30 rounded-md animate-scale-in"
                 >
                   <span className="text-xs md:text-sm font-medium">
                     {dice.count}{dice.label}
@@ -296,9 +340,9 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
             <Button
               onClick={rollAllDice}
               disabled={rolling}
-              className="w-full gap-2 text-sm md:text-base"
+              className="w-full gap-2 text-sm md:text-base bg-gradient-to-r from-primary to-primary/80 hover:shadow-glow transition-all"
             >
-              <Dices className={rolling ? "animate-spin" : ""} />
+              <Dices className={cn(rolling && "animate-dice-roll")} />
               {rolling ? "Rolando..." : "Rolar Todos os Dados"}
             </Button>
           </div>
@@ -306,15 +350,60 @@ export const DicePanel = ({ roomId, characterName, characterStats }: DicePanelPr
 
         {/* Last roll result */}
         {lastRoll && (
-          <div className="flex items-center justify-center gap-2 md:gap-3 p-2 md:p-3 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg animate-in fade-in zoom-in duration-300">
-            <div className="text-center">
+          <div 
+            className={cn(
+              "relative flex items-center justify-center gap-2 md:gap-3 p-2 md:p-3 border rounded-lg animate-scale-in overflow-hidden",
+              lastRoll.isNat20 
+                ? "bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-yellow-500/50" 
+                : lastRoll.isNat1 
+                  ? "bg-gradient-to-r from-red-500/20 to-red-900/20 border-red-500/50 animate-shake"
+                  : "bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30"
+            )}
+          >
+            {/* Special effects for nat 20 */}
+            {lastRoll.isNat20 && (
+              <>
+                <div className="absolute inset-0 animate-nat20-glow" />
+                <div className="absolute -top-2 left-1/4 animate-confetti-1">
+                  <Sparkles className="h-4 w-4 text-yellow-400" />
+                </div>
+                <div className="absolute -top-2 right-1/4 animate-confetti-2">
+                  <Sparkles className="h-3 w-3 text-amber-400" />
+                </div>
+                <div className="absolute top-0 left-1/2 animate-confetti-3">
+                  <Sparkles className="h-5 w-5 text-yellow-300" />
+                </div>
+              </>
+            )}
+
+            {/* Special effects for nat 1 */}
+            {lastRoll.isNat1 && (
+              <div className="absolute inset-0 animate-nat1-pulse bg-red-500/10" />
+            )}
+
+            <div className="text-center relative z-10">
               <p className="text-xs text-muted-foreground">{lastRoll.dice}</p>
               <p className="text-xs md:text-sm text-foreground">{lastRoll.results.join(" + ")}</p>
             </div>
-            <div className="h-10 md:h-12 w-px bg-border" />
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">Total</p>
-              <p className="text-xl md:text-2xl font-bold text-primary">{lastRoll.total}</p>
+            <div className="h-10 md:h-12 w-px bg-border relative z-10" />
+            <div className="text-center relative z-10">
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                {lastRoll.isNat20 && <Sparkles className="h-3 w-3 text-yellow-400" />}
+                {lastRoll.isNat1 && <Skull className="h-3 w-3 text-red-400" />}
+                Total
+              </p>
+              <p 
+                className={cn(
+                  "text-xl md:text-2xl font-bold",
+                  lastRoll.isNat20 
+                    ? "text-yellow-400 animate-glow" 
+                    : lastRoll.isNat1 
+                      ? "text-red-400"
+                      : "text-primary"
+                )}
+              >
+                {lastRoll.total}
+              </p>
             </div>
           </div>
         )}
