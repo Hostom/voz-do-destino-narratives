@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface CharacterStatsBarProps {
   characterId: string;
+  compact?: boolean;
 }
 
 interface CharacterStats {
@@ -17,7 +18,7 @@ interface CharacterStats {
   level: number;
 }
 
-export const CharacterStatsBar = ({ characterId }: CharacterStatsBarProps) => {
+export const CharacterStatsBar = ({ characterId, compact = false }: CharacterStatsBarProps) => {
   const [stats, setStats] = useState<CharacterStats | null>(null);
 
   useEffect(() => {
@@ -71,10 +72,10 @@ export const CharacterStatsBar = ({ characterId }: CharacterStatsBarProps) => {
   const nearLevelUp = xpPercentage >= 80 && !canLevelUp;
 
   return (
-    <div className="flex flex-col gap-2 p-3 bg-card/50 border border-border/50 rounded-lg backdrop-blur">
+    <div className={`flex flex-col gap-2 ${compact ? 'p-2' : 'p-3'} bg-card/50 border border-border/50 rounded-lg backdrop-blur`}>
       {/* HP Bar */}
       <div className="flex items-center gap-2">
-        <Heart className="h-4 w-4 text-destructive flex-shrink-0" />
+        <Heart className={`${compact ? 'h-3 w-3' : 'h-4 w-4'} text-destructive flex-shrink-0`} />
         <div className="flex-1">
           <Progress 
             value={hpPercentage} 
