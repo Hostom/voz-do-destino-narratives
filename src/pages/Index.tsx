@@ -7,7 +7,6 @@ import { CharacterSelect } from "@/components/CharacterSelect";
 import { GameHeader } from "@/components/GameHeader";
 import { AtmosphereEffect } from "@/components/AtmosphereEffect";
 import { ChatInput } from "@/components/ChatInput";
-import { ChatInputWithActions } from "@/components/ChatInputWithActions";
 import { DicePanel } from "@/components/DicePanel";
 import { NarrativeMessage } from "@/components/NarrativeMessage";
 import { CreateRoom } from "@/components/CreateRoom";
@@ -18,14 +17,13 @@ import { CombatView } from "@/components/CombatView";
 import { useCharacter, Character } from "@/hooks/useCharacter";
 import { useRoom } from "@/hooks/useRoom";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Scroll, MessageSquare, Dices, Package, User, Users, Store } from "lucide-react";
+import { BookOpen, Scroll, MessageSquare, Package, User, Store } from "lucide-react";
 import { RoomChat } from "@/components/RoomChat";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { InventoryPanel } from "@/components/InventoryPanel";
 import { Separator } from "@/components/ui/separator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCollection } from "@/hooks/useCollection";
-import { CharacterStatsBar } from "@/components/CharacterStatsBar";
 import { XPNotification } from "@/components/XPNotification";
 import { ItemRewardNotification } from "@/components/ItemRewardNotification";
 import { ItemTradeNotifications } from "@/components/ItemTradeNotifications";
@@ -50,7 +48,7 @@ interface GMMessage {
 const Index = () => {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const { character, loading: characterLoading, createCharacter, getCharacterSummary, loadAllCharacters, selectCharacter } = useCharacter();
+  const { character, loading: characterLoading, createCharacter, loadAllCharacters, selectCharacter } = useCharacter();
   const [showCharacterSheet, setShowCharacterSheet] = useState(false);
   const [showCharacterSelection, setShowCharacterSelection] = useState(false);
   const [showCreation, setShowCreation] = useState(false);
@@ -63,35 +61,15 @@ const Index = () => {
   const { room, players, loading: roomLoading, createRoom, joinRoom, leaveRoom, toggleReady, rollInitiative, advanceTurn, endCombat, startSession, refreshPlayers, reconnectToRoom } = useRoom();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [showMobileChat, setShowMobileChat] = useState(false);
-  const [showMobileDice, setShowMobileDice] = useState(false);
-  const [showMobileInventory, setShowMobileInventory] = useState(false);
-  const [showMobileCharacter, setShowMobileCharacter] = useState(false);
-  const [showMobileShop, setShowMobileShop] = useState(false);
   const [auctionsActive, setAuctionsActive] = useState(false);
 
-  // Use gm_messages as single source of truth for all players
-  // useCollection will handle empty roomId gracefully
   const { data: gmMessages, loading: messagesLoading } = useCollection<GMMessage>("gm_messages", {
     filters: room?.id ? { room_id: room.id } : undefined,
     orderBy: "created_at",
     ascending: true,
+    limit: 50, // Performance: limit DOM elements
   });
 
-  // Debug: Log when gmMessages change
-  useEffect(() => {
-    if (gmMessages.length > 0) {
-      console.log('gmMessages updated:', gmMessages.length, 'messages');
-      const lastMessage = gmMessages[gmMessages.length - 1];
-      console.log('Last message:', {
-        sender: lastMessage.sender,
-        character_name: lastMessage.character_name,
-        content_preview: lastMessage.content.substring(0, 50) + '...'
-      });
-    }
-  }, [gmMessages]);
-
-  // Check if user is GM
   useEffect(() => {
     const checkGMStatus = async () => {
       if (!room) return;
@@ -103,7 +81,6 @@ const Index = () => {
     checkGMStatus();
   }, [room?.gm_id]);
 
-  // Load auction status when room changes
   useEffect(() => {
     if (!room) {
       setAuctionsActive(false);
@@ -132,9 +109,7 @@ const Index = () => {
           table: 'merchant_auctions',
           filter: `room_id=eq.${room.id}`
         },
-        () => {
-          loadAuctionStatus();
-        }
+        () => loadAuctionStatus()
       )
       .subscribe();
 
@@ -143,7 +118,6 @@ const Index = () => {
     };
   }, [room?.id]);
 
-  // Check auth status and restore session state
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -157,11 +131,8 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Detect page close/reload and allow reconnection
   useEffect(() => {
     if (!user || !room) return;
-
-    // Save current room info to localStorage
     const roomInfo = {
       roomId: room.id,
       roomCode: room.room_code,
@@ -170,64 +141,32 @@ const Index = () => {
       timestamp: Date.now()
     };
     localStorage.setItem('activeRoomSession', JSON.stringify(roomInfo));
-
-    // Cleanup old sessions on load (older than 24h)
-    const savedRoom = localStorage.getItem('activeRoomSession');
-    if (savedRoom) {
-      const parsed = JSON.parse(savedRoom);
-      const hoursSinceLastSession = (Date.now() - parsed.timestamp) / (1000 * 60 * 60);
-      if (hoursSinceLastSession > 24) {
-        localStorage.removeItem('activeRoomSession');
-      }
-    }
   }, [user, room]);
 
-  // Restore session on page load
   useEffect(() => {
     if (!user || room || authLoading || characterLoading) return;
-
     const savedRoom = localStorage.getItem('activeRoomSession');
     if (savedRoom) {
       const parsed = JSON.parse(savedRoom);
-      
-      // Check if session is recent (less than 24h)
       const hoursSinceLastSession = (Date.now() - parsed.timestamp) / (1000 * 60 * 60);
       if (hoursSinceLastSession < 24) {
-        // Try to reconnect using the useRoom hook
         const attemptReconnect = async () => {
           const roomData = await reconnectToRoom(parsed.roomId);
-          
           if (roomData) {
-            // Set the view based on room state
-            if (roomData.combat_active) {
-              setView('combat');
-            } else if (roomData.session_active) {
-              setView('game');
-            } else {
-              setView('lobby');
-            }
+            if (roomData.combat_active) setView('combat');
+            else if (roomData.session_active) setView('game');
+            else setView('lobby');
           } else {
-            // Failed to reconnect, clear saved session
             localStorage.removeItem('activeRoomSession');
           }
         };
-
         attemptReconnect();
       } else {
-        // Session too old, clear it
         localStorage.removeItem('activeRoomSession');
       }
     }
   }, [user, room, authLoading, characterLoading, reconnectToRoom]);
 
-  // Clear session info when leaving room
-  useEffect(() => {
-    if (!room && user) {
-      localStorage.removeItem('activeRoomSession');
-    }
-  }, [room, user]);
-
-  // Load all characters when user is authenticated
   useEffect(() => {
     if (user && !character && !characterLoading) {
       loadCharactersData();
@@ -237,413 +176,95 @@ const Index = () => {
   const loadCharactersData = async () => {
     const chars = await loadAllCharacters();
     setAllCharacters(chars);
-    if (chars.length > 0) {
-      setShowCharacterSelection(true);
-    } else {
-      setShowCreation(true);
-    }
+    if (chars.length > 0) setShowCharacterSelection(true);
+    else setShowCreation(true);
   };
 
-  // Initialize welcome message when character is ready and room is active
   useEffect(() => {
     if (character && room && room.session_active && view === 'game' && gmMessages.length === 0 && !messagesLoading) {
-      // Create AI-generated welcome message that has access to ALL character sheets in the room
       const createWelcomeMessage = async () => {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user || !room) return;
+        if (!user || !room || user.id !== room.gm_id) return;
 
-        // Only GM can create the welcome message
-        if (user.id !== room.gm_id) {
-          console.log('Not GM, skipping welcome message creation');
-          return;
-        }
+        const { data: existingMessages } = await supabase.from('gm_messages').select('id').eq('room_id', room.id).limit(1);
+        if (existingMessages && existingMessages.length > 0) return;
 
-        // Double-check that no messages exist in the database
-        const { data: existingMessages, error: checkError } = await supabase
-          .from('gm_messages')
-          .select('id')
-          .eq('room_id', room.id)
-          .limit(1);
-
-        if (checkError) {
-          console.error('Error checking existing messages:', checkError);
-          return;
-        }
-
-        if (existingMessages && existingMessages.length > 0) {
-          console.log('Messages already exist, skipping welcome message');
-          return;
-        }
-
-        console.log('Creating AI welcome message with ALL characters context...');
         setIsLoading(true);
-
         try {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-          
-          if (!supabaseUrl || !supabaseAnonKey) {
-            throw new Error('Supabase configuration missing');
-          }
-
           const { data: { session } } = await supabase.auth.getSession();
-          const authToken = session?.access_token;
 
-          // Buscar TODOS os personagens da sala
-          const { data: roomPlayers, error: playersError } = await supabase
-            .from('room_players')
-            .select(`
-              *,
-              characters (
-                id, name, race, class, level, background, backstory,
-                strength, dexterity, constitution, intelligence, wisdom, charisma,
-                current_hp, max_hp, armor_class, proficiency_bonus,
-                equipped_weapon, spell_slots, current_spell_slots
-              )
-            `)
-            .eq('room_id', room.id);
-
-          if (playersError) {
-            console.error('Error fetching room players:', playersError);
-            throw playersError;
-          }
-
-          // Criar resumo de TODOS os personagens
+          const { data: roomPlayers } = await supabase.from('room_players').select(`*, characters (*)`).eq('room_id', room.id);
           let allCharactersSheet = '=== GRUPO DE AVENTUREIROS ===\n\n';
-          
-          if (roomPlayers && roomPlayers.length > 0) {
-            for (const player of roomPlayers) {
-              const char = player.characters as any;
-              if (!char) continue;
-
-              allCharactersSheet += `📜 ${char.name}\n`;
-              allCharactersSheet += `Raça: ${char.race} | Classe: ${char.class} | Nível: ${char.level}\n`;
-              
-              if (char.background) {
-                allCharactersSheet += `Background: ${char.background}\n`;
-              }
-              
-              if (char.backstory && char.backstory.trim()) {
-                allCharactersSheet += `História: ${char.backstory}\n`;
-              }
-
-              allCharactersSheet += `HP: ${char.current_hp}/${char.max_hp} | CA: ${char.armor_class}\n`;
-              allCharactersSheet += `Atributos: FOR ${char.strength} | DES ${char.dexterity} | CON ${char.constitution} | INT ${char.intelligence} | SAB ${char.wisdom} | CAR ${char.charisma}\n`;
-              
-              if (char.equipped_weapon) {
-                const weapon = char.equipped_weapon as any;
-                allCharactersSheet += `Arma Equipada: ${weapon.name} (${weapon.damage_dice} ${weapon.damage_type})\n`;
-              }
-
-              allCharactersSheet += '\n---\n\n';
-            }
-          } else {
-            allCharactersSheet += 'Nenhum personagem encontrado na sala.\n';
-          }
-
-          console.log('Sending character sheets to GM:', allCharactersSheet);
-
-          // Buscar informações da sala para obter o tipo de campanha
-          const { data: roomData, error: roomError } = await supabase
-            .from('rooms')
-            .select('campaign_type')
-            .eq('id', room.id)
-            .single();
-
-          const campaignType = roomData?.campaign_type || 'fantasy';
-
-          // Enviar para o GM com o contexto de TODOS os personagens e tipo de campanha
-          const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authToken || supabaseAnonKey}`,
-              'apikey': supabaseAnonKey,
-            },
-            body: JSON.stringify({
-              messages: [{ 
-                role: 'user', 
-                content: `[INÍCIO DA SESSÃO]
-
-${allCharactersSheet}
-
-Inicie a aventura agora.` 
-              }],
-              roomId: room.id,
-              characterName: character.name,
-              characterId: character.id,
-              isSessionStart: true,
-              campaignType: campaignType,
-            }),
+          roomPlayers?.forEach((p: any) => {
+            const char = p.characters;
+            if (char) allCharactersSheet += `📜 ${char.name} (${char.race} ${char.class})\n`;
           });
 
-          if (response.ok) {
-            // Consume the stream
-            const reader = response.body?.getReader();
-            if (reader) {
-              while (true) {
-                const { done } = await reader.read();
-                if (done) break;
-              }
-            }
-            console.log('AI welcome message generated successfully with all characters context');
-          }
+          await fetch(`${supabaseUrl}/functions/v1/game-master`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || supabaseAnonKey}`, 'apikey': supabaseAnonKey },
+            body: JSON.stringify({ messages: [{ role: 'user', content: `[INÍCIO DA SESSÃO]\n${allCharactersSheet}` }], roomId: room.id, characterName: character.name, characterId: character.id, isSessionStart: true, campaignType: room.campaign_type || 'fantasy' }),
+          });
         } catch (error) {
           console.error('Error generating welcome message:', error);
         } finally {
           setIsLoading(false);
         }
       };
-
       createWelcomeMessage();
     }
   }, [character, room, view, gmMessages.length, messagesLoading]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [gmMessages]);
 
-  // CRITICAL: This function handles ONLY GM chat (narrative with AI)
-  // It saves to gm_messages ONLY and triggers game-master
-  // DO NOT use this for group chat messages
   const handleSend = async (message: string) => {
-    if (!room || !character) {
-      toast({
-        title: "Erro",
-        description: "Você precisa estar em uma sala com um personagem selecionado",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (!room || !character) return;
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({
-        title: "Erro",
-        description: "Você precisa estar autenticado para enviar mensagens",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!user) return;
 
     setIsLoading(true);
-
     try {
-      // CRITICAL: Save player message ONLY to gm_messages (NOT room_chat_messages)
-      // This is for narrative interaction with the AI Game Master
-      const { error: insertError } = await supabase.from("gm_messages" as any).insert({
-        room_id: room.id,
-        player_id: user.id,
-        sender: "player",
-        character_name: character.name,
-        content: message.trim(),
-        type: "gm",
-      } as any);
+      await supabase.from("gm_messages").insert({ room_id: room.id, player_id: user.id, sender: "player", character_name: character.name, content: message.trim(), type: "gm" });
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (insertError) {
-        console.error("Error saving player message to gm_messages:", insertError);
-        toast({
-          title: "Erro",
-          description: "Não foi possível enviar a mensagem",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Trigger game-master function
-      // The server will save the GM response ONLY to gm_messages (NOT room_chat_messages)
-      console.log('Calling game-master function with:', {
-        roomId: room.id,
-        characterName: character.name,
-        message: message.trim()
+      await fetch(`${supabaseUrl}/functions/v1/game-master`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || supabaseAnonKey}`, 'apikey': supabaseAnonKey },
+        body: JSON.stringify({ messages: [{ role: 'user', content: message.trim() }], roomId: room.id, characterName: character.name, characterId: character.id }),
       });
-      
-      try {
-        // The function returns a stream (SSE), we need to consume it to ensure it completes
-        // The server will save the response to gm_messages when the stream completes
-        console.log('Invoking game-master function...');
-        
-        // Get the Supabase URL and anon key from environment
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        
-        if (!supabaseUrl || !supabaseAnonKey) {
-          throw new Error('Supabase configuration missing');
-        }
-
-        // Get auth token
-        const { data: { session } } = await supabase.auth.getSession();
-        const authToken = session?.access_token;
-
-        // Call the function using fetch directly for better stream handling
-        const response = await fetch(`${supabaseUrl}/functions/v1/game-master`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken || supabaseAnonKey}`,
-            'apikey': supabaseAnonKey,
-          },
-          body: JSON.stringify({
-            messages: [{ role: 'user', content: message.trim() }],
-            roomId: room.id,
-            characterName: character.name,
-            characterId: character.id, // Pass character ID for tool calls
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Error calling game master:', response.status, errorText);
-          toast({
-            title: "Erro",
-            description: `Falha ao chamar a IA: ${response.status}`,
-            variant: "destructive",
-          });
-          setIsLoading(false);
-        } else {
-          console.log('Game-master function invoked successfully. Response will appear in gm_messages via real-time.');
-          
-          // Consume the stream to ensure it completes
-          const reader = response.body?.getReader();
-          if (reader) {
-            const decoder = new TextDecoder();
-            let buffer = '';
-            
-            // Consume the stream to ensure it completes
-            (async () => {
-              try {
-                while (true) {
-                  const { done, value } = await reader.read();
-                  if (done) {
-                    console.log('Stream consumed completely');
-                    // Give the server a moment to save the response
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    break;
-                  }
-                  
-                  // Decode and process the stream properly
-                  buffer += decoder.decode(value, { stream: true });
-                  
-                  // Process complete lines (SSE format)
-                  const lines = buffer.split('\n');
-                  buffer = lines.pop() || ''; // Keep incomplete line in buffer
-                  
-                  // Process each line to ensure proper SSE parsing
-                  for (const line of lines) {
-                    if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-                      // Stream is being processed correctly
-                    }
-                  }
-                }
-              } catch (streamError) {
-                console.error('Error consuming stream:', streamError);
-              }
-            })();
-          } else {
-            console.warn('No response body/stream received');
-          }
-          // Don't set loading to false here - wait for real-time update
-        }
-      } catch (invokeError: any) {
-        console.error('Exception calling game master:', invokeError);
-        toast({
-          title: "Erro",
-          description: invokeError?.message || "Falha ao obter resposta da IA",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-      }
-
-      // Don't set loading to false immediately - wait for the AI response
-      // The loading will be cleared when we detect a new GM message in gmMessages
     } catch (error) {
-      console.error('Error in handleSend (GM chat):', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao enviar mensagem",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Falha ao enviar mensagem", variant: "destructive" });
+    } finally {
       setIsLoading(false);
     }
   };
 
-  // Clear loading state when we receive a GM response
   useEffect(() => {
     if (isLoading && gmMessages.length > 0) {
-      const lastMessage = gmMessages[gmMessages.length - 1];
-      if (lastMessage.sender === "GM") {
-        console.log('GM response received, clearing loading state');
-        setIsLoading(false);
-      }
+      if (gmMessages[gmMessages.length - 1].sender === "GM") setIsLoading(false);
     }
   }, [gmMessages, isLoading]);
-
-  // Safety timeout: clear loading after 30 seconds if no response
-  useEffect(() => {
-    if (isLoading) {
-      const timeout = setTimeout(() => {
-        console.warn('Loading timeout - no GM response received after 30 seconds');
-        setIsLoading(false);
-        toast({
-          title: "Timeout",
-          description: "A resposta da IA está demorando. Verifique se a função está funcionando.",
-          variant: "destructive",
-        });
-      }, 30000);
-
-      return () => clearTimeout(timeout);
-    }
-  }, [isLoading]);
-
-  const handleCharacterComplete = () => {
-    setShowCreation(false);
-    loadCharactersData();
-  };
-
-  const handleCharacterSelect = (selectedCharacter: Character) => {
-    selectCharacter(selectedCharacter);
-    setShowCharacterSelection(false);
-  };
-
-  const handleCreateNew = () => {
-    setShowCharacterSelection(false);
-    setShowCreation(true);
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
   };
 
-  const handleBackToCharacterSelect = () => {
-    setShowCharacterSelection(true);
-  };
-
   const handleCreateRoom = async (campaignType: string) => {
-    if (!character) {
-      toast({
-        title: "Erro",
-        description: "Você precisa ter um personagem selecionado para criar uma sala",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!character) return;
     const newRoom = await createRoom(character.id, campaignType);
-    if (newRoom) {
-      setView('lobby');
-    }
+    if (newRoom) setView('lobby');
   };
 
   const handleJoinRoomWithCode = async (roomCode: string, characterId: string) => {
     const joinedRoom = await joinRoom(roomCode, characterId);
-    if (joinedRoom) {
-      setView('lobby');
-    }
+    if (joinedRoom) setView('lobby');
   };
 
   const handleLeaveRoom = () => {
@@ -653,684 +274,83 @@ Inicie a aventura agora.`
   };
 
   const handleBackToLobby = async () => {
-    // Set view first to prevent useEffect from switching back
     setView('lobby');
-    
     if (room?.session_active) {
-      try {
-        // 1. Salvar snapshot da sessão antes de desativar
-        const { count: messageCount } = await supabase
-          .from('gm_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('room_id', room.id);
-
-        const snapshotData = {
-          combat_active: room.combat_active,
-          current_turn: room.current_turn,
-          initiative_order: room.initiative_order,
-          message_count: messageCount || 0,
-          players_state: players.map(p => ({
-            character_id: p.character_id,
-            initiative: p.initiative,
-            conditions: p.conditions,
-            temp_hp: p.temp_hp,
-            current_hp: p.characters?.current_hp,
-            current_spell_slots: p.characters?.current_spell_slots
-          }))
-        };
-
-        const { error: snapshotError } = await supabase
-          .from('session_snapshots')
-          .insert([{
-            room_id: room.id,
-            session_data: snapshotData as any,
-            message_count: messageCount || 0,
-            combat_round: room.combat_active ? room.current_turn : null,
-            notes: 'Salvamento automático ao voltar ao lobby'
-          }]);
-
-        if (snapshotError) {
-          console.error('Error saving session snapshot:', snapshotError);
-        } else {
-          console.log('Session snapshot saved successfully');
-          toast({
-            title: "Progresso Salvo",
-            description: "O progresso da sessão foi salvo automaticamente",
-          });
-        }
-
-        // 2. Desativar sessão e atualizar localStorage
-        const { error } = await supabase
-          .from('rooms')
-          .update({ session_active: false, combat_active: false })
-          .eq('id', room.id);
-        
-        if (error) {
-          console.error('Error ending session:', error);
-          toast({
-            title: "Erro",
-            description: "Não foi possível voltar ao lobby",
-            variant: "destructive",
-          });
-          setView('game');
-          return;
-        }
-
-        // Update localStorage to reflect we're in lobby
-        const roomInfo = {
-          roomId: room.id,
-          roomCode: room.room_code,
-          sessionActive: false,
-          combatActive: false,
-          timestamp: Date.now()
-        };
-        localStorage.setItem('activeRoomSession', JSON.stringify(roomInfo));
-      } catch (error) {
-        console.error('Error in handleBackToLobby:', error);
-        toast({
-          title: "Erro",
-          description: "Erro ao salvar progresso da sessão",
-          variant: "destructive",
-        });
-        setView('game');
-        return;
-      }
+      await supabase.from('rooms').update({ session_active: false, combat_active: false }).eq('id', room.id);
+      localStorage.setItem('activeRoomSession', JSON.stringify({ ...JSON.parse(localStorage.getItem('activeRoomSession') || '{}'), sessionActive: false, combatActive: false }));
     }
   };
 
-  const handleStartSession = async () => {
-    setIsReturningToGame(true);
-    await startSession();
-  };
-
-  const handleRollInitiative = async () => {
-    await rollInitiative();
-    // A view já vai mudar para combat pelo useEffect que monitora room.combat_active
-  };
-
-  const handleEndCombat = async () => {
-    await endCombat();
-    // A view já vai mudar para game pelo useEffect que monitora room.combat_active
-  };
-
-  // Auto-switch views based on room state
   useEffect(() => {
     if (!room) return;
-
-    // Only auto-switch to game view when session starts from lobby
-    // Don't switch if user manually went back to lobby (session_active will be false)
-    if (room.session_active && view === 'lobby' && room.combat_active === false) {
-      // Switch to game if:
-      // 1. There are no messages yet (initial start) OR
-      // 2. User explicitly clicked to return to game (isReturningToGame flag)
+    if (room.session_active && view === 'lobby' && !room.combat_active) {
       if (gmMessages.length === 0 || isReturningToGame) {
         setView('game');
-        setIsReturningToGame(false); // Reset flag after transitioning
+        setIsReturningToGame(false);
       }
     }
-
-    // Switch to combat view when combat becomes active
-    if (room.combat_active && view !== 'combat') {
-      setView('combat');
-    } else if (!room.combat_active && room.session_active && view === 'combat') {
-      // Return to game view when combat ends (not lobby)
-      setView('game');
-    }
+    if (room.combat_active && view !== 'combat') setView('combat');
+    else if (!room.combat_active && room.session_active && view === 'combat') setView('game');
   }, [room?.session_active, room?.combat_active, view, gmMessages.length, isReturningToGame]);
 
-  if (authLoading || characterLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center">
-        <div className="text-center">Loading...</div>
+  if (authLoading || characterLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (!user) return <Auth />;
+  if (showCreation) return <CharacterCreation onComplete={async (data) => { await createCharacter(data); setShowCreation(false); loadCharactersData(); }} />;
+  if (showCharacterSelection) return <CharacterSelect characters={allCharacters} onSelect={(c) => { selectCharacter(c); setShowCharacterSelection(false); }} onCreateNew={() => { setShowCharacterSelection(false); setShowCreation(true); }} onCharactersUpdate={loadCharactersData} onBack={view === 'menu' ? () => setShowCharacterSelection(false) : undefined} />;
+  if (!character) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+
+  if (view === 'menu') return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="w-full max-w-md space-y-4">
+        <h1 className="text-4xl font-bold text-center mb-8">Voz do Destino</h1>
+        <Button onClick={() => setView('create')} size="lg" className="w-full">Criar Sala</Button>
+        <Button onClick={() => setView('history')} size="lg" variant="default" className="w-full">Minhas Salas</Button>
+        <Button onClick={() => setView('join')} size="lg" variant="secondary" className="w-full">Entrar em Sala</Button>
+        <Button onClick={() => setShowCharacterSelection(true)} size="lg" variant="outline" className="w-full">Trocar Personagem</Button>
+        <Button onClick={handleLogout} size="lg" variant="ghost" className="w-full">Sair</Button>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (!user) {
-    return <Auth />;
-  }
+  if (view === 'create') return <CreateRoom onCreateRoom={handleCreateRoom} loading={roomLoading} onBack={() => setView('menu')} />;
+  if (view === 'join') return <JoinRoom onJoinRoom={handleJoinRoomWithCode} loading={roomLoading} character={character} onBack={() => setView('menu')} />;
+  if (view === 'history') return <RoomHistory onJoinRoom={handleJoinRoomWithCode} loading={roomLoading} character={character} onBack={() => setView('menu')} />;
+  if (view === 'lobby' && room) return <RoomLobby room={room} players={players} onLeave={handleLeaveRoom} onToggleReady={toggleReady} onStartSession={() => { setIsReturningToGame(true); startSession(); }} onRefreshPlayers={refreshPlayers} />;
+  if (view === 'combat' && room) return <CombatView room={room} players={players} onAdvanceTurn={advanceTurn} onEndCombat={endCombat} />;
 
-  if (showCreation) {
-    return (
-      <CharacterCreation 
-        onComplete={async (characterData) => {
-          await createCharacter(characterData);
-          setShowCreation(false);
-          loadCharactersData();
-        }}
-      />
-    );
-  }
-
-  if (showCharacterSelection) {
-    return (
-      <CharacterSelect 
-        characters={allCharacters}
-        onSelect={handleCharacterSelect}
-        onCreateNew={handleCreateNew}
-        onCharactersUpdate={loadCharactersData}
-        onBack={view === 'menu' ? () => setShowCharacterSelection(false) : undefined}
-      />
-    );
-  }
-
-  if (!character) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center">
-        <div className="text-center">Loading...</div>
-      </div>
-    );
-  }
-
-  // Room menu
-  if (view === 'menu') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 flex items-center justify-center p-6">
-        <div className="w-full max-w-md space-y-4">
-          <h1 className="text-4xl font-bold text-center mb-8">Voz do Destino</h1>
-          <Button onClick={() => setView('create')} size="lg" className="w-full">
-            Criar Sala
-          </Button>
-          <Button onClick={() => setView('history')} size="lg" variant="default" className="w-full">
-            Minhas Salas
-          </Button>
-          <Button onClick={() => setView('join')} size="lg" variant="secondary" className="w-full">
-            Entrar em Sala
-          </Button>
-          <Button onClick={() => setShowCharacterSelection(true)} size="lg" variant="outline" className="w-full">
-            Trocar Personagem
-          </Button>
-          <Button onClick={handleLogout} size="lg" variant="ghost" className="w-full">
-            Sair
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === 'create') {
-    return <CreateRoom onCreateRoom={handleCreateRoom} loading={roomLoading} onBack={() => setView('menu')} />;
-  }
-
-  if (view === 'join') {
-    return <JoinRoom onJoinRoom={handleJoinRoomWithCode} loading={roomLoading} character={character} onBack={() => setView('menu')} />;
-  }
-
-  if (view === 'history') {
-    return <RoomHistory onJoinRoom={handleJoinRoomWithCode} loading={roomLoading} character={character} onBack={() => setView('menu')} />;
-  }
-
-  if (view === 'lobby' && room) {
-    return <RoomLobby room={room} players={players} onLeave={handleLeaveRoom} onToggleReady={toggleReady} onStartSession={handleStartSession} onRefreshPlayers={refreshPlayers} />;
-  }
-
-  if (view === 'combat' && room) {
-    return <CombatView room={room} players={players} onAdvanceTurn={advanceTurn} onEndCombat={handleEndCombat} />;
-  }
-
-  // Game view (original RPG interface)
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 relative overflow-hidden">
-      {/* Atmosphere effect based on campaign type */}
       {room?.campaign_type && <AtmosphereEffect campaignType={room.campaign_type} />}
-      
-      {/* XP Notification System */}
       {character && (
         <>
           <XPNotification characterId={character.id} />
           <ItemRewardNotification characterId={character.id} />
-          {room && (
-            <ItemTradeNotifications characterId={character.id} roomId={room.id} />
-          )}
+          {room && <ItemTradeNotifications characterId={character.id} roomId={room.id} />}
         </>
       )}
-      
-      {/* Background effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent"></div>
-      <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-
       <div className="relative z-10 flex flex-col h-screen">
-        <GameHeader 
-          onLogout={handleLogout}
-          onBackToCharacterSelect={room ? undefined : handleBackToCharacterSelect}
-          onBackToLobby={room ? handleBackToLobby : undefined}
-          roomCode={room?.room_code}
-          characterId={character?.id}
-          players={players}
-          gmId={room?.gm_id}
-        />
-
-        {showCharacterSheet && character && (
-          <div className="mx-2 md:mx-4 mb-4 p-4 md:p-6 bg-card/95 backdrop-blur rounded-lg border border-primary/20 shadow-2xl animate-in slide-in-from-top duration-300 max-w-full overflow-x-hidden landscape:p-3 landscape:mb-2">
-            <div className="flex items-center justify-between mb-4 landscape:mb-2">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <BookOpen className="w-6 h-6" />
-                Ficha do Personagem
-              </h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Nome</p>
-                  <p className="text-lg font-semibold">{character.name}</p>
-                </div>
-                <div className="flex gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Raça</p>
-                    <p className="font-semibold">{character.race}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Classe</p>
-                    <p className="font-semibold">{character.class}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Nível</p>
-                    <p className="font-semibold">{character.level}</p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">HP</p>
-                    <p className="font-semibold">{character.current_hp}/{character.max_hp}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">AC</p>
-                    <p className="font-semibold">{character.armor_class}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground font-semibold mb-2">Atributos</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex justify-between p-2 rounded bg-background/50">
-                    <span className="text-sm">FOR</span>
-                    <span className="font-bold">{character.strength}</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded bg-background/50">
-                    <span className="text-sm">DES</span>
-                    <span className="font-bold">{character.dexterity}</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded bg-background/50">
-                    <span className="text-sm">CON</span>
-                    <span className="font-bold">{character.constitution}</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded bg-background/50">
-                    <span className="text-sm">INT</span>
-                    <span className="font-bold">{character.intelligence}</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded bg-background/50">
-                    <span className="text-sm">SAB</span>
-                    <span className="font-bold">{character.wisdom}</span>
-                  </div>
-                  <div className="flex justify-between p-2 rounded bg-background/50">
-                    <span className="text-sm">CAR</span>
-                    <span className="font-bold">{character.charisma}</span>
-                  </div>
-                </div>
-              </div>
-
-              {character.backstory && (
-                <div className="md:col-span-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Scroll className="w-4 h-4" />
-                    <p className="text-sm text-muted-foreground font-semibold">História</p>
-                  </div>
-                  <p className="text-sm leading-relaxed">{character.backstory}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="flex-1 flex flex-col md:flex-row gap-2 md:gap-4 px-2 md:px-4 pb-2 md:pb-4 min-h-0 overflow-x-hidden landscape:gap-2 landscape:px-2 landscape:pb-2">
-          {/* Quando há sala: Chat principal (narrativa) + Chat social + Dados */}
-          {room && character ? (
-            <>
-          {/* Desktop: Layout com chat principal, chat social e dados */}
-          {!isMobile && (
-            <>
-              {/* Coluna principal - Narrativa da IA */}
-              <div className="flex-1 md:flex-[2] min-h-0">
-                <div className="h-full flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-4">
-                  <div className="mb-3">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Scroll className="w-5 h-5" />
-                      Aventura - Narração do Mestre
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      A IA Mestre narra a história - Interaja aqui para avançar a aventura
-                    </p>
-                  </div>
-                  <div className="flex-1 overflow-y-auto space-y-2 md:space-y-4 pr-2 min-h-0">
-                    {messagesLoading && gmMessages.length === 0 && (
-                      <div className="flex justify-center py-8">
-                        <div className="text-muted-foreground text-sm">
-                          Carregando mensagens...
-                        </div>
-                      </div>
-                    )}
-                    {gmMessages.map((msg, idx) => (
-                      <NarrativeMessage
-                        key={msg.id}
-                        role={msg.sender === "GM" ? "assistant" : "user"}
-                        content={msg.content ?? msg.message ?? ""}
-                        characterName={msg.sender === "player" ? msg.character_name : undefined}
-                      />
-                    ))}
-                    {isLoading && (
-                      <div className="flex justify-center">
-                        <div className="animate-pulse text-muted-foreground text-sm">
-                          A Voz do Destino está narrando...
-                        </div>
-                      </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
-                  <div className="pt-2 md:pt-4 mt-4 border-t border-border/50 space-y-3">
-                    <ChatInput
-                      onSend={handleSend} 
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Coluna direita - Balões de ação e dados */}
-              <div className="flex-1 min-w-[280px] max-w-[400px] flex flex-col gap-4">
-                {/* Balões de ação */}
-                <div className="bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-4 flex flex-col gap-3">
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button className="w-full gap-2" variant="outline">
-                        <MessageSquare className="h-5 w-5" />
-                        Chat Social
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                      <SheetHeader>
-                        <SheetTitle>Chat Social</SheetTitle>
-                      </SheetHeader>
-                      <div className="mt-4 h-[calc(100vh-8rem)]">
-                        <RoomChat 
-                          roomId={room.id} 
-                          characterName={character.name}
-                          currentTurn={room.current_turn ?? 0}
-                          initiativeOrder={(room.initiative_order as any[]) || []}
-                          isGM={room.gm_id === user?.id}
-                        />
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button className="w-full gap-2" variant="outline">
-                        <Package className="h-5 w-5" />
-                        Inventário
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                      <SheetHeader>
-                        <SheetTitle>Gerenciamento de Itens</SheetTitle>
-                      </SheetHeader>
-                      <div className="mt-4">
-                        <Tabs defaultValue="inventory">
-                          <TabsList className={`grid w-full ${auctionsActive ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                            <TabsTrigger value="inventory">Inventário</TabsTrigger>
-                            <TabsTrigger value="crafting">Crafting</TabsTrigger>
-                            <TabsTrigger value="shop">Loja</TabsTrigger>
-                            {auctionsActive && (
-                              <TabsTrigger value="auction">Leilão</TabsTrigger>
-                            )}
-                          </TabsList>
-
-                          <TabsContent value="inventory" className="mt-4">
-                            <div className="space-y-4">
-                              <InteractiveObjectsPanel
-                                characterId={character.id}
-                                roomId={room.id}
-                              />
-                              <InventoryPanel 
-                                characterId={character.id} 
-                                carryingCapacity={150}
-                                roomId={room?.id}
-                                players={players
-                                  .filter(p => p.characters)
-                                  .map(p => ({
-                                    character_id: p.character_id,
-                                    character_name: p.characters!.name
-                                  }))
-                                }
-                              />
-                            </div>
-                          </TabsContent>
-
-                          <TabsContent value="crafting" className="mt-4">
-                            <CraftingPanel
-                              characterId={character.id}
-                              intelligence={character.intelligence}
-                              wisdom={character.wisdom}
-                            />
-                          </TabsContent>
-
-                          <TabsContent value="shop" className="mt-4">
-                            {room ? (
-                              <ShopPanel roomId={room.id} characterId={character.id} />
-                            ) : (
-                              <p className="text-sm text-muted-foreground text-center py-8">
-                                Entre em uma sala para acessar a loja
-                              </p>
-                            )}
-                          </TabsContent>
-
-                          <TabsContent value="auction" className="mt-4">
-                            {room ? (
-                              <AuctionPanel
-                                characterId={character.id}
-                                roomId={room.id}
-                                goldPieces={character.gold_pieces}
-                                onGoldChange={() => {
-                                  window.location.reload();
-                                }}
-                              />
-                            ) : (
-                              <p className="text-sm text-muted-foreground text-center py-8">
-                                Entre em uma sala para acessar leilões
-                              </p>
-                            )}
-                          </TabsContent>
-                        </Tabs>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button className="w-full gap-2" variant="outline">
-                        <Store className="h-5 w-5" />
-                        Loja
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                      <SheetHeader>
-                        <SheetTitle>Loja</SheetTitle>
-                      </SheetHeader>
-                      <div className="mt-4">
-                        {room ? (
-                          <ShopPanel roomId={room.id} characterId={character.id} />
-                        ) : (
-                          <p className="text-sm text-muted-foreground text-center py-8">
-                            Entre em uma sala para acessar a loja
-                          </p>
-                        )}
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button className="w-full gap-2" variant="outline">
-                        <User className="h-5 w-5" />
-                        Ficha do Personagem
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                      <SheetHeader>
-                        <SheetTitle>Ficha do Personagem</SheetTitle>
-                      </SheetHeader>
-                      <div className="mt-4 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Nível</p>
-                            <p className="text-lg font-semibold">{character.level}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Classe</p>
-                            <p className="text-lg font-semibold">{character.class}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Raça</p>
-                            <p className="text-lg font-semibold">{character.race}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Background</p>
-                            <p className="text-lg font-semibold">{character.background || "-"}</p>
-                          </div>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div className="space-y-2">
-                          <h3 className="font-semibold">Atributos</h3>
-                          <div className="grid grid-cols-3 gap-2">
-                            {[
-                              { key: "strength", label: "FOR" },
-                              { key: "dexterity", label: "DES" },
-                              { key: "constitution", label: "CON" },
-                              { key: "intelligence", label: "INT" },
-                              { key: "wisdom", label: "SAB" },
-                              { key: "charisma", label: "CAR" }
-                            ].map(({ key, label }) => (
-                              <div key={key} className="bg-muted/50 rounded p-2 text-center">
-                                <p className="text-xs text-muted-foreground uppercase">{label}</p>
-                                <p className="text-lg font-bold">{character[key as keyof typeof character]}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">HP Atual / Máximo</p>
-                            <p className="text-lg font-semibold">{character.current_hp} / {character.max_hp}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-sm text-muted-foreground">Classe de Armadura</p>
-                            <p className="text-lg font-semibold">{character.armor_class}</p>
-                          </div>
-                        </div>
-
-                        {character.backstory && (
-                          <>
-                            <Separator />
-                            <div className="space-y-2">
-                              <h3 className="font-semibold flex items-center gap-2">
-                                <Scroll className="w-4 h-4" />
-                                História
-                              </h3>
-                              <p className="text-sm leading-relaxed text-muted-foreground">{character.backstory}</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-                </div>
-
-                {/* Painel de dados */}
-                <DicePanel 
-                  roomId={room.id}
-                  characterName={character.name}
-                  characterStats={{
-                    strength: character.strength,
-                    dexterity: character.dexterity,
-                    constitution: character.constitution,
-                    intelligence: character.intelligence,
-                    wisdom: character.wisdom,
-                    charisma: character.charisma
-                  }}
-                />
-              </div>
-            </>
-              )}
-            </>
+        <GameHeader onLogout={handleLogout} onBackToLobby={room ? handleBackToLobby : undefined} roomCode={room?.room_code} characterId={character?.id} players={players} gmId={room?.gm_id} />
+        <div className="flex-1 flex flex-col md:flex-row gap-4 px-4 pb-4 min-h-0 overflow-hidden">
+          {isMobile ? (
+            <MobileGameView room={room!} character={character} players={players} gmMessages={gmMessages} messagesLoading={messagesLoading} isLoading={isLoading} auctionsActive={auctionsActive} userId={user.id} onSend={handleSend} onRefresh={async () => { await refreshPlayers(); }} />
           ) : (
-            /* Quando não há sala: Chat individual */
-            <div className="flex flex-col flex-1 min-h-0 bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-3 md:p-4 max-w-full overflow-x-hidden">
-              <div className="mb-2 md:mb-3">
-                <h3 className="text-base md:text-lg font-semibold flex items-center gap-2">
-                  <Scroll className="w-4 h-4 md:w-5 md:h-5" />
-                  Chat com o Mestre
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Converse com a IA para preparar sua aventura
-                </p>
+            <>
+              <div className="flex-[2] flex flex-col bg-card/80 backdrop-blur border border-primary/20 rounded-lg p-4 min-h-0">
+                <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                  {gmMessages.map((msg) => <NarrativeMessage key={msg.id} role={msg.sender === "GM" ? "assistant" : "user"} content={msg.content || ""} characterName={msg.sender === "player" ? msg.character_name : undefined} />)}
+                  {isLoading && <div className="animate-pulse text-muted-foreground text-sm text-center">A Voz do Destino está narrando...</div>}
+                  <div ref={messagesEndRef} />
+                </div>
+                <div className="pt-4 mt-4 border-t border-border/50"><ChatInput onSend={handleSend} disabled={isLoading} /></div>
               </div>
-              <div className="flex-1 overflow-y-auto pr-1 md:pr-2 min-h-0">
-                {messagesLoading && gmMessages.length === 0 && (
-                  <div className="flex justify-center py-8">
-                    <div className="text-muted-foreground text-sm">
-                      Carregando mensagens...
-                    </div>
-                  </div>
-                )}
-                {gmMessages.map((msg, idx) => (
-                  <NarrativeMessage
-                    key={msg.id}
-                    role={msg.sender === "GM" ? "assistant" : "user"}
-                    content={msg.content ?? msg.message ?? ""}
-                    characterName={msg.sender === "player" ? msg.character_name : undefined}
-                  />
-                ))}
-                {isLoading && (
-                  <div className="flex justify-center py-4">
-                    <div className="animate-pulse text-muted-foreground text-sm">
-                      A Voz do Destino está narrando...
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
+              <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4">
+                <div className="bg-card/80 border border-primary/20 rounded-lg p-4 space-y-3">
+                  <Sheet><SheetTrigger asChild><Button className="w-full gap-2" variant="outline"><MessageSquare className="h-4 w-4" />Chat Social</Button></SheetTrigger><SheetContent side="right"><SheetHeader><SheetTitle>Chat Social</SheetTitle></SheetHeader><div className="mt-4 h-[calc(100vh-8rem)]"><RoomChat roomId={room!.id} characterName={character.name} currentTurn={room!.current_turn || 0} initiativeOrder={(room!.initiative_order as any[]) || []} isGM={isGM} /></div></SheetContent></Sheet>
+                  <Sheet><SheetTrigger asChild><Button className="w-full gap-2" variant="outline"><Package className="h-4 w-4" />Inventário</Button></SheetTrigger><SheetContent side="right"><SheetHeader><SheetTitle>Itens</SheetTitle></SheetHeader><div className="mt-4"><Tabs defaultValue="inventory"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="inventory">Mochila</TabsTrigger><TabsTrigger value="crafting">Crafting</TabsTrigger><TabsTrigger value="shop">Loja</TabsTrigger></TabsList><TabsContent value="inventory" className="mt-4 space-y-4"><InteractiveObjectsPanel characterId={character.id} roomId={room!.id} /><InventoryPanel characterId={character.id} carryingCapacity={150} roomId={room!.id} players={players.filter(p => p.characters).map(p => ({ character_id: p.character_id, character_name: p.characters!.name }))} /></TabsContent><TabsContent value="crafting" className="mt-4"><CraftingPanel characterId={character.id} intelligence={character.intelligence} wisdom={character.wisdom} /></TabsContent><TabsContent value="shop" className="mt-4"><ShopPanel roomId={room!.id} characterId={character.id} /></TabsContent></Tabs></div></SheetContent></Sheet>
+                </div>
+                <DicePanel roomId={room!.id} characterName={character.name} characterStats={{ strength: character.strength, dexterity: character.dexterity, constitution: character.constitution, intelligence: character.intelligence, wisdom: character.wisdom, charisma: character.charisma }} />
               </div>
-
-              <div className="pt-2 md:pt-4 mt-2 md:mt-4 border-t border-border/50 shrink-0 space-y-3">
-                <ChatInput
-                  onSend={handleSend} 
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Mobile: Nova interface com bottom nav e swipe */}
-          {room && character && isMobile && (
-            <MobileGameView
-              room={room}
-              character={character}
-              players={players}
-              gmMessages={gmMessages}
-              messagesLoading={messagesLoading}
-              isLoading={isLoading}
-              auctionsActive={auctionsActive}
-              userId={user?.id || ""}
-              onSend={handleSend}
-              onRefresh={async () => {
-                await refreshPlayers();
-              }}
-            />
+            </>
           )}
         </div>
       </div>

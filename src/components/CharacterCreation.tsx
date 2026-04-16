@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,35 +75,41 @@ const STEPS = [
   { number: 3, label: "História", icon: Scroll },
 ];
 
+const STORAGE_KEY = "character_creation_draft";
+
 export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
   const [step, setStep] = useState(1);
   const { toast } = useToast();
   const [rollingAttribute, setRollingAttribute] = useState<string | null>(null);
   
-  const [character, setCharacter] = useState<CharacterData>({
-    name: "",
-    race: "",
-    class: "",
-    strength: 0,
-    dexterity: 0,
-    constitution: 0,
-    intelligence: 0,
-    wisdom: 0,
-    charisma: 0,
-    background: "",
-    backstory: "",
+  const [character, setCharacter] = useState<CharacterData>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : {
+      name: "",
+      race: "",
+      class: "",
+      strength: 0,
+      dexterity: 0,
+      constitution: 0,
+      intelligence: 0,
+      wisdom: 0,
+      charisma: 0,
+      background: "",
+      backstory: "",
+    };
   });
+
+  // Persist draft on changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(character));
+  }, [character]);
 
   const rollAttribute = (attr: keyof CharacterData) => {
     setRollingAttribute(attr as string);
-    
-    // Roll 4d6, drop lowest (standard D&D 5E method)
     const rolls: number[] = [];
     for (let i = 0; i < 4; i++) {
       rolls.push(Math.floor(Math.random() * 6) + 1);
     }
-    
-    // Sort and drop lowest
     rolls.sort((a, b) => a - b);
     const sum = rolls.slice(1).reduce((acc, val) => acc + val, 0);
     
@@ -139,6 +145,7 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
       toast({ title: "Campos obrigatórios", description: "Por favor, preencha todos os campos obrigatórios.", variant: "destructive" });
       return;
     }
+    localStorage.removeItem(STORAGE_KEY);
     onComplete(character);
   };
 
@@ -147,25 +154,21 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
 
   return (
     <div className="min-h-screen bg-background p-4 relative overflow-hidden">
-      {/* Background effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-float-slow" />
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/10 rounded-full blur-3xl animate-float-delayed" />
       </div>
 
       <div className="max-w-4xl mx-auto relative z-10">
-        {/* Progress Stepper */}
         <div className="mb-8 px-4">
           <div className="flex items-center justify-between relative">
-            {/* Progress line background */}
             <div className="absolute top-6 left-0 right-0 h-0.5 bg-border" />
-            {/* Progress line active */}
-            <div 
+            <div
               className="absolute top-6 left-0 h-0.5 bg-gradient-to-r from-primary to-primary/60 transition-all duration-500 ease-out"
               style={{ width: `${((step - 1) / (STEPS.length - 1)) * 100}%` }}
             />
             
-            {STEPS.map((s, index) => {
+            {STEPS.map((s) => {
               const Icon = s.icon;
               const isCompleted = step > s.number;
               const isCurrent = step === s.number;
@@ -188,21 +191,8 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                       <Icon className="h-5 w-5" />
                     )}
                   </div>
-                  <span 
-                    className={cn(
-                      "mt-2 text-sm font-medium transition-colors duration-300",
-                      isCurrent ? "text-primary" : isCompleted ? "text-foreground" : "text-muted-foreground"
-                    )}
-                  >
+                  <span className={cn("mt-2 text-sm font-medium", isCurrent ? "text-primary" : "text-muted-foreground")}>
                     {s.label}
-                  </span>
-                  <span 
-                    className={cn(
-                      "text-xs transition-colors duration-300",
-                      isCurrent || isCompleted ? "text-muted-foreground" : "text-muted-foreground/50"
-                    )}
-                  >
-                    Passo {s.number}
                   </span>
                 </div>
               );
@@ -210,97 +200,56 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
           </div>
         </div>
 
-        <Card className="border-primary/20 bg-card/80 backdrop-blur-xl shadow-2xl animate-fade-in">
+        <Card className="border-primary/20 bg-card/80 backdrop-blur-xl shadow-2xl">
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
               Criação de Personagem
             </CardTitle>
-            <CardDescription>
-              Crie seu herói seguindo as regras do D&D 5E
-            </CardDescription>
+            <CardDescription>Crie seu herói seguindo as regras do D&D 5E</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Step 1: Basic Info */}
             {step === 1 && (
-              <div className="space-y-4 animate-slide-in-right">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
+                  <User className="h-5 w-5 text-primary" />
                   <h3 className="text-xl font-semibold">Informações Básicas</h3>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Personagem *</Label>
                   <Input
                     id="name"
                     value={character.name}
                     onChange={(e) => setCharacter({ ...character, name: e.target.value })}
-                    placeholder="Digite o nome do seu personagem"
-                    maxLength={50}
-                    className="bg-background/50 border-border/50 focus:border-primary transition-all"
+                    placeholder="Nome do personagem"
+                    className="bg-background/50"
                   />
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Raça *</Label>
-                    <Select value={character.race} onValueChange={(value) => setCharacter({ ...character, race: value })}>
-                      <SelectTrigger className="bg-background/50">
-                        <SelectValue placeholder="Selecione uma raça" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RACES.map((race) => (
-                          <SelectItem key={race.value} value={race.value}>
-                            {race.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                    <Select value={character.race} onValueChange={(v) => setCharacter({ ...character, race: v })}>
+                      <SelectTrigger className="bg-background/50"><SelectValue placeholder="Raça" /></SelectTrigger>
+                      <SelectContent>{RACES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Classe *</Label>
-                    <Select value={character.class} onValueChange={(value) => setCharacter({ ...character, class: value })}>
-                      <SelectTrigger className="bg-background/50">
-                        <SelectValue placeholder="Selecione uma classe" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CLASSES.map((cls) => (
-                          <SelectItem key={cls.value} value={cls.value}>
-                            {cls.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                    <Select value={character.class} onValueChange={(v) => setCharacter({ ...character, class: v })}>
+                      <SelectTrigger className="bg-background/50"><SelectValue placeholder="Classe" /></SelectTrigger>
+                      <SelectContent>{CLASSES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 </div>
-
-                <Button 
-                  onClick={() => setStep(2)} 
-                  className="w-full bg-gradient-to-r from-primary to-primary/80 hover:shadow-glow transition-all"
-                  disabled={!isStep1Valid}
-                >
-                  Próximo: Atributos
-                </Button>
+                <Button onClick={() => setStep(2)} className="w-full" disabled={!isStep1Valid}>Próximo: Atributos</Button>
               </div>
             )}
 
-            {/* Step 2: Attributes */}
             {step === 2 && (
-              <div className="space-y-4 animate-slide-in-right">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Sword className="h-5 w-5 text-primary" />
-                  </div>
+                  <Sword className="h-5 w-5 text-primary" />
                   <h3 className="text-xl font-semibold">Atributos</h3>
                 </div>
-
-                <div className="bg-muted/50 p-4 rounded-lg text-center border border-border/50">
-                  <p className="text-sm text-muted-foreground">Role 4d6 para cada atributo</p>
-                  <p className="text-xs text-muted-foreground mt-1">O dado mais baixo será descartado automaticamente</p>
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
                     { key: "strength", label: "Força" },
@@ -309,128 +258,62 @@ export const CharacterCreation = ({ onComplete }: CharacterCreationProps) => {
                     { key: "intelligence", label: "Inteligência" },
                     { key: "wisdom", label: "Sabedoria" },
                     { key: "charisma", label: "Carisma" },
-                  ].map(({ key, label }) => {
-                    const value = character[key as keyof CharacterData] as number;
-                    const modifier = value > 0 ? getAttributeModifier(value) : 0;
-                    const isRolling = rollingAttribute === key;
-                    return (
-                      <div 
-                        key={key} 
-                        className={cn(
-                          "flex items-center justify-between p-3 bg-card border border-border rounded-lg transition-all duration-300",
-                          value > 0 && "border-primary/30 bg-primary/5"
-                        )}
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium">{label}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {value > 0 ? `Modificador: ${modifier >= 0 ? "+" : ""}${modifier}` : "Não rolado"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {value > 0 ? (
-                            <>
-                              <span className="text-2xl font-bold w-12 text-center text-primary animate-scale-in">{value}</span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => rollAttribute(key as keyof CharacterData)}
-                                disabled={isRolling}
-                                className="hover:border-primary"
-                              >
-                                <Dices className="h-4 w-4" />
-                              </Button>
-                            </>
-                          ) : (
-                            <Button
-                              onClick={() => rollAttribute(key as keyof CharacterData)}
-                              disabled={isRolling}
-                              className="w-full"
-                            >
-                              {isRolling ? (
-                                <Dices className="h-4 w-4 animate-dice-roll" />
-                              ) : (
-                                <>
-                                  <Dices className="mr-2 h-4 w-4" />
-                                  Rolar 4d6
-                                </>
-                              )}
-                            </Button>
-                          )}
-                        </div>
+                  ].map(({ key, label }) => (
+                    <div key={key} className="flex items-center justify-between p-3 bg-card border rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {character[key as keyof CharacterData] ? `Mod: ${getAttributeModifier(character[key as keyof CharacterData] as number)}` : "Não rolado"}
+                        </p>
                       </div>
-                    );
-                  })}
+                      <div className="flex items-center gap-2">
+                        {character[key as keyof CharacterData] ? (
+                          <>
+                            <span className="text-xl font-bold w-8 text-center">{character[key as keyof CharacterData]}</span>
+                            <Button variant="ghost" size="sm" onClick={() => rollAttribute(key as keyof CharacterData)} disabled={!!rollingAttribute}><Dices className="h-4 w-4" /></Button>
+                          </>
+                        ) : (
+                          <Button onClick={() => rollAttribute(key as keyof CharacterData)} disabled={!!rollingAttribute} size="sm">
+                            {rollingAttribute === key ? <Dices className="h-4 w-4 animate-spin" /> : "Rolar"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-                    Voltar
-                  </Button>
-                  <Button 
-                    onClick={() => setStep(3)} 
-                    className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:shadow-glow transition-all" 
-                    disabled={!isStep2Valid}
-                  >
-                    Próximo: História
-                  </Button>
+                  <Button variant="outline" onClick={() => setStep(1)} className="flex-1">Voltar</Button>
+                  <Button onClick={() => setStep(3)} className="flex-1" disabled={!isStep2Valid}>Próximo: História</Button>
                 </div>
               </div>
             )}
 
-            {/* Step 3: Background */}
             {step === 3 && (
-              <div className="space-y-4 animate-slide-in-right">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Scroll className="h-5 w-5 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-semibold">História e Antecedentes</h3>
+                  <Scroll className="h-5 w-5 text-primary" />
+                  <h3 className="text-xl font-semibold">História</h3>
                 </div>
-
                 <div className="space-y-2">
                   <Label>Antecedente *</Label>
-                  <Select value={character.background} onValueChange={(value) => setCharacter({ ...character, background: value })}>
-                    <SelectTrigger className="bg-background/50">
-                      <SelectValue placeholder="Selecione um antecedente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BACKGROUNDS.map((bg) => (
-                        <SelectItem key={bg.value} value={bg.value}>
-                          {bg.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                  <Select value={character.background} onValueChange={(v) => setCharacter({ ...character, background: v })}>
+                    <SelectTrigger className="bg-background/50"><SelectValue placeholder="Antecedente" /></SelectTrigger>
+                    <SelectContent>{BACKGROUNDS.map((bg) => <SelectItem key={bg.value} value={bg.value}>{bg.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="backstory">História do Personagem</Label>
+                  <Label htmlFor="backstory">História</Label>
                   <Textarea
                     id="backstory"
                     value={character.backstory}
                     onChange={(e) => setCharacter({ ...character, backstory: e.target.value })}
-                    placeholder="Conte a história do seu personagem: de onde veio, o que o motiva, seus objetivos..."
-                    rows={6}
-                    maxLength={1000}
-                    className="bg-background/50 border-border/50 focus:border-primary transition-all"
+                    rows={4}
+                    className="bg-background/50"
                   />
-                  <p className="text-xs text-muted-foreground text-right">
-                    {character.backstory.length}/1000
-                  </p>
                 </div>
-
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
-                    Voltar
-                  </Button>
-                  <Button 
-                    onClick={handleSubmit} 
-                    className="flex-1 bg-gradient-to-r from-primary to-accent hover:shadow-glow transition-all"
-                  >
-                    <Shield className="mr-2 h-4 w-4" />
-                    Iniciar Aventura
-                  </Button>
+                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1">Voltar</Button>
+                  <Button onClick={handleSubmit} className="flex-1">Iniciar Aventura</Button>
                 </div>
               </div>
             )}
